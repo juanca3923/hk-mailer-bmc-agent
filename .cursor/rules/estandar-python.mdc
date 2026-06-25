@@ -1,0 +1,122 @@
+---
+description: Estándar Python del equipo (docstrings, tipado, Pylint, seguridad, disciplina de cambio).
+globs: **/*.py
+alwaysApply: false
+---
+
+# Estándar Python (equipo)
+
+Actúa como agente de código en este repositorio y aplica lo siguiente al trabajar en archivos Python.
+
+## Referencias (no duplicar aquí)
+
+- **Mensajes de commit** (asunto en español, `Tipo:`, `Archivos:`, plantilla): `.cursor/rules/commits-espanol.mdc`.
+- **Documentación del repositorio** (`README.md`, `docs/`, changelog, arquitectura, Postman cuando toque API): cuando el cambio tenga impacto operativo, de contrato o de estructura, lee y aplica la skill del proyecto `.cursor/skills/docs-maintainer-back/SKILL.md` en el mismo flujo que el código.
+
+## Idioma
+
+- **Docstrings y comentarios en código**: inglés.
+- **Documentación en Markdown** del repo (`README.md`, `docs/`): según la skill de documentación (español preferente en esos artefactos).
+- Los mensajes del usuario pueden estar en español.
+
+## Docstrings (obligatorio)
+
+- **Delimitador**: solo comillas triples dobles `"""` para docstrings (no `'''`). En el **resto del código** (literales de cadena en cuerpo de funciones, valores por defecto, mensajes, claves, etc.) usar **comilla simple** `'...'` (incluidas *f-strings*: `f'...'`); las dobles `"` quedan reservadas a docstrings y a casos donde la comilla simple incida en legibilidad (p. ej. cadena que contiene muchas comillas simples internas).
+- **Estilo NumPy** ([numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html)): docstrings de **módulo**, **clases públicas** (incl. dataclasses) y **funciones/métodos públicos** siguen las secciones y el formato NumPy (`Parameters`, `Returns`, `Raises`, `Attributes`, `Yields`, `Examples`, etc., con la línea de subrayado `----------` bajo el título de sección cuando corresponda).
+- Cada archivo: docstring de módulo como primer elemento del fichero.
+- Cada clase pública: docstring inmediatamente tras la definición de la clase (resumen, descripción extendida si aplica, y `Attributes` / notas según sea útil).
+- Cada función o método público: docstring inmediatamente tras la definición; usar `Parameters`, `Returns`, `Raises` (u otras secciones NumPy) solo cuando aporten claridad.
+- **No** docstring en `__init__`.
+- Docstrings al inicio del ámbito; nunca docstrings a mitad de función.
+- Los **comentarios inline** (`#`) no siguen formato NumPy; el estándar NumPy aplica a **docstrings** de API pública.
+
+### Ejemplo (clase y método, estilo NumPy, delimitador `"""`)
+
+```python
+"""Module-level summary in one line."""
+
+
+class Greeter:
+    """Builds greeting messages for a named subject.
+
+    Attributes
+    ----------
+    name : str
+        Display name used in greetings.
+    """
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def hello(self, punctuation: str = '.') -> str:
+        """Return a one-line greeting.
+
+        Parameters
+        ----------
+        punctuation : str, optional
+            Character(s) appended after the name, by default ``"."``.
+
+        Returns
+        -------
+        str
+            Greeting string including ``name`` and ``punctuation``.
+        """
+        return f'Hello, {self.name}{punctuation}'
+```
+
+## Tipado y estilo
+
+- PEP 8 salvo convención explícita del repo.
+- **Cadenas en código**: comilla simple (`'texto'`, `f'...'`); ver también la sección **Docstrings** para la excepción obligatoria con `"""`.
+- Tipado estricto en parámetros y retorno; genéricos siempre parametrizados (`dict[str, int]`, no `dict` suelto). `Any` solo cuando no haya tipo concreto razonable.
+
+```python
+# Mal
+def get_user(data: dict) -> list:
+    ...
+
+# Bien
+def get_user(data: dict[str, str]) -> list[User]:
+    ...
+```
+
+- Longitud de línea: máx. 120 caracteres.
+- Tamaño de módulo: máx. 1000 líneas.
+- **Imports**: sin importaciones relativas; rutas completas desde la raíz de paquetes del proyecto. Orden de grupos: (1) biblioteca estándar, (2) terceros, (3) aplicación local; agrupación estricta.
+
+## Convenciones de nombres y límites de diseño
+
+- **Nombres**: funciones/métodos y variables/argumentos en `snake_case`; clases en `PascalCase`; constantes en `UPPER_CASE`; módulos/paquetes en `snake_case`.
+- **Complejidad y métricas** (objetivo del equipo; ejecuta Pylint con `.pylintrc` del repo):
+  - Máx. 3 `return` por función.
+  - Máx. 5 parámetros por función/método.
+  - Máx. 15 variables locales por función/método.
+  - Máx. 12 ramas por función/método.
+  - Máx. 50 sentencias por función/método.
+  - Máx. 5 niveles de anidación por función/método.
+  - Máx. 7 atributos por clase.
+  - Máx. 5 expresiones booleanas en un mismo `if`.
+
+## Pylint y herramientas
+
+- Python objetivo: 3.11. Ignorar directorios como `.venv` (y CVS) al analizar.
+- Tratar **Pylint** como referencia al revisar: no capturar excepciones demasiado amplias (`Exception`, `BaseException`).
+- **Logging** estándar: formato estilo `%` (`logging`).
+- **`requests`**: métodos bajo `requests.api.*` con `timeout=...` explícito.
+- Comentarios de nota permitidos: `FIXME`, `XXX`, `TODO`.
+- Evitar duplicación por copiar/pegar; refactorizar bloques repetidos.
+
+## Seguridad y corrección
+
+- No registrar datos sensibles (contraseñas, tokens, secretos).
+- No hardcodear credenciales ni valores propios de un entorno.
+- No leer, modificar ni commitear `.env` ni variantes (`.env.local`, `.env.prod`, etc.).
+- Validar entradas externas; fallar con claridad; evitar `except` silenciosos y capturas genéricas innecesarias.
+- Logging en rutas críticas sin datos sensibles.
+
+## Disciplina de cambio y salida
+
+- Cambios mínimos y acotados; reutilizar utilidades y patrones del repo.
+- No introducir cambios incompatibles sin indicarlo claramente en la respuesta.
+- Al modificar código, explicar de forma breve qué cambió y por qué (en la conversación; el **texto del commit** sigue la rule de commits enlazada arriba).
+- En la salida del asistente, priorizar solo los ficheros o fragmentos solicitados.

@@ -1,0 +1,14 @@
+# Reducir contexto de build; los Dockerfiles copian pyproject.toml, uv.lock, src/, prompts, skills/.
+# skills/example/ es plantilla de referencia; no va a la imagen de producción.
+skills/example
+.venv
+__pycache__
+*.pyc
+.git
+.gitignore
+logs
+*.log
+.env
+.cursor
+.plan
+*.plan.md

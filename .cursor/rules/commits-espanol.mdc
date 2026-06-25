@@ -1,0 +1,105 @@
+---
+description: Formato obligatorio de commits en español, con tipo de cambio y listado por archivo.
+alwaysApply: false
+---
+
+# Mensajes de commit
+
+Todo el contenido del commit (asunto y cuerpo) debe redactarse en **español**.
+
+## Tipo de cambio (bandera obligatoria en el cuerpo del mensaje)
+
+Indica una sola etiqueta principal (la que mejor describa el peso del commit):
+
+| Etiqueta   | Cuándo usarla |
+|-----------|----------------|
+| `BUG`     | Se corrige un fallo de comportamiento, regresión o error reportado por usuario/sistema. |
+| `FEATURE` | Se introduce funcionalidad **nueva** visible (UI, API consumida nueva, flujo nuevo). |
+| `RELATED` | Cambios **motivados** por otra implementación/refactor/feature previa u otra tarea sin ser un bug puntual ni una función nueva protagonista del commit (adaptación, ajuste técnico, consecuencia de dependencias entre módulos). |
+
+Si varias etiquetas aplican por mezcla de ficheros, elige la que represente **el resultado principal** del commit y menciona lo demás en una frase tras el bloque `Archivos:`.
+
+Formato esperado para la primera línea del cuerpo (tras el asunto y una línea en blanco):
+
+```text
+Tipo: BUG
+```
+
+(o `Tipo: FEATURE` / `Tipo: RELATED`)
+
+## Lista de archivos y resumen corto por archivo
+
+Tras indicar `Tipo:` incluye obligatoriamente un bloque así (rutas relativas al repositorio, una línea por archivo tocado):
+
+```text
+Archivos:
+- src/ruta/componente.vue: qué cambió aquí en una línea corta.
+- src/ruta/otro.ts: mismo criterio.
+```
+
+- Orden alfabético o por capa (`components`, `pages`, `services`, etc.) está permitido según prefieras.
+- Solo lista archivos **realmente modificados** en el commit (salvo automatismos evidentes donde el equipo acuerde otra práctica).
+
+## Asunto
+
+- Una línea, imperativo, claro (**Qué** hace el cambio desde la perspectiva del repositorio).
+- Evita inglés aquí también.
+- Ejemplos en español: `Corrige ids de recurso del calendario de liquidación`, `Añade formato de commits con tipo y archivos`.
+
+## Ejemplo completo de mensaje (Markdown compacto)
+
+```text
+Corrige ids de recurso del calendario de liquidación
+
+## Tipo
+BUG
+
+## Archivos
+- `src/components/noveltys/ViewNoveltyLiquidationComponent.vue`: alinea id de cada fila con la fecha visible y segmenta novedades multi-día dentro del día.
+- `src/common/interfaces/calender-quasar.interface.ts`: tipa retorno opcional/false en timeStartPosX.
+```
+
+Versión texto plano (válida si no quieres `##`): `Tipo: BUG` y `Archivos:` como listado sin encabezados.
+
+## Markdown en el cuerpo (compacto, recomendado)
+
+El **asunto** sigue siendo texto plano (una línea). En el **cuerpo** puedes usar Markdown **ligero** para que en GitHub/GitLab se lea mejor; en `git log` seguirá viéndose ordenado.
+
+Plantilla máxima recomendada (no añadas más secciones salvo las opcionales de abajo):
+
+```markdown
+## Tipo
+BUG
+
+## Archivos
+- `src/ruta/archivo.vue`: una línea.
+- `src/ruta/otro.ts`: una línea.
+```
+
+Reglas para no extenderte:
+
+- Máximo **~12 líneas** en el cuerpo incluyendo listas (commits enormes → dividir en varios commits o un solo párrafo `## Nota`).
+- Rutas entre **acento grave** (`` ` ``) para destacarlas.
+- Sin párrafos largos: si hace falta contexto, **una** línea opcional `## Contexto` (ver más abajo).
+
+## Extras opcionales (solo si aportan)
+
+| Sección | Uso | Extensión |
+|--------|-----|-----------|
+| `## Contexto` | Una frase: por qué, impacto no obvio en front. | **1 línea** |
+| `## Refs` | Enlace issue/ticket/`#42`. | **1 línea** |
+| `## Riesgo` | `bajo` / `medio` / `alto` si el cambio toca datos, auth o despliegue. | **1 palabra o 1 línea** |
+
+Si no necesitas ninguno, omítelos.
+
+## Opcional en el asunto (herramientas)
+
+Si el equipo usa análisis automático de commits (release notes), puedes prefijar el asunto así (en minúsculas, **solo si** lo tienen acordado en CI):
+
+`fix:` | `feat:` | `chore:` | `refactor:`
+
+No sustituye a `## Tipo` en el cuerpo: el cuerpo y la bandera `BUG` / `FEATURE` / `RELATED` siguen siendo obligatorios.
+
+## Cuando hagas commits en Cursor
+
+Genera el mensaje con **asunto** en español + **cuerpo** con plantilla Markdown compacta (`## Tipo`, `## Archivos`, rutas entre backticks). Añade `## Contexto`, `## Refs` o `## Riesgo` solo cuando aporte claridad sin alargar.

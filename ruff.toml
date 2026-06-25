@@ -1,0 +1,40 @@
+target-version = "py313"
+line-length = 120
+extend-exclude = [".venv", "CVS", "alembic"]
+
+[lint]
+# Base equivalente a un set típico de Pylint (imports, errores, warnings, naming, etc.)
+select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "W",  # pycodestyle warnings
+  "I",  # isort
+  "N",  # pep8-naming (equivalente a invalid-name de Pylint)
+  "B",  # flake8-bugbear
+  "PL", # reglas tipo Pylint (refactor/convention/error)
+]
+
+# En el .pylintrc se desactivan docstrings obligatorias; aquí no activamos D (pydocstyle).
+# Nota: Ruff no soporta el equivalente exacto a `ignore-long-lines` por regex de Pylint.
+# Para URLs u otros casos puntuales, usa `# noqa: E501` en esa línea.
+
+per-file-ignores = { "__init__.py" = ["F401"] }
+
+# Dummy variables equivalente a `dummy-variables-rgx` de Pylint.
+dummy-variable-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_"
+
+[lint.pep8-naming]
+# `good-names` de Pylint (permitidos aunque sean cortos o no snake_case).
+ignore-names = ["ex", "Run", "_"]
+
+[lint.pylint]
+# Umbrales alineados con el `.pylintrc` de referencia.
+max-args = 9
+max-branches = 12
+max-bool-expr = 5
+max-locals = 15
+max-nested-blocks = 5
+max-public-methods = 20
+max-returns = 6
+max-statements = 50
+

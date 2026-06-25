@@ -1,0 +1,594 @@
+{
+  "info": {
+    "_postman_id": "ffcb8322-4254-4bc6-80a5-6a6a4f72b310",
+    "name": "AgentForge API",
+    "description": "API HTTP: estado, chat, chat/stream (SSE), A2A embebido (Agent Card + message/send), inicio y parada del agente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6191725"
+  },
+  "item": [
+    {
+      "name": "Obtener estado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "status"
+          ]
+        },
+        "description": "Devuelve el estado actual del agente: DOWN, UP o DOING_TASK."
+      },
+      "response": [
+        {
+          "name": "Obtener estado",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "status"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "date",
+              "value": "Thu, 19 Mar 2026 00:38:07 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "15"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"UP\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Chat (nuevo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"¿Qué comando listaría los procesos?\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/chat",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chat"
+          ]
+        },
+        "description": "Envía un mensaje al agente. Devuelve reply, chat_id, run_id y status. Pasar chat_id para continuar una conversación existente."
+      },
+      "response": [
+        {
+          "name": "Chat",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"que servicios hay correindo en el server 172.30.5.251\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "date",
+              "value": "Thu, 19 Mar 2026 00:24:36 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "3540"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"reply\": \"## Servicios Corriendo en el Servidor 172.30.5.251\\n\\nHe obtenido la lista de servicios activos en el sistema. Aquí tienes un resumen organizado por categorías:\\n\\n### 🖥️ **Servicios de Sistema y Monitorización**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `systemd-journald.service` | Journal Service (registro de eventos) |\\n| `systemd-logind.service` | Login Service (gestión de sesiones) |\\n| `systemd-udevd.service` | udev Kernel Device Manager |\\n| `polkit.service` | Authorization Manager (control de permisos) |\\n| `sssd.service` | System Security Services Daemon |\\n| `gssproxy.service` | GSSAPI Proxy Daemon |\\n| `irqbalance.service` | irqbalance daemon (balanceo de interrupciones) |\\n| `tuned.service` | Dynamic System Tuning Daemon |\\n\\n### 🔒 **Seguridad y Auditoría**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `auditd.service` | Security Auditing Service |\\n| `sshd.service` | OpenSSH server daemon |\\n| `firewalld.service` | firewalld - dynamic firewall daemon |\\n| `rsyslog.service` | System Logging Service |\\n| `wazuh-agent.service` | Wazuh agent (monitorización de seguridad) |\\n\\n### 🌐 **Red y Redes**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `NetworkManager.service` | Network Manager |\\n| `dbus.service` | D-Bus System Message Bus |\\n| `rpcbind.service` | RPC bind service |\\n| `rpc-gssd.service` | RPC security service for NFS |\\n| `snmpd.service` | SNMP Daemon (gestión de red) |\\n| `ntpd.service` | Network Time Service (NTP) |\\n\\n### 📊 **Monitorización y Métricas**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `node_exporter.service` | Node Exporter (exportación de métricas) |\\n| `prometheus.service` | Prometheus (colección de métricas) |\\n| `metricbeat.service` | Metricbeat Service (recopilación de métricas) |\\n| `glpi-agent.service` | GLPI agent (gestión de activos) |\\n\\n### 🛡️ **Protección y Antimalware (Symantec)**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `cafdaemon.service` | Symantec Agent for Linux CAF daemon |\\n| `sisamddaemon.service` | Symantec Agent for Linux Antimalware daemon |\\n| `sisidsdaemon.service` | Symantec Agent for Linux IDS daemon |\\n| `sisipsdaemon.service` | Symantec Agent for Linux IPS daemon |\\n\\n### ⏰ **Tareas y Programación**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `crond.service` | Command Scheduler (cron) |\\n| `atd.service` | Job spooling tools (at) |\\n\\n### 🐛 **Virtualización y Gestión de Almacenamiento**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `lvm2-lvmetad.service` | LVM2 metadata daemon |\\n| `vmware-tools.service` | SYSV: Manages VMware software |\\n| `getty@tty1.service` | Getty on tty1 (consola) |\\n\\n---\\n\\n### 📝 **Observaciones de Seguridad:**\\n\\n1. **Agentes de Monitorización**: El sistema tiene múltiples agentes de monitorización (Prometheus, Node Exporter, Metricbeat, GLPI), lo que sugiere que es parte de una infraestructura de gestión de infraestructura.\\n\\n2. **Seguridad**: Contiene agentes de seguridad (Wazuh, Symantec CAF/IDS/IPS/Antimalware) y auditoría (auditd), indicando una postura de seguridad robusta.\\n\\n3. **Gestión de Red**: Firewall activo (firewalld) y servicios de red completos.\\n\\n4. **Virtualización**: Presencia de VMware Tools indica que el servidor corre en un entorno virtualizado.\\n\\n¿Necesitas que obtenga más información detallada sobre algún servicio en particular o que verifique el estado de alguno de estos componentes?\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Chat (continuando conversación)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"¿Y cómo los ordeno por uso de CPU?\",\n  \"chat_id\": \"{{chatId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/chat",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chat"
+          ]
+        },
+        "description": "Continúa una conversación existente pasando el chat_id devuelto en la respuesta anterior. El agente recibirá los últimos mensajes del chat como contexto."
+      },
+      "response": []
+    },
+    {
+      "name": "Chat streaming (SSE)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "text/event-stream"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"¿Qué comando listaría los procesos?\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/chat/stream",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chat",
+            "stream"
+          ]
+        },
+        "description": "Mismo cuerpo JSON que POST /chat. Respuesta text/event-stream: líneas ``data: <json>`` con eventos ``chunk`` (delta de texto), ``done`` (chat_id, run_id, status success|cancelled, reply) o ``error`` (detail). Postman puede mostrar la respuesta como stream según versión; con curl usar ``curl -N``."
+      },
+      "response": []
+    },
+    {
+      "name": "Listar chats recientes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/chats",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chats"
+          ]
+        },
+        "description": "Devuelve los chats más recientes ordenados por último mensaje (last_message_at desc). Incluye id, created_at, last_message_at."
+      },
+      "response": [
+        {
+          "name": "Listar chats recientes",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chats",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [{"key": "content-type", "value": "application/json"}],
+          "cookie": [],
+          "body": "[\n  {\n    \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n    \"created_at\": \"2026-04-15T10:00:00Z\",\n    \"last_message_at\": \"2026-04-15T10:05:00Z\"\n  }\n]"
+        }
+      ]
+    },
+    {
+      "name": "Historial de mensajes de un chat",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chats",
+            "{{chatId}}",
+            "messages"
+          ]
+        },
+        "description": "Devuelve todos los mensajes de un chat (incluyendo errores y cancelaciones). 404 si el chat no existe."
+      },
+      "response": [
+        {
+          "name": "Historial de mensajes de un chat",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [{"key": "content-type", "value": "application/json"}],
+          "cookie": [],
+          "body": "[\n  {\n    \"id\": \"aabbccdd-1234-5678-abcd-ef0123456789\",\n    \"role\": \"user\",\n    \"message_type\": \"normal\",\n    \"content\": \"¿Qué comando listaría los procesos?\",\n    \"ts\": \"2026-04-15T10:00:01Z\",\n    \"agent_run_id\": null\n  },\n  {\n    \"id\": \"bbccddee-2345-6789-abcd-ef0123456789\",\n    \"role\": \"assistant\",\n    \"message_type\": \"normal\",\n    \"content\": \"Puedes usar `ps aux` o `top`...\",\n    \"ts\": \"2026-04-15T10:00:05Z\",\n    \"agent_run_id\": \"ccddee11-3456-7890-abcd-ef0123456789\"\n  }\n]"
+        }
+      ]
+    },
+    {
+      "name": "Iniciar agente",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/start",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "start"
+          ]
+        },
+        "description": "Arranca el agente (grafo y MCP). Si ya está UP, no hace nada. Usar tras POST /stop para volver a usar el agente."
+      },
+      "response": [
+        {
+          "name": "Iniciar agente",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "start"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "date",
+              "value": "Thu, 19 Mar 2026 00:38:22 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "47"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"UP\",\n    \"message\": \"Agente ya en marcha\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Parar agente",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stop",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "stop"
+          ]
+        },
+        "description": "Para el agente y libera recursos. Responde 202. El servidor sigue en marcha; usar POST /start para volver a iniciar."
+      },
+      "response": [
+        {
+          "name": "Parar agente",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stop",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stop"
+              ]
+            }
+          },
+          "status": "Accepted",
+          "code": 202,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "date",
+              "value": "Thu, 19 Mar 2026 00:39:13 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "49"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"accepted\",\n    \"message\": \"Agente detenido\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Última run con eventos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/runs/last",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runs",
+            "last"
+          ]
+        },
+        "description": "Devuelve el detalle de la última ejecución del agente y los eventos asociados (llm_start, tool_start, llm_end, etc.). 404 si no hay ninguna run."
+      },
+      "response": [
+        {
+          "name": "Última run con eventos",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/runs/last",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "runs",
+                "last"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "date",
+              "value": "Thu, 19 Mar 2026 00:33:54 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "16579"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"id\": \"6f6f2581-b11b-4f41-b662-44176731e1e3\",\n    \"started_at\": \"2026-03-19T00:24:37.013337Z\",\n    \"ended_at\": \"2026-03-19T00:25:44.234777Z\",\n    \"total_time\": 1.1203573333333334,\n    \"user_message\": \"que servicios hay correindo en el server 172.30.5.251\",\n    \"final_reply\": \"## Servicios Corriendo en el Servidor 172.30.5.251\\n\\nHe obtenido la lista de servicios activos en el sistema. Aquí tienes un resumen organizado por categorías:\\n\\n### 🖥️ **Servicios de Sistema y Monitorización**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `systemd-journald.service` | Journal Service (registro de eventos) |\\n| `systemd-logind.service` | Login Service (gestión de sesiones) |\\n| `systemd-udevd.service` | udev Kernel Device Manager |\\n| `polkit.service` | Authorization Manager (control de permisos) |\\n| `sssd.service` | System Security Services Daemon |\\n| `gssproxy.service` | GSSAPI Proxy Daemon |\\n| `irqbalance.service` | irqbalance daemon (balanceo de interrupciones) |\\n| `tuned.service` | Dynamic System Tuning Daemon |\\n\\n### 🔒 **Seguridad y Auditoría**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `auditd.service` | Security Auditing Service |\\n| `sshd.service` | OpenSSH server daemon |\\n| `firewalld.service` | firewalld - dynamic firewall daemon |\\n| `rsyslog.service` | System Logging Service |\\n| `wazuh-agent.service` | Wazuh agent (monitorización de seguridad) |\\n\\n### 🌐 **Red y Redes**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `NetworkManager.service` | Network Manager |\\n| `dbus.service` | D-Bus System Message Bus |\\n| `rpcbind.service` | RPC bind service |\\n| `rpc-gssd.service` | RPC security service for NFS |\\n| `snmpd.service` | SNMP Daemon (gestión de red) |\\n| `ntpd.service` | Network Time Service (NTP) |\\n\\n### 📊 **Monitorización y Métricas**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `node_exporter.service` | Node Exporter (exportación de métricas) |\\n| `prometheus.service` | Prometheus (colección de métricas) |\\n| `metricbeat.service` | Metricbeat Service (recopilación de métricas) |\\n| `glpi-agent.service` | GLPI agent (gestión de activos) |\\n\\n### 🛡️ **Protección y Antimalware (Symantec)**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `cafdaemon.service` | Symantec Agent for Linux CAF daemon |\\n| `sisamddaemon.service` | Symantec Agent for Linux Antimalware daemon |\\n| `sisidsdaemon.service` | Symantec Agent for Linux IDS daemon |\\n| `sisipsdaemon.service` | Symantec Agent for Linux IPS daemon |\\n\\n### ⏰ **Tareas y Programación**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `crond.service` | Command Scheduler (cron) |\\n| `atd.service` | Job spooling tools (at) |\\n\\n### 🐛 **Virtualización y Gestión de Almacenamiento**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `lvm2-lvmetad.service` | LVM2 metadata daemon |\\n| `vmware-tools.service` | SYSV: Manages VMware software |\\n| `getty@tty1.service` | Getty on tty1 (consola) |\\n\\n---\\n\\n### 📝 **Observaciones de Seguridad:**\\n\\n1. **Agentes de Monitorización**: El sistema tiene múltiples agentes de monitorización (Prometheus, Node Exporter, Metricbeat, GLPI), lo que sugiere que es parte de una infraestructura de gestión de infraestructura.\\n\\n2. **Seguridad**: Contiene agentes de seguridad (Wazuh, Symantec CAF/IDS/IPS/Antimalware) y auditoría (auditd), indicando una postura de seguridad robusta.\\n\\n3. **Gestión de Red**: Firewall activo (firewalld) y servicios de red completos.\\n\\n4. **Virtualización**: Presencia de VMware Tools indica que el servidor corre en un entorno virtualizado.\\n\\n¿Necesitas que obtenga más información detallada sobre algún servicio en particular o que verifique el estado de alguno de estos componentes?\",\n    \"status\": \"success\",\n    \"error_text\": null,\n    \"total_input_tokens\": 11204,\n    \"total_output_tokens\": 1638,\n    \"events\": [\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:24:37.049214Z\",\n            \"payload\": {\n                \"step\": 1,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:24:45.169103Z\",\n            \"payload\": {\n                \"input_tokens\": 969,\n                \"output_tokens\": 213\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:24:45.180422Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\"\n                },\n                \"tool_name\": \"host_connect\",\n                \"tool_call_id\": \"adcdc9c5-a287-4ddf-aa06-fe100afc68ba\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:24:45.242621Z\",\n            \"payload\": {\n                \"result\": \"content=[{'type': 'text', 'text': '{\\\\n  \\\"success\\\": true,\\\\n  \\\"message\\\": \\\"Connection to 172.30.5.251 on port 22 with username juan.londono already exists. Returning the existing connection.\\\"\\\\n}', 'id': 'lc_e1c8e205-a83f-4884-abcb-f9670ba86e3b'}] name='host_connect' tool_call_id='adcdc9c5-a287-4ddf-aa06-fe100afc68ba' artifact={'structured_content': {'success': True, 'message': 'Connection to 172.30.5.251 on port 22 with username juan.londono already exists. Returning the existing connection.'}}\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:24:45.254709Z\",\n            \"payload\": {\n                \"step\": 3,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:24:49.048337Z\",\n            \"payload\": {\n                \"input_tokens\": 1075,\n                \"llm_response\": \"Conexión establecida. Ahora voy a listar los servicios que están corriendo en el servidor.\",\n                \"output_tokens\": 85\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:24:49.058398Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\",\n                    \"command\": \"systemctl list-units --type=service --state=running\"\n                },\n                \"tool_name\": \"execute_command\",\n                \"tool_call_id\": \"82276ab6-0dda-4163-9d1d-a0331e540bbd\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:24:49.084756Z\",\n            \"payload\": {\n                \"result\": \"content='Error executing tool execute_command: SSH session not active' name='execute_command' tool_call_id='82276ab6-0dda-4163-9d1d-a0331e540bbd' status='error'\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:24:49.093597Z\",\n            \"payload\": {\n                \"step\": 5,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": \"Conexión establecida. Ahora voy a listar los servicios que están corriendo en el servidor.\",\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:24:52.436483Z\",\n            \"payload\": {\n                \"input_tokens\": 1185,\n                \"output_tokens\": 67\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:24:52.469144Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\"\n                },\n                \"tool_name\": \"host_connect\",\n                \"tool_call_id\": \"ddeffd3a-598d-4e43-92e2-4ab6e6ee0af6\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:24:52.493536Z\",\n            \"payload\": {\n                \"result\": \"content=[{'type': 'text', 'text': '{\\\\n  \\\"success\\\": true,\\\\n  \\\"message\\\": \\\"Connection to 172.30.5.251 on port 22 with username juan.londono already exists. Returning the existing connection.\\\"\\\\n}', 'id': 'lc_9ce036b7-397e-4a36-8f88-90408c1b2338'}] name='host_connect' tool_call_id='ddeffd3a-598d-4e43-92e2-4ab6e6ee0af6' artifact={'structured_content': {'success': True, 'message': 'Connection to 172.30.5.251 on port 22 with username juan.londono already exists. Returning the existing connection.'}}\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:24:52.503311Z\",\n            \"payload\": {\n                \"step\": 7,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:24:56.583980Z\",\n            \"payload\": {\n                \"input_tokens\": 1291,\n                \"output_tokens\": 85\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:24:56.637798Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\",\n                    \"command\": \"systemctl list-units --type=service --state=running\"\n                },\n                \"tool_name\": \"execute_command\",\n                \"tool_call_id\": \"ea642312-885b-4fb9-aaae-78bcb8a14ec3\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:24:56.662615Z\",\n            \"payload\": {\n                \"result\": \"content='Error executing tool execute_command: SSH session not active' name='execute_command' tool_call_id='ea642312-885b-4fb9-aaae-78bcb8a14ec3' status='error'\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:24:56.675962Z\",\n            \"payload\": {\n                \"step\": 9,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:25:00.949722Z\",\n            \"payload\": {\n                \"input_tokens\": 1380,\n                \"output_tokens\": 87\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:25:00.960433Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\"\n                },\n                \"tool_name\": \"close_connection\",\n                \"tool_call_id\": \"dcae4da4-9622-40e3-8c07-f1cb36179056\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:25:00.982397Z\",\n            \"payload\": {\n                \"result\": \"content=[{'type': 'text', 'text': '{\\\\n  \\\"success\\\": true,\\\\n  \\\"message\\\": \\\"Connection to 172.30.5.251 was closed successfully.\\\"\\\\n}', 'id': 'lc_1b41c734-f57e-477f-910a-1a67c9425f83'}] name='close_connection' tool_call_id='dcae4da4-9622-40e3-8c07-f1cb36179056' artifact={'structured_content': {'success': True, 'message': 'Connection to 172.30.5.251 was closed successfully.'}}\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:25:00.993052Z\",\n            \"payload\": {\n                \"step\": 11,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:25:03.833629Z\",\n            \"payload\": {\n                \"input_tokens\": 1470,\n                \"output_tokens\": 40\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:25:03.846448Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\"\n                },\n                \"tool_name\": \"host_connect\",\n                \"tool_call_id\": \"d2ac8ae5-a15b-45a5-ad79-f2ea23da6a76\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:25:04.190368Z\",\n            \"payload\": {\n                \"result\": \"content=[{'type': 'text', 'text': '{\\\\n  \\\"success\\\": true,\\\\n  \\\"message\\\": \\\"Connection to 172.30.5.251 on port 22 with username juan.londono was successful.\\\"\\\\n}', 'id': 'lc_ec22342b-31dc-4012-9a27-da75522c200f'}] name='host_connect' tool_call_id='d2ac8ae5-a15b-45a5-ad79-f2ea23da6a76' artifact={'structured_content': {'success': True, 'message': 'Connection to 172.30.5.251 on port 22 with username juan.londono was successful.'}}\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:25:04.202163Z\",\n            \"payload\": {\n                \"step\": 13,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:25:08.555278Z\",\n            \"payload\": {\n                \"input_tokens\": 1571,\n                \"output_tokens\": 81\n            }\n        },\n        {\n            \"event_type\": \"tool_start\",\n            \"ts\": \"2026-03-19T00:25:08.566626Z\",\n            \"payload\": {\n                \"input\": {\n                    \"host\": \"172.30.5.251\",\n                    \"command\": \"systemctl list-units --type=service --state=running\"\n                },\n                \"tool_name\": \"execute_command\",\n                \"tool_call_id\": \"b1d5ae40-d1b9-4100-8e28-354c58eed0b3\"\n            }\n        },\n        {\n            \"event_type\": \"tool_end\",\n            \"ts\": \"2026-03-19T00:25:08.670841Z\",\n            \"payload\": {\n                \"result\": \"content=[{'type': 'text', 'text': '{\\\\n  \\\"success\\\": true,\\\\n  \\\"message\\\": \\\"Command systemctl list-units --type=service --state=running on 172.30.5.251 succeeded. Output: UNIT                     LOAD   ACTIVE SUB     DESCRIPTION\\\\\\\\natd.service              loaded active running Job spooling tools\\\\\\\\nauditd.service           loaded active running Security Auditing Service\\\\\\\\ncafdaemon.service        loaded active running Symantec Agent for Linux CAF daemon\\\\\\\\ncrond.service            loaded active running Command Scheduler\\\\\\\\ndbus.service             loaded active running D-Bus System Message Bus\\\\\\\\nfirewalld.service        loaded active running firewalld - dynamic firewall daemon\\\\\\\\ngetty@tty1.service       loaded active running Getty on tty1\\\\\\\\nglpi-agent.service       loaded active running GLPI agent\\\\\\\\ngssproxy.service         loaded active running GSSAPI Proxy Daemon\\\\\\\\nirqbalance.service       loaded active running irqbalance daemon\\\\\\\\nlvm2-lvmetad.service     loaded active running LVM2 metadata daemon\\\\\\\\nmetricbeat.service       loaded active running Metricbeat Service\\\\\\\\nNetworkManager.service   loaded active running Network Manager\\\\\\\\nnode_exporter.service    loaded active running Node Exporter\\\\\\\\nntpd.service             loaded active running Network Time Service\\\\\\\\noddjobd.service          loaded active running privileged operations for unprivileged applications\\\\\\\\npolkit.service           loaded active running Authorization Manager\\\\\\\\nprometheus.service       loaded active running Prometheus\\\\\\\\nrpc-gssd.service         loaded active running RPC security service for NFS client and server\\\\\\\\nrpcbind.service          loaded active running RPC bind service\\\\\\\\nrsyslog.service          loaded active running System Logging Service\\\\\\\\nsisamddaemon.service     loaded active running Symantec Agent for Linux Antimalware daemon\\\\\\\\nsisidsdaemon.service     loaded active running Symantec Agent for Linux IDS daemon\\\\\\\\nsisipsdaemon.service     loaded active running Symantec Agent for Linux IPS dae...(truncated 4438 chars)\",\n                \"duration_seconds\": null\n            }\n        },\n        {\n            \"event_type\": \"llm_start\",\n            \"ts\": \"2026-03-19T00:25:08.682793Z\",\n            \"payload\": {\n                \"step\": 15,\n                \"model\": \"ChatOllama\",\n                \"ai_message\": null,\n                \"human_message\": \"que servicios hay correindo en el server 172.30.5.251\"\n            }\n        },\n        {\n            \"event_type\": \"llm_end\",\n            \"ts\": \"2026-03-19T00:25:44.220544Z\",\n            \"payload\": {\n                \"input_tokens\": 2263,\n                \"llm_response\": \"## Servicios Corriendo en el Servidor 172.30.5.251\\n\\nHe obtenido la lista de servicios activos en el sistema. Aquí tienes un resumen organizado por categorías:\\n\\n### 🖥️ **Servicios de Sistema y Monitorización**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `systemd-journald.service` | Journal Service (registro de eventos) |\\n| `systemd-logind.service` | Login Service (gestión de sesiones) |\\n| `systemd-udevd.service` | udev Kernel Device Manager |\\n| `polkit.service` | Authorization Manager (control de permisos) |\\n| `sssd.service` | System Security Services Daemon |\\n| `gssproxy.service` | GSSAPI Proxy Daemon |\\n| `irqbalance.service` | irqbalance daemon (balanceo de interrupciones) |\\n| `tuned.service` | Dynamic System Tuning Daemon |\\n\\n### 🔒 **Seguridad y Auditoría**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `auditd.service` | Security Auditing Service |\\n| `sshd.service` | OpenSSH server daemon |\\n| `firewalld.service` | firewalld - dynamic firewall daemon |\\n| `rsyslog.service` | System Logging Service |\\n| `wazuh-agent.service` | Wazuh agent (monitorización de seguridad) |\\n\\n### 🌐 **Red y Redes**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `NetworkManager.service` | Network Manager |\\n| `dbus.service` | D-Bus System Message Bus |\\n| `rpcbind.service` | RPC bind service |\\n| `rpc-gssd.service` | RPC security service for NFS |\\n| `snmpd.service` | SNMP Daemon (gestión de red) |\\n| `ntpd.service` | Network Time Service (NTP) |\\n\\n### 📊 **Monitorización y Métricas**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `node_exporter.service` | Node Exporter (exportación de métricas) |\\n| `prometheus.service` | Prometheus (colección de métricas) |\\n| `metricbeat.service` | Metricbeat Service (recopilación de métricas) |\\n| `glpi-agent.service` | GLPI agent (gestión de activos) |\\n\\n### 🛡️ **Protección y Antimalware (Symantec)**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `cafdaemon.service` | Symantec Agent for Linux CAF daemon |\\n| `sisamddaemon.service` | Symantec Agent for Linux Antimalware daemon |\\n| `sisidsdaemon.service` | Symantec Agent for Linux IDS daemon |\\n| `sisipsdaemon.service` | Symantec Agent for Linux IPS daemon |\\n\\n### ⏰ **Tareas y Programación**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `crond.service` | Command Scheduler (cron) |\\n| `atd.service` | Job spooling tools (at) |\\n\\n### 🐛 **Virtualización y Gestión de Almacenamiento**\\n| Servicio | Descripción |\\n|----------|-------------|\\n| `lvm2-lvmetad.service` | LVM2 metadata daemon |\\n| `vmware-tools.service` | SYSV: Manages VMware software |\\n| `getty@tty1.service` | Getty on tty1 (consola) |\\n\\n---\\n\\n### 📝 **Observaciones de Seguridad:**\\n\\n1. **Agentes de Monitorización**: El sistema tiene múltiples agentes de monitorización (Prometheus, Node Exporter, Metricbeat, GLPI), lo que sugiere que es parte de una infraestructura de gestión de infraestructura.\\n\\n2. **Seguridad**: Contiene agentes de seguridad (Wazuh, Symantec CAF/IDS/IPS/Antimalware) y auditoría (auditd), indicando una postura de seguridad robusta.\\n\\n3. **Gestión de Red**: Firewall activo (firewalld) y servicios de red completos.\\n\\n4. **Virtualización**: Presencia de VMware Tools indica que el servidor corre en un entorno virtualizado.\\n\\n¿Necesitas que obtenga más información detallada sobre algún servicio en particular o que verifique el estado de alguno de estos componentes?\",\n                \"output_tokens\": 980\n            }\n        }\n    ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "Estadísticas de tokens y tiempo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/runs/stats",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runs",
+            "stats"
+          ]
+        },
+        "description": "Total de runs, tokens de entrada/salida, run con más tokens de entrada, run con más tokens de salida, tiempo promedio por solicitud (segundos)."
+      },
+      "response": [
+        {
+          "name": "Estadísticas de tokens y tiempo",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/runs/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "runs",
+                "stats"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "date",
+              "value": "Thu, 19 Mar 2026 00:34:00 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "382"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"total_runs\": 20,\n    \"total_input_tokens\": 73178,\n    \"total_output_tokens\": 11283,\n    \"run_with_max_input_tokens\": {\n        \"id\": \"a8fa108c-7051-4acb-a896-58b24ed2c258\",\n        \"total_input_tokens\": 14127,\n        \"total_output_tokens\": 1681\n    },\n    \"run_with_max_output_tokens\": {\n        \"id\": \"a8fa108c-7051-4acb-a896-58b24ed2c258\",\n        \"total_input_tokens\": 14127,\n        \"total_output_tokens\": 1681\n    },\n    \"average_time_per_request_seconds\": 24.80622573684211\n}"
+        }
+      ]
+    },
+    {
+      "name": "A2A — Agent Card",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/.well-known/agent-card.json?assistant_id={{a2aAssistantId}}",
+          "host": ["{{baseUrl}}"],
+          "path": [".well-known", "agent-card.json"],
+          "query": [
+            {"key": "assistant_id", "value": "{{a2aAssistantId}}"}
+          ]
+        },
+        "description": "Descubrimiento A2A. El assistant_id debe coincidir con el del servidor: A2A_ASSISTANT_ID si está definido, o AGENT_SLUG (por defecto agent_forge)."
+      },
+      "response": []
+    },
+    {
+      "name": "A2A — message/send (primera)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"},
+          {"key": "Accept", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"message/send\",\n  \"params\": {\n    \"message\": {\n      \"role\": \"user\",\n      \"parts\": [{\"kind\": \"text\", \"text\": \"Hola por A2A\"}],\n      \"messageId\": \"msg-1\"\n    }\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/a2a/{{a2aAssistantId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["a2a", "{{a2aAssistantId}}"]
+        },
+        "description": "JSON-RPC message/send. Reutiliza el mismo grafo que POST /chat. En turnos siguientes incluir contextId (UUID del chat) dentro de message."
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "chatId",
+      "value": "",
+      "description": "UUID del chat activo. Se obtiene del campo chat_id en la respuesta de POST /chat."
+    },
+    {
+      "key": "a2aAssistantId",
+      "value": "agent_forge",
+      "description": "Debe coincidir con A2A_ASSISTANT_ID del servidor, o con AGENT_SLUG si A2A_ASSISTANT_ID está vacío."
+    }
+  ]
+}

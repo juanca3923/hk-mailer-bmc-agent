@@ -1,0 +1,61 @@
+---
+trigger:
+  branches:
+    include:
+      - "*"
+    exclude:
+      - main
+
+variables:
+  - group: sonarqube-variables-group
+parameters:
+  - name: projectKeySonar
+    type: string
+    default: "Agile_ia-agent-base_435c674b-e159-4ba8-b054-c18916d02356"
+  - name: projectNameSonar
+    type: string
+    default: "ia-agent-base"
+
+stages:
+  - stage: SonarQubeAnalysis
+    pool:
+      name: Integracion
+    jobs:
+      - job: sonarqjob
+        displayName: "SonarQube"
+        steps:
+          - task: SonarQubePrepare@5
+            inputs:
+              SonarQube: "sonarqube_evolucion"
+              scannerMode: "CLI"
+              configMode: "manual"
+              cliProjectKey: ${{ parameters.projectKeySonar }}
+              cliProjectName: ${{ parameters.projectNameSonar }}
+              cliSources: "."
+              extraProperties: |
+                sonar.javascript.node.maxspace=8192
+                sonar.exclusions=manage.py,test/**/*,alembic/**/*
+            displayName: "Sonarqube scan"
+
+          - task: SonarQubeAnalyze@5
+            inputs:
+              jdkversion: "JAVA_HOME_17_X64"
+
+          - task: SonarQubePublish@5
+            inputs:
+              pollingTimeoutSec: "300"
+            displayName: "Publish scan"
+            continueOnError: true
+
+          - script: |
+              QUALITY_GATE_STATUS=$(curl -s -u "$(TOKEN_SONAR):" \
+              "$(URL_SONAR)/api/qualitygates/project_status?projectKey=\
+              ${{ parameters.projectKeySonar }}&branch=\
+              $(Build.SourceBranchName)" | jq -r '.projectStatus.status')
+              echo "Estado del Quality Gate: ${QUALITY_GATE_STATUS}"
+              if [ "${QUALITY_GATE_STATUS}" != "OK" ]; then
+                echo "El Quality Gate ha fallado. Deteniendo el pipeline."
+                exit 1
+              fi
+            displayName: "Verificar Quality Gate"
+            condition: succeeded()

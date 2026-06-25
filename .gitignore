@@ -1,0 +1,77 @@
+# ── Entorno y secretos ────────────────────────────────────────────────────────
+*.env
+.env.local
+.env.*.local
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+
+# Distribución / empaquetado
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+wheels/
+.eggs/
+
+# ── uv / virtualenvs ──────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+.python-version
+
+# ── Pytest / cobertura ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ── Ruff / linters ────────────────────────────────────────────────────────────
+.ruff_cache/
+.mypy_cache/
+.pylint.d/
+
+# ── Logs del proyecto ─────────────────────────────────────────────────────────
+logs/
+*.log
+# Salida de scripts de diagnóstico (test/output/*.log); el .gitkeep sí va al repo
+test/output/*
+!test/output/.gitkeep
+
+# Skills/guías Markdown locales (solo se versiona skills/.gitkeep y el ejemplo oficial)
+skills/*
+!skills/.gitkeep
+!skills/example/
+!skills/example/SKILL.md
+
+# ── Alembic (versiones generadas son del repo; esto excluye artefactos) ───────
+# Las migraciones en alembic/versions/ SÍ van al repo.
+# Solo se excluyen backups automáticos:
+*.pyc
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# No se excluye el Dockerfile (está versionado); sí los contextos temporales:
+.dockerignore.local
+
+# ── IDEs y editores ───────────────────────────────────────────────────────────
+.vscode
+.idea/
+*.swp
+*.swo
+*~
+
+# ── macOS / Linux ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Miscelánea ────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig

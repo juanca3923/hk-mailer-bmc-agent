@@ -1,0 +1,29 @@
+# Desarrollo: incluye documentación (docs/, README) y dependencias de dev (ruff, watchfiles).
+# Ver README sección "Docker" para uso.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Incluir docs y README para desarrollo.
+COPY pyproject.toml uv.lock ./
+COPY src ./src
+COPY system.promt.md system.promt.default.md base.prompt.md ./
+# Guías locales (catálogo <skills>); sin skills/example/ (solo plantilla en repo).
+COPY skills ./skills
+RUN rm -rf ./skills/example
+COPY docs ./docs
+COPY README.md ./
+
+RUN pip install --no-cache-dir uv \
+    && uv sync --frozen --group dev \
+    && pip uninstall -y uv
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV HTTP_HOST=0.0.0.0
+ENV HTTP_PORT=8000
+EXPOSE 8000
+
+RUN useradd -m -u 1000 appuser
+USER appuser
+CMD ["sh", "-c", "exec watchfiles --ignore-paths logs \"uvicorn http_api.app:app --reload --host ${HTTP_HOST:-0.0.0.0} --port ${HTTP_PORT:-8000}\""]

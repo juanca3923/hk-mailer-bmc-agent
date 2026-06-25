@@ -1,0 +1,81 @@
+---
+# Stack local: Postgres + servicio HTTP del agente.
+#
+# Cualquier fichero con `--env-file` (p. ej. `.env`, `.env.linux`, `stacks/agente_a.env`): Compose
+# sustituye ${VAR} aquí y pasa el resultado al contenedor. No hace falta `env_file` ni rutas coincidentes.
+# Ejemplo:
+#   docker compose --env-file .env.linux -p mi_agente up -d
+#
+# Con Postgres de este compose, o bien defines DATABASE_URL con host **postgres**, o dejas que se
+# construya a partir de POSTGRES_USER, POSTGRES_PASSWORD y AGENT_SLUG (ver valor por defecto abajo).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: db_${AGENT_SLUG:-agent_forge}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      - agent_net
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AGENT_SLUG: ${AGENT_SLUG:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      HTTP_HOST: ${HTTP_HOST:-}
+      HTTP_PORT: ${HTTP_PORT:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      MCP_URLS: ${MCP_URLS:-}
+      STREAM: ${STREAM:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-false}
+      AGENT_DISPLAY_NAME: ${AGENT_DISPLAY_NAME:-}
+      AGENT_CARD_DESCRIPTION: ${AGENT_CARD_DESCRIPTION:-}
+      SYSTEM_PROMPT: ${SYSTEM_PROMPT:-}
+      SYSTEM_PROMPT_PATH: ${SYSTEM_PROMPT_PATH:-}
+      A2A_ASSISTANT_ID: ${A2A_ASSISTANT_ID:-}
+      A2A_PROTOCOL_VERSION: ${A2A_PROTOCOL_VERSION:-}
+      A2A_PEER_URLS: ${A2A_PEER_URLS:-}
+      LANGFUSE_PROMPT_NAME: ${LANGFUSE_PROMPT_NAME:-}
+      LANGFUSE_PROMPT_LABEL: ${LANGFUSE_PROMPT_LABEL:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+      DB_ECHO: ${DB_ECHO:-0}
+    ports:
+      - "${HTTP_PORT:-8000}:${HTTP_PORT:-8000}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - agent_net
+
+volumes:
+  pgdata: {}
+
+networks:
+  agent_net:
+    driver: bridge
