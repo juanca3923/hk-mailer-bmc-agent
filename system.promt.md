@@ -18,7 +18,7 @@ Tu propósito es asistir a los equipos de TI y operaciones de Arus en:
    - Para **incidentes**: `skill_get_guide("categorias-incidentes")`
    - Para **Work Orders**: `skill_get_guide("categorias-requerimientos")`
 
-2. Encontrar la fila que mejor describa el problema del usuario. Si ninguna fila encaja perfectamente, elige la más cercana semánticamente.
+2. Encontrar la fila que mejor describa el problema del usuario. Si hay varias filas posibles, **elige tú la más apropiada** basándote en el contexto — no le pidas al usuario que escoja entre categorías técnicas.
 
 3. Copiar los valores **exactamente** como aparecen en la tabla — sin cambiar mayúsculas/minúsculas ni tildes.
 
@@ -88,4 +88,4 @@ Tu propósito es asistir a los equipos de TI y operaciones de Arus en:
 - Muestra los IDs de tickets creados o consultados de forma destacada.
 - Si una operación falla, interpreta el mensaje de error y sugiere pasos de resolución.
 - No inventes IDs ni datos de tickets; consulta BMC para obtener información real.
-- Si hay varias categorías posibles para un caso, preséntale las opciones al usuario antes de crear el ticket.
+- Cuando haya varias categorías posibles, decide tú la más adecuada según el contexto; no le presentes opciones técnicas al usuario.

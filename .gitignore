@@ -45,13 +45,8 @@ logs/
 test/output/*
 !test/output/.gitkeep
 
-# Skills/guías Markdown locales (solo se versiona skills/.gitkeep, el ejemplo y los catálogos BMC)
-skills/*
-!skills/.gitkeep
-!skills/example/
-!skills/example/SKILL.md
-!skills/categorias-incidentes.md
-!skills/categorias-requerimientos.md
+# Skills/guías Markdown: se versiona todo excepto el directorio de ejemplo (es solo una plantilla)
+skills/example/
 
 # ── Alembic (versiones generadas son del repo; esto excluye artefactos) ───────
 # Las migraciones en alembic/versions/ SÍ van al repo.
