@@ -47,6 +47,7 @@ test/output/*
 
 # Skills/guías Markdown: se versiona todo excepto el directorio de ejemplo (es solo una plantilla)
 skills/example/
+!skills/.gitkeep
 
 # ── Alembic (versiones generadas son del repo; esto excluye artefactos) ───────
 # Las migraciones en alembic/versions/ SÍ van al repo.
@@ -67,6 +68,12 @@ skills/example/
 # ── macOS / Linux ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ── Datos / archivos de referencia (no van al repo) ──────────────────────────
+# Archivos Excel de caracterización, configuración, etc.
+*.xlsx
+*.xls
+*.csv
 
 # ── Miscelánea ────────────────────────────────────────────────────────────────
 *.bak
