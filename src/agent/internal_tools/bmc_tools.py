@@ -13,6 +13,15 @@ import os
 from langchain_core.tools import BaseTool, tool
 
 from bmc.exceptions.mcp import MCPClientError
+from bmc.libs.business_defaults import (
+    DEFAULT_COMPANY,
+    DEFAULT_CUSTOMER_COMPANY,
+    DEFAULT_CUSTOMER_FIRST_NAME,
+    DEFAULT_CUSTOMER_LAST_NAME,
+    DEFAULT_FIRST_NAME,
+    DEFAULT_INCIDENT_ASSIGNED_GROUP,
+    DEFAULT_LAST_NAME,
+)
 from bmc.libs.constants import (
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
@@ -148,14 +157,8 @@ async def health_check() -> str:
 
 @tool
 async def create_work_order(
-    company: str,
-    first_name: str,
-    last_name: str,
     summary: str,
     detailed_description: str,
-    customer_first_name: str,
-    customer_last_name: str,
-    customer_company: str,
     categorization_tier_1: str,
     categorization_tier_2: str,
     product_cat_tier_1: str,
@@ -166,26 +169,15 @@ async def create_work_order(
 ) -> str:
     """Create a Work Order in BMC Helix ARUS (WOI:WorkOrderInterface_Create).
 
-    All catalog fields are required.
+    Company, submitter and customer identity are fixed per environment configuration
+    and must not be provided by the caller.
 
     Parameters
     ----------
-    company : str
-        Company name for the work order.
-    first_name : str
-        Submitter first name.
-    last_name : str
-        Submitter last name.
     summary : str
         Short summary of the work order.
     detailed_description : str
         Detailed description text.
-    customer_first_name : str
-        Customer first name.
-    customer_last_name : str
-        Customer last name.
-    customer_company : str
-        Customer company.
     categorization_tier_1 : str
         Categorization tier 1.
     categorization_tier_2 : str
@@ -211,14 +203,8 @@ async def create_work_order(
     if blocked is not None:
         return blocked.model_dump_json()
     data = CreateWorkOrderInput(
-        company=company,
-        first_name=first_name,
-        last_name=last_name,
         summary=summary,
         detailed_description=detailed_description,
-        customer_first_name=customer_first_name,
-        customer_last_name=customer_last_name,
-        customer_company=customer_company,
         categorization_tier_1=categorization_tier_1,
         categorization_tier_2=categorization_tier_2,
         product_cat_tier_1=product_cat_tier_1,
@@ -228,15 +214,15 @@ async def create_work_order(
         priority=priority,
     )
     values = CreateWorkOrderValues(
-        company=data.company,
-        first_name=data.first_name,
-        last_name=data.last_name,
+        company=DEFAULT_COMPANY,
+        first_name=DEFAULT_FIRST_NAME,
+        last_name=DEFAULT_LAST_NAME,
         summary=data.summary,
         detailed_description=data.detailed_description,
         status=data.status,
-        customer_first_name=data.customer_first_name,
-        customer_last_name=data.customer_last_name,
-        customer_company=data.customer_company,
+        customer_first_name=DEFAULT_CUSTOMER_FIRST_NAME,
+        customer_last_name=DEFAULT_CUSTOMER_LAST_NAME,
+        customer_company=DEFAULT_CUSTOMER_COMPANY,
         categorization_tier_1=data.categorization_tier_1,
         categorization_tier_2=data.categorization_tier_2,
         product_cat_tier_1=data.product_cat_tier_1,
@@ -477,17 +463,13 @@ async def close_work_order(
 
 @tool
 async def create_incident(
-    company: str,
-    first_name: str,
-    last_name: str,
     description: str,
     detailed_decription: str,
-    categorization_tier_1: str,
-    categorization_tier_2: str,
     product_categorization_tier_1: str,
     product_categorization_tier_2: str,
     product_categorization_tier_3: str,
-    assigned_group: str,
+    categorization_tier_1: str = "",
+    categorization_tier_2: str = "",
     impact: str = "3-Moderate/Limited",
     urgency: str = "3-Medium",
     status: str = DEFAULT_INCIDENT_STATUS,
@@ -496,32 +478,25 @@ async def create_incident(
 ) -> str:
     """Create an Incident in BMC Helix ARUS (HPD:IncidentInterface_Create).
 
-    All catalog fields are required.
+    Company, submitter and assigned group are fixed per environment configuration
+    and must not be provided by the caller.
 
     Parameters
     ----------
-    company : str
-        Company name for the incident.
-    first_name : str
-        Submitter first name.
-    last_name : str
-        Submitter last name.
     description : str
         Short incident description.
     detailed_decription : str
         Detailed description (preserves AR field spelling).
-    categorization_tier_1 : str
-        Categorization tier 1.
-    categorization_tier_2 : str
-        Categorization tier 2.
     product_categorization_tier_1 : str
         Product categorization tier 1.
     product_categorization_tier_2 : str
         Product categorization tier 2.
     product_categorization_tier_3 : str
         Product categorization tier 3.
-    assigned_group : str
-        Assigned support group.
+    categorization_tier_1 : str, optional
+        Categorization tier 1, by default ``''``.
+    categorization_tier_2 : str, optional
+        Categorization tier 2, by default ``''``.
     impact : str, optional
         Impact value, by default ``'3-Moderate/Limited'``.
     urgency : str, optional
@@ -543,9 +518,6 @@ async def create_incident(
     if blocked is not None:
         return blocked.model_dump_json()
     data = CreateIncidentInput(
-        company=company,
-        first_name=first_name,
-        last_name=last_name,
         description=description,
         detailed_decription=detailed_decription,
         categorization_tier_1=categorization_tier_1,
@@ -553,7 +525,6 @@ async def create_incident(
         product_categorization_tier_1=product_categorization_tier_1,
         product_categorization_tier_2=product_categorization_tier_2,
         product_categorization_tier_3=product_categorization_tier_3,
-        assigned_group=assigned_group,
         impact=impact,
         urgency=urgency,
         status=status,
@@ -561,9 +532,9 @@ async def create_incident(
         service_type=service_type,
     )
     values = CreateIncidentValues(
-        company=data.company,
-        first_name=data.first_name,
-        last_name=data.last_name,
+        company=DEFAULT_COMPANY,
+        first_name=DEFAULT_FIRST_NAME,
+        last_name=DEFAULT_LAST_NAME,
         description=data.description,
         impact=data.impact,
         urgency=data.urgency,
@@ -576,7 +547,7 @@ async def create_incident(
         product_categorization_tier_1=data.product_categorization_tier_1,
         product_categorization_tier_2=data.product_categorization_tier_2,
         product_categorization_tier_3=data.product_categorization_tier_3,
-        assigned_group=data.assigned_group,
+        assigned_group=DEFAULT_INCIDENT_ASSIGNED_GROUP,
     )
     body = EntryValuesMapper.wrap_entry_body(values)
     try:

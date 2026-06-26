@@ -4,6 +4,29 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-06-26 — feat: valores de negocio quemados y categorización opcional en incidentes
+
+- **`src/bmc/libs/business_defaults.py`** (nuevo): constantes de negocio con fallback a variables
+  de entorno (`BMC_DEFAULT_COMPANY`, `BMC_DEFAULT_FIRST_NAME`, `BMC_DEFAULT_LAST_NAME`,
+  `BMC_DEFAULT_CUSTOMER_FIRST_NAME`, `BMC_DEFAULT_CUSTOMER_LAST_NAME`, `BMC_DEFAULT_CUSTOMER_COMPANY`,
+  `BMC_DEFAULT_ASSIGNED_GROUP`). Valor hardcoded si la variable no está inyectada.
+- **`src/agent/internal_tools/bmc_tools.py`**: eliminados de la firma `@tool` de `create_work_order`
+  los parámetros `company`, `first_name`, `last_name`, `customer_first_name`, `customer_last_name`,
+  `customer_company`; y de `create_incident` los parámetros `company`, `first_name`, `last_name`,
+  `assigned_group`. Los valores se inyectan directamente desde `business_defaults` al construir
+  `CreateWorkOrderValues` / `CreateIncidentValues`, sin pasar por el input del LLM.
+- **`src/bmc/type_defs/inputs.py`**: `CreateWorkOrderInput` y `CreateIncidentInput` eliminan los
+  campos quemados; `categorization_tier_1` y `categorization_tier_2` en `CreateIncidentInput`
+  pasan a ser opcionales con default `''`.
+- **`src/bmc/type_defs/ar_values.py`**: `CreateIncidentValues.categorization_tier_1/2` con
+  `default=''` para que se envíen como string vacío a BMC (compatibilidad probada).
+- **`.env.example`** y **`CLAUDE.md`**: documentadas las 7 nuevas variables de entorno.
+- **Motivación**: el LLM rellenaba los campos de empresa/solicitante con el texto del mensaje del
+  usuario (e.g. "Arus S.A.S." en vez de "ARUS"), causando error 400 en BMC (`$MENU$` no válido).
+  Al sacarlos del schema de la tool, el LLM ya no puede sobreescribirlos.
+
+---
+
 ## 2026-06-25 — feat: creación del agente BMC (agent-bmc)
 
 - **Nuevo proyecto** basado en `agent_forge`: agente LangGraph para gestión de incidentes y

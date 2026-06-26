@@ -204,6 +204,21 @@ Copy `.env.example` to `.env` and fill in the required values.
 | `BMC_HTTP_TIMEOUT_SECONDS` | `30.0` | HTTP timeout toward BMC |
 | `BMC_MAX_ATTACHMENT_BYTES` | `10485760` | Max attachment size (10 MiB) |
 
+### Business defaults — BMC tickets
+
+Fixed values injected by `src/bmc/libs/business_defaults.py` into every `create_work_order`
+and `create_incident` call. The LLM never sees these as tool parameters.
+
+| Variable | Fallback | Used in |
+|----------|----------|---------|
+| `BMC_DEFAULT_COMPANY` | `ARUS` | WO + incident `Company` |
+| `BMC_DEFAULT_FIRST_NAME` | `Mosaico` | WO + incident `First_Name` |
+| `BMC_DEFAULT_LAST_NAME` | `WebServices` | WO + incident `Last_Name` |
+| `BMC_DEFAULT_CUSTOMER_FIRST_NAME` | `Mosaico` | WO `Customer First Name` |
+| `BMC_DEFAULT_CUSTOMER_LAST_NAME` | `WebServices` | WO `Customer Last Name` |
+| `BMC_DEFAULT_CUSTOMER_COMPANY` | `ARUS` | WO `Customer Company` |
+| `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA MARCO` | Incident `Assigned Group` |
+
 ### Required — LLM
 
 | Variable | Default | Description |

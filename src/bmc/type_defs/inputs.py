@@ -40,16 +40,14 @@ class IncidentNumberInput(BaseModel):
 
 
 class CreateWorkOrderInput(BaseModel):
-    """Parameters to create a work order in BMC."""
+    """Parameters to create a work order in BMC.
 
-    company: str = Field(..., min_length=1)
-    first_name: str = Field(..., min_length=1)
-    last_name: str = Field(..., min_length=1)
+    Company, submitter and customer identity are injected from ``business_defaults``
+    by the tool layer and are not part of this input.
+    """
+
     summary: str = Field(..., min_length=1)
     detailed_description: str = Field(..., min_length=1)
-    customer_first_name: str = Field(..., min_length=1)
-    customer_last_name: str = Field(..., min_length=1)
-    customer_company: str = Field(..., min_length=1)
     categorization_tier_1: str = Field(..., min_length=1)
     categorization_tier_2: str = Field(..., min_length=1)
     product_cat_tier_1: str = Field(..., min_length=1)
@@ -63,11 +61,12 @@ class CreateWorkOrderInput(BaseModel):
 
 
 class CreateIncidentInput(BaseModel):
-    """Parameters to create an incident in BMC."""
+    """Parameters to create an incident in BMC.
 
-    company: str = Field(..., min_length=1)
-    first_name: str = Field(..., min_length=1)
-    last_name: str = Field(..., min_length=1)
+    Company, submitter and assigned group are injected from ``business_defaults``
+    by the tool layer and are not part of this input.
+    """
+
     description: str = Field(..., min_length=1)
     detailed_decription: str = Field(..., min_length=1)
     impact: str = Field(default='3-Moderate/Limited')  # TODO: actualizar caracterización
@@ -78,12 +77,11 @@ class CreateIncidentInput(BaseModel):
     )
     reported_source: str = Field(default='Direct Input')  # TODO: actualizar caracterización
     service_type: str = Field(default='User Service Restoration')  # TODO: actualizar caracterización
-    categorization_tier_1: str = Field(..., min_length=1)
-    categorization_tier_2: str = Field(..., min_length=1)
+    categorization_tier_1: str = Field(default='')
+    categorization_tier_2: str = Field(default='')
     product_categorization_tier_1: str = Field(..., min_length=1)
     product_categorization_tier_2: str = Field(..., min_length=1)
     product_categorization_tier_3: str = Field(..., min_length=1)
-    assigned_group: str = Field(..., min_length=1)  # TODO: actualizar caracterización
 
 
 class AddWorkOrderNoteInput(WorkOrderIdInput):

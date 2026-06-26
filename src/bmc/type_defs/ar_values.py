@@ -75,8 +75,8 @@ class CreateIncidentValues(BaseModel):
     reported_source: str = Field(alias='Reported Source')  # TODO: actualizar caracterización
     service_type: str = Field(alias='Service_Type')  # TODO: actualizar caracterización
     detailed_decription: str = Field(alias='Detailed_Decription')
-    categorization_tier_1: str = Field(alias='Categorization Tier 1')
-    categorization_tier_2: str = Field(alias='Categorization Tier 2')
+    categorization_tier_1: str = Field(default='', alias='Categorization Tier 1')
+    categorization_tier_2: str = Field(default='', alias='Categorization Tier 2')
     product_categorization_tier_1: str = Field(alias='Product Categorization Tier 1')
     product_categorization_tier_2: str = Field(alias='Product Categorization Tier 2')
     product_categorization_tier_3: str = Field(alias='Product Categorization Tier 3')
