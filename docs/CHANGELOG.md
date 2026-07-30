@@ -4,6 +4,82 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-07-30 — fix: completa la sincronización con bmc-mcp (grupo asignado en WO y enum de Status)
+
+- **`bmc_create_work_order`** ganó el parámetro `assigned_group` (default
+  `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP`, fallback `MESA MARCO`), igual que ya tenía
+  `bmc_create_incident`. `CreateWorkOrderValues`/`CreateWorkOrderInput` agregan el campo
+  (`Support Group Name`). Antes del fix la WO se creaba sin grupo de soporte pese a que
+  `system.promt.md` y `skills/guia-creacion-tickets/SKILL.md` ya instruían al LLM a
+  extraerlo del catálogo — quedaba huérfano de cola de atención en BMC.
+- **`src/bmc/libs/business_defaults.py`**: nueva constante
+  `DEFAULT_WORK_ORDER_ASSIGNED_GROUP` (env `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP`).
+- **`status` ahora se expone como enum real al LLM** en `bmc_create_work_order`,
+  `bmc_update_work_order_status` y `bmc_create_incident`: se cambió el tipo del
+  parámetro de `str` a `Literal[...]` (sobre `WORK_ORDER_STATUSES`/`INCIDENT_STATUSES`).
+  El intento previo con `Field(json_schema_extra={'enum': ...})` no llegaba al schema
+  visible por el modelo — `langchain_core` reconstruye el `FieldInfo` del `args_schema`
+  al armar el `tool_call_schema` (`_create_subset_model_v2`) sin copiar
+  `json_schema_extra`; `Literal` sí sobrevive esa reconstrucción porque queda en la
+  anotación del campo, no en sus metadatos.
+- **`system.promt.md`** y **`skills/categorias-requerimientos.md`**: el flujo de
+  creación de Work Order y la tabla de mapeo de columnas ahora incluyen
+  `assigned_group` ↔ `Grupo (referencia)`.
+- **`.env.example`** y **`CLAUDE.md`**: documentada la nueva variable
+  `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP`.
+- **Motivación**: auditoría de la sincronización 2026-07-29 con `bmc-mcp` (ver entrada
+  siguiente) detectó estos dos huecos: `assigned_group` faltante en WO (severidad alta,
+  riesgo operativo real) y el enum de `Status` no reflejado en el schema expuesto al LLM
+  (severidad media, riesgo de alucinación de valores inválidos).
+
+---
+
+## 2026-07-29 — feat: sincroniza la capa BMC del agente con el contrato actual de bmc-mcp
+
+- **Renombradas las 12 tools internas** en `src/agent/internal_tools/bmc_tools.py` con prefijo
+  `bmc_*` (`bmc_create_work_order`, `bmc_close_incident`, etc.), igualando el namespacing del
+  servidor MCP. `system.promt.md`, `README.md`, `CLAUDE.md` y `docs/ARCHITECTURE.md` actualizados.
+- **`src/bmc/libs/helpers/ticket_guards.py`** (nuevo, portado de `bmc-mcp`): `require_not_closed`
+  rechaza cualquier escritura sobre un ticket ya `Closed`; `require_submitter` (solo cierre) rechaza
+  cerrar un ticket cuyo `Submitter` no coincide con `BMC_USERNAME`. Aplicados en
+  `work_order_operations.py` e `incident_operations.py`.
+- **Corregido bug de formulario**: `bmc_add_incident_note`/`bmc_add_incident_attachment` escribían
+  contra `WOI:WorkInfo` (formulario de Work Order); ahora usan el método nuevo
+  `BmcClient.post_incident_work_log` contra `HPD:WorkLog` (`BMC_FORM_INCIDENT_WORK_LOG`).
+- **`bmc_close_work_order`** reescrito a 3 PUT (toma de propiedad con `ASCHG` sin nota → `Completed`
+  + nota → `Closed` + nota), sin exigir `In Progress` previo; elimina los parámetros obsoletos
+  `description`, `final_status`, `status_reason`.
+- **`bmc_close_incident`** reescrito a 2 PUT (toma de propiedad con `Assignee` → `Resolved` con
+  `Status_Reason='Closing'` fijo); elimina los parámetros obsoletos `intermediate_description`,
+  `intermediate_status`, `final_status`, `status_reason`.
+- **`bmc_create_incident`**: `impact`/`urgency` dejan de ser parámetros (fijos en
+  `INCIDENT_FIXED_IMPACT`/`INCIDENT_FIXED_URGENCY`, igual que en bmc-mcp); se agrega el parámetro
+  `assigned_group` (antes constante fija `MESA MARCO` sin relación con la categoría; ahora el LLM
+  lo completa desde la fila elegida en `categorias-incidentes`, con ese mismo valor como default
+  de emergencia).
+- **Portado el workaround de categorización vacía** (`IncidentOperations.create`): si BMC deja
+  `Categorization Tier 1/2` vacío tras crear el incidente pese a una combinación de categoría
+  válida, aplica un PUT de corrección best-effort y deja nota en el work log.
+- **`src/bmc/config/settings.py`**: agrega `assignee_display_name` (obligatorio, usado en
+  `ASCHG`/`Assignee` al tomar propiedad antes de cerrar) y `form_incident_work_log`.
+- **Skills de categorización actualizadas** (`skills/categorias-incidentes.md`,
+  `skills/categorias-requerimientos.md`): reemplazado su contenido por una muestra pequeña y
+  curada (no el catálogo completo de ~1900 combinaciones de `bmc-mcp/config/categorias_maya.json`,
+  que excede el límite de lectura de `skill_get_guide` de 12 000 caracteres) enfocada en escenarios
+  comunes de un área de TI (usuarios/telefonía, cambio de contraseña, caída de aplicaciones).
+- **Nuevo skill `skills/guia-creacion-tickets/SKILL.md`**: guía de proceso (Work Order vs
+  Incidente, regla de una única fila de categorización, campos fijados por el entorno, guards de
+  negocio, modo A2A).
+- **Fuera de alcance deliberadamente**: no se portó un catálogo de categorías estructurado (JSON)
+  ni una tool de búsqueda de categorías — el mecanismo de categorización sigue siendo Markdown
+  leído por el LLM, por decisión explícita para este agente.
+- **Motivación**: la capa BMC del agente era una copia congelada del 2026-06-25 de `bmc-mcp`, que
+  desde entonces incorporó guards de negocio, patrón de toma de propiedad en cierre, y corrigió el
+  bug de formulario de notas de incidente. El objetivo es que el agente replique ese comportamiento
+  manteniendo su arquitectura de tools internas (sin conectarse a un MCP real).
+
+---
+
 ## 2026-06-26 — feat: valores de negocio quemados y categorización opcional en incidentes
 
 - **`src/bmc/libs/business_defaults.py`** (nuevo): constantes de negocio con fallback a variables

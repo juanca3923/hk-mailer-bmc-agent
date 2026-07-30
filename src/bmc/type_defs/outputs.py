@@ -34,6 +34,10 @@ class IncidentCreatedData(BaseModel):
 
     incident_number: str = Field(default='')
     description: str = Field(default='')
+    categorization_fallback_applied: bool = Field(
+        default=False,
+        description='Whether the empty-categorization workaround PUT was applied after creation.',
+    )
 
 
 class IncidentDetailData(BaseModel):

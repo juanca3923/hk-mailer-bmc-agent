@@ -4,11 +4,9 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field
 
+from bmc.libs.business_defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP, DEFAULT_WORK_ORDER_ASSIGNED_GROUP
 from bmc.libs.constants import (
-    DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
-    DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
     DEFAULT_INCIDENT_STATUS,
-    DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
     INCIDENT_STATUSES,
@@ -58,6 +56,8 @@ class CreateWorkOrderInput(BaseModel):
         json_schema_extra={'enum': list(WORK_ORDER_STATUSES)},
     )
     priority: str = Field(default='Medium')  # TODO: actualizar caracterización
+    # TODO: actualizar caracterización
+    assigned_group: str = Field(default=DEFAULT_WORK_ORDER_ASSIGNED_GROUP, min_length=1)
 
 
 class CreateIncidentInput(BaseModel):
@@ -69,8 +69,6 @@ class CreateIncidentInput(BaseModel):
 
     description: str = Field(..., min_length=1)
     detailed_decription: str = Field(..., min_length=1)
-    impact: str = Field(default='3-Moderate/Limited')  # TODO: actualizar caracterización
-    urgency: str = Field(default='3-Medium')  # TODO: actualizar caracterización
     status: IncidentStatusField = Field(
         default=DEFAULT_INCIDENT_STATUS,
         json_schema_extra={'enum': list(INCIDENT_STATUSES)},
@@ -82,6 +80,8 @@ class CreateIncidentInput(BaseModel):
     product_categorization_tier_1: str = Field(..., min_length=1)
     product_categorization_tier_2: str = Field(..., min_length=1)
     product_categorization_tier_3: str = Field(..., min_length=1)
+    # TODO: actualizar caracterización
+    assigned_group: str = Field(default=DEFAULT_INCIDENT_ASSIGNED_GROUP, min_length=1)
 
 
 class AddWorkOrderNoteInput(WorkOrderIdInput):
@@ -125,39 +125,38 @@ class UpdateWorkOrderStatusInput(WorkOrderIdInput):
 
 
 class CloseWorkOrderInput(WorkOrderIdInput):
-    """Close a work order (orchestrates search + update + close)."""
+    """Close a work order (orchestrates ownership PUT + Completed PUT + Closed PUT).
 
-    description: str = Field(..., min_length=1)
+    The intermediate ``Status`` is always ``'Completed'`` and the final ``Status`` is
+    always ``'Closed'``; neither is a caller-supplied parameter, matching bmc-mcp.
+    """
+
     intermediate_description: str = Field(
         default='Rest API: Resolve WO using RestAPI',
         min_length=1,
+        description=(
+            'Resumen de lo realizado, para el PUT intermedio que pasa Status=Completed '
+            'y fija ASCHG = BMC_ASSIGNEE_DISPLAY_NAME (BMC no permite la transición directa '
+            'In Progress -> Closed; requiere pasar por Completed con este campo poblado).'
+        ),
     )
     final_description: str = Field(
         default='Rest API: Resolve Work order via Mosaico',
         min_length=1,
+        description=(
+            'Documentación correcta de la solución del ticket, para el PUT final que cierra '
+            'el Work Order con Status=Closed.'
+        ),
     )
-    final_status: WorkOrderStatusField = Field(
-        default=DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
-        json_schema_extra={'enum': list(WORK_ORDER_STATUSES)},
-    )
-    status_reason: str | None = Field(default=None)  # TODO: actualizar caracterización
 
 
 class CloseIncidentInput(IncidentNumberInput):
-    """Close an incident (orchestrates search + update + close)."""
+    """Close an incident (orchestrates ownership PUT + close PUT).
+
+    The intermediate ``Status`` (ownership) is always ``'In Progress'`` and the final
+    ``Status`` is always ``'Resolved'``; neither is a caller-supplied parameter. ``Status
+    Reason`` is always ``'Closing'``, matching bmc-mcp.
+    """
 
     description: str = Field(..., min_length=1)
     resolution: str = Field(default='Solución no especificada', min_length=1)
-    intermediate_description: str = Field(
-        default='Rest API: Resolve Incident via Mosaico',
-        min_length=1,
-    )
-    intermediate_status: OptionalIncidentStatusField = Field(
-        default=DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
-        json_schema_extra={'enum': list(INCIDENT_STATUSES)},
-    )
-    final_status: IncidentStatusField = Field(
-        default=DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
-        json_schema_extra={'enum': list(INCIDENT_STATUSES)},
-    )
-    status_reason: str | None = Field(default=None)  # TODO: actualizar caracterización

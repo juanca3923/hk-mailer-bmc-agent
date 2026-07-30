@@ -10,9 +10,9 @@ que interactúan directamente con la API REST de BMC Helix AR.
 
 | Dominio | Herramientas |
 |---------|-------------|
-| **Sesión** | `health_check` — verifica la sesión JWT |
-| **Órdenes de trabajo** | `create_work_order`, `get_work_order`, `add_work_order_note`, `add_work_order_attachment`, `update_work_order_status`, `close_work_order` |
-| **Incidentes** | `create_incident`, `get_incident`, `add_incident_note`, `add_incident_attachment`, `close_incident` |
+| **Sesión** | `bmc_health_check` — verifica la sesión JWT |
+| **Órdenes de trabajo** | `bmc_create_work_order`, `bmc_get_work_order`, `bmc_add_work_order_note`, `bmc_add_work_order_attachment`, `bmc_update_work_order_status`, `bmc_close_work_order` |
+| **Incidentes** | `bmc_create_incident`, `bmc_get_incident`, `bmc_add_incident_note`, `bmc_add_incident_attachment`, `bmc_close_incident` |
 
 Además hereda las capacidades de `agent_forge`:
 - Memoria de conversaciones (checkpointer PostgreSQL).

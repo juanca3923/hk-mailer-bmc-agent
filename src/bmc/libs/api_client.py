@@ -564,6 +564,27 @@ class BmcClient:
         path = self._entry_path(self._settings.form_work_info)
         return await self.post_multipart(path, body=body)
 
+    async def post_incident_work_log(self, body: WorkInfoMultipartBody) -> JsonValue:
+        """Post a work log entry for an incident (note or note with attachment).
+
+        Parameters
+        ----------
+        body : WorkInfoMultipartBody
+            Multipart payload for ``HPD:WorkLog`` (always includes ``entry`` JSON).
+
+        Returns
+        -------
+        JsonValue
+            Parsed response when present.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP errors.
+        """
+        path = self._entry_path(self._settings.form_incident_work_log)
+        return await self.post_multipart(path, body=body)
+
     async def health_ping(self) -> bool:
         """Run a lightweight authenticated request to verify session health.
 

@@ -19,6 +19,10 @@ AR_FIELD_ASSIGNEE: Final[str] = 'Assignee'
 AR_FIELD_INCIDENT_NUMBER: Final[str] = 'Incident Number'
 AR_FIELD_REQUEST_ID: Final[str] = 'Request ID'
 AR_FIELD_WORK_ORDER_ID_RESPONSE: Final[str] = 'WorkOrder_ID'
+AR_FIELD_STATUS: Final[str] = 'Status'
+AR_FIELD_SUBMITTER: Final[str] = 'Submitter'
+AR_FIELD_CATEGORIZATION_TIER_1: Final[str] = 'Categorization Tier 1'
+AR_FIELD_CATEGORIZATION_TIER_2: Final[str] = 'Categorization Tier 2'
 
 AR_ACTION_CREATE: Final[str] = 'CREATE'
 AR_Z1D_ACTION_CREATE: Final[str] = 'CREATE'
@@ -59,12 +63,33 @@ INCIDENT_STATUSES: Final[tuple[str, ...]] = (
 
 DEFAULT_WORK_ORDER_STATUS: Final[str] = 'Assigned'
 DEFAULT_WORK_ORDER_UPDATE_STATUS: Final[str] = 'In Progress'
+DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION: Final[str] = 'Rest API: Toma de propiedad previa al cierre'
 DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS: Final[str] = 'Completed'
 DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS: Final[str] = 'Closed'
 
 DEFAULT_INCIDENT_STATUS: Final[str] = 'Assigned'
+DEFAULT_INCIDENT_CLOSE_OWNERSHIP_DESCRIPTION: Final[str] = 'Rest API: Toma de propiedad previa al cierre'
 DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS: Final[str] = 'In Progress'
 DEFAULT_INCIDENT_CLOSE_FINAL_STATUS: Final[str] = 'Resolved'
+DEFAULT_INCIDENT_CLOSE_STATUS_REASON: Final[str] = 'Closing'
+
+TICKET_STATUS_CLOSED: Final[str] = 'Closed'
+
+INCIDENT_FIXED_IMPACT: Final[str] = '1-Extensive/Widespread'  # TODO: actualizar caracterización
+INCIDENT_FIXED_URGENCY: Final[str] = '1-Critical'  # TODO: actualizar caracterización
+
+# WORKAROUND TEMPORAL: BMC deja vacía la categoría operacional (Categorization Tier 1/2) en
+# HPD:IncidentInterface_Create para algunas combinaciones válidas del catálogo Maya, sin lanzar
+# error. 'Administracion de TI'/'Seguridad' es la única combinación confirmada manualmente en BMC
+# hasta ahora (ver docs/CHANGELOG.md de bmc-mcp). Retirar este default y la verificación asociada en
+# IncidentOperations.create() en cuanto BMC/ITSM confirme qué combinaciones acepta el formulario
+# de creación.
+DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_1: Final[str] = 'Administracion de TI'
+DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_2: Final[str] = 'Seguridad'
+DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_NOTE: Final[str] = (
+    'Rest API: BMC no completó la categoría operacional al crear el incidente. '
+    'Se aplicó por defecto Administracion de TI > Seguridad.'
+)
 
 MIN_REFRESH_LOOP_SECONDS: Final[int] = 60
 
@@ -92,3 +117,9 @@ USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND: Final[str] = 'Error: WO no encontrada: 
 USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING: Final[str] = 'Error: Request ID no disponible en la WO.'
 USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND: Final[str] = 'Error: Incidente no encontrado: {incident_number}.'
 USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING: Final[str] = 'Error: Request ID no disponible en el incidente.'
+USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED: Final[str] = (
+    'Error: El ticket ya está Cerrado. No se permiten operaciones de escritura sobre él.'
+)
+USER_ERROR_MESSAGE_CLOSE_NOT_OWNER: Final[str] = (
+    'Error: Solo el usuario de servicio de este agente puede cerrar este ticket. Submitter actual: {submitter}.'
+)
