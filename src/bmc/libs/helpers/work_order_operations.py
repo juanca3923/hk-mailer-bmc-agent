@@ -1,4 +1,4 @@
-"""Work order write operations shared by MCP tools."""
+"""Work order write operations shared by agent tools."""
 
 import logging
 from typing import Protocol
@@ -8,13 +8,23 @@ from bmc.exceptions.mcp import MCPClientError
 from bmc.libs.api_client import BmcClient
 from bmc.libs.constants import (
     AR_FIELD_REQUEST_ID,
+    AR_FIELD_STATUS,
+    AR_FIELD_SUBMITTER,
+    DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
+    DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
+    DEFAULT_WORK_ORDER_UPDATE_STATUS,
     USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND,
     USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
     WORK_LOG_ATTACHMENT_MARKER,
 )
 from bmc.libs.helpers.entry_values_mapper import EntryValuesMapper
 from bmc.libs.helpers.multipart_builder import AttachmentPart, MultipartBuilder
+from bmc.libs.helpers.ticket_guards import (
+    TicketState,
+    require_not_closed,
+    require_submitter,
+)
 from bmc.type_defs.ar_values import (
     CloseWorkOrderValues,
     UpdateWorkOrderStatusValues,
@@ -22,6 +32,7 @@ from bmc.type_defs.ar_values import (
 )
 from bmc.type_defs.inputs import (
     AddWorkOrderAttachmentInput,
+    AddWorkOrderNoteInput,
     CloseWorkOrderInput,
     UpdateWorkOrderStatusInput,
 )
@@ -37,6 +48,10 @@ class WorkOrderHandlerContext(Protocol):
     def client(self) -> BmcClient:
         """BMC HTTP client."""
 
+    @property
+    def settings(self) -> BmcSettings:
+        """BMC settings."""
+
     def ensure_write_allowed(self) -> BaseOutput | None:
         """Return error output when writes are disabled."""
 
@@ -50,8 +65,8 @@ class WorkOrderOperations:
     def __init__(self, handler: WorkOrderHandlerContext) -> None:
         self._handler = handler
 
-    async def resolve_request_id(self, work_order_id: str) -> tuple[str | None, BaseOutput | None]:
-        """Look up Request ID for a Work Order ID.
+    async def resolve_ticket_state(self, work_order_id: str) -> tuple[TicketState | None, BaseOutput | None]:
+        """Look up Request ID, Status, and Submitter for a Work Order ID.
 
         Parameters
         ----------
@@ -60,10 +75,10 @@ class WorkOrderOperations:
 
         Returns
         -------
-        tuple[str | None, BaseOutput | None]
-            ``(request_id, None)`` on success; ``(None, error_output)`` on failure.
+        tuple[TicketState | None, BaseOutput | None]
+            ``(state, None)`` on success; ``(None, error_output)`` on failure.
         """
-        request_id: str | None = None
+        state: TicketState | None = None
         error: BaseOutput | None = None
         try:
             search = await self._handler.client.search_work_order(work_order_id)
@@ -74,7 +89,11 @@ class WorkOrderOperations:
             else:
                 resolved = first.get_str(AR_FIELD_REQUEST_ID)
                 if resolved:
-                    request_id = resolved
+                    state = TicketState(
+                        request_id=resolved,
+                        status=first.get_str(AR_FIELD_STATUS),
+                        submitter=first.get_str(AR_FIELD_SUBMITTER),
+                    )
                 else:
                     error = BaseOutput(
                         success=False,
@@ -82,10 +101,51 @@ class WorkOrderOperations:
                     )
         except MCPClientError as exc:
             error = BaseOutput(success=False, message=exc.message)
-        return request_id, error
+        return state, error
+
+    async def add_note(self, data: AddWorkOrderNoteInput) -> BaseOutput:
+        """Post a work log note without attachment, after guard checks.
+
+        Parameters
+        ----------
+        data : AddWorkOrderNoteInput
+            Validated tool input.
+
+        Returns
+        -------
+        BaseOutput
+            Success or error output for the tool.
+        """
+        blocked = self._handler.ensure_write_allowed()
+        if blocked is not None:
+            return blocked
+
+        state, error = await self.resolve_ticket_state(data.work_order_id)
+        if error is not None or state is None:
+            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING)
+        guard_error = require_not_closed(state.status)
+        if guard_error is not None:
+            return guard_error
+
+        output: BaseOutput
+        try:
+            values = WorkInfoWorkOrderValues(
+                work_order_id=data.work_order_id,
+                work_log_type=data.work_log_type,
+                view_access=data.view_access,
+                secure_work_log=data.secure_work_log,
+                detailed_description=data.note_text,
+            )
+            work_info_body = MultipartBuilder.build(values)
+            await self._handler.client.post_work_info(work_info_body)
+            logger.info('add_work_order_note ok work_order_id=%s', data.work_order_id)
+            output = BaseOutput(success=True, message=f'Nota añadida a {data.work_order_id}.')
+        except MCPClientError as exc:
+            output = BaseOutput(success=False, message=exc.message)
+        return output
 
     async def add_attachment(self, data: AddWorkOrderAttachmentInput) -> BaseOutput:
-        """Post a work log with file attachment.
+        """Post a work log with file attachment, after guard checks.
 
         Parameters
         ----------
@@ -95,11 +155,18 @@ class WorkOrderOperations:
         Returns
         -------
         BaseOutput
-            Success or error output for the MCP tool.
+            Success or error output for the tool.
         """
         blocked = self._handler.ensure_write_allowed()
         if blocked is not None:
             return blocked
+
+        state, error = await self.resolve_ticket_state(data.work_order_id)
+        if error is not None or state is None:
+            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING)
+        guard_error = require_not_closed(state.status)
+        if guard_error is not None:
+            return guard_error
 
         output: BaseOutput
         try:
@@ -121,7 +188,7 @@ class WorkOrderOperations:
         return output
 
     async def update_status(self, data: UpdateWorkOrderStatusInput) -> BaseOutput:
-        """PUT work order status using Request ID from search.
+        """PUT work order status using Request ID from search, after guard checks.
 
         Parameters
         ----------
@@ -131,15 +198,18 @@ class WorkOrderOperations:
         Returns
         -------
         BaseOutput
-            Success or error output for the MCP tool.
+            Success or error output for the tool.
         """
         blocked = self._handler.ensure_write_allowed()
         if blocked is not None:
             return blocked
 
-        request_id, error = await self.resolve_request_id(data.work_order_id)
-        if error is not None:
-            return error
+        state, error = await self.resolve_ticket_state(data.work_order_id)
+        if error is not None or state is None:
+            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING)
+        guard_error = require_not_closed(state.status)
+        if guard_error is not None:
+            return guard_error
 
         output: BaseOutput
         try:
@@ -148,14 +218,44 @@ class WorkOrderOperations:
                 status=data.status,
             )
             body = EntryValuesMapper.wrap_entry_body(values)
-            await self._handler.client.update_work_order(request_id, body)
+            await self._handler.client.update_work_order(state.request_id, body)
             output = BaseOutput(success=True, message=f'Estado actualizado para {data.work_order_id}.')
         except MCPClientError as exc:
             output = BaseOutput(success=False, message=exc.message)
         return output
 
+    async def _post_close_note(self, work_order_id: str, note_text: str) -> None:
+        """Post a work log note documenting one step of the close flow.
+
+        BMC's ``Description`` field on ``WOI:WorkOrderInterface`` doubles as the ticket's
+        title, so each PUT of ``close`` overwrites it; a work log note is the only way to
+        leave a visible, non-overwritten trail of what happened at each step.
+
+        Parameters
+        ----------
+        work_order_id : str
+            Target Work Order ID.
+        note_text : str
+            Work log detailed description text.
+        """
+        values = WorkInfoWorkOrderValues(
+            work_order_id=work_order_id,
+            detailed_description=note_text,
+        )
+        work_info_body = MultipartBuilder.build(values)
+        await self._handler.client.post_work_info(work_info_body)
+
     async def close(self, data: CloseWorkOrderInput) -> BaseOutput:
-        """Close a work order: PUT Completed+Assignee, then PUT Closed.
+        """Close a work order: PUT ownership+In Progress, then 2x (PUT status + work log note).
+
+        Steps: ownership+In Progress, Completed+ASCHG, Closed. Does not require the ticket
+        to already be ``In Progress``: the first PUT takes ownership (``ASCHG``) and moves
+        it there. Only rejects tickets already ``Closed`` and tickets not opened by this
+        agent's own BMC user (``Submitter``), before issuing any write. The Completed and
+        Closed PUTs are each followed by a work log note with the same text, since
+        ``Description`` doubles as the ticket's title and gets overwritten by the next
+        PUT; the ownership PUT does not get a note because BMC already logs the ``ASCHG``
+        change as its own ``Asignado a`` activity entry.
 
         Parameters
         ----------
@@ -165,36 +265,52 @@ class WorkOrderOperations:
         Returns
         -------
         BaseOutput
-            Success or error output for the MCP tool.
+            Success or error output for the tool.
         """
         blocked = self._handler.ensure_write_allowed()
         if blocked is not None:
             return blocked
 
-        request_id, error = await self.resolve_request_id(data.work_order_id)
-        if error is not None:
-            return error
+        state, error = await self.resolve_ticket_state(data.work_order_id)
+        if error is not None or state is None:
+            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING)
+        guard_error = require_not_closed(state.status)
+        if guard_error is not None:
+            return guard_error
+        guard_error = require_submitter(state.submitter, self._handler.settings.username)
+        if guard_error is not None:
+            return guard_error
 
         output: BaseOutput
         try:
+            ownership = UpdateWorkOrderStatusValues(
+                description=DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
+                status=DEFAULT_WORK_ORDER_UPDATE_STATUS,
+                aschg=self._handler.settings.assignee_display_name,
+            )
+            await self._handler.client.update_work_order(
+                state.request_id,
+                EntryValuesMapper.wrap_entry_body(ownership),
+            )
             intermediate = UpdateWorkOrderStatusValues(
                 description=data.intermediate_description,
                 status=DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
-                assignee=BmcSettings().username,
+                aschg=self._handler.settings.assignee_display_name,
             )
             await self._handler.client.update_work_order(
-                request_id,
+                state.request_id,
                 EntryValuesMapper.wrap_entry_body(intermediate),
             )
+            await self._post_close_note(data.work_order_id, data.intermediate_description)
             close_values = CloseWorkOrderValues(
                 description=data.final_description,
-                status=data.final_status,
-                status_reason=data.status_reason,
+                status=DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
             )
             await self._handler.client.update_work_order(
-                request_id,
+                state.request_id,
                 EntryValuesMapper.wrap_entry_body(close_values),
             )
+            await self._post_close_note(data.work_order_id, data.final_description)
             logger.info('close_work_order ok work_order_id=%s', data.work_order_id)
             output = BaseOutput(success=True, message=f'Orden de trabajo {data.work_order_id} cerrada.')
         except MCPClientError as exc:

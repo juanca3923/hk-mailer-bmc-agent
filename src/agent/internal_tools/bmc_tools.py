@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Annotated, Literal
 
 from langchain_core.tools import BaseTool, tool
+from pydantic import Field
 
 from bmc.exceptions.mcp import MCPClientError
 from bmc.libs.business_defaults import (
@@ -21,47 +23,38 @@ from bmc.libs.business_defaults import (
     DEFAULT_FIRST_NAME,
     DEFAULT_INCIDENT_ASSIGNED_GROUP,
     DEFAULT_LAST_NAME,
+    DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
 )
 from bmc.libs.constants import (
-    AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
-    DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
-    DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
-    DEFAULT_INCIDENT_STATUS,
-    DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
+    INCIDENT_STATUSES,
+    WORK_ORDER_STATUSES,
 )
 from bmc.libs.helpers.entry_values_mapper import EntryValuesMapper
 from bmc.libs.helpers.incident_operations import IncidentOperations
-from bmc.libs.helpers.multipart_builder import MultipartBuilder
 from bmc.libs.helpers.work_order_operations import WorkOrderOperations
 from bmc.libs.tool_handler import BaseToolHandler
 from bmc.type_defs.ar_api import ArScalarValue
-from bmc.type_defs.ar_values import (
-    CreateIncidentValues,
-    CreateWorkOrderValues,
-    WorkInfoIncidentValues,
-    WorkInfoWorkOrderValues,
-)
+from bmc.type_defs.ar_values import CreateWorkOrderValues
 from bmc.type_defs.inputs import (
     AddIncidentAttachmentInput,
     AddIncidentNoteInput,
-    CloseIncidentInput,
-    CreateIncidentInput,
-    CreateWorkOrderInput,
     AddWorkOrderAttachmentInput,
     AddWorkOrderNoteInput,
+    CloseIncidentInput,
     CloseWorkOrderInput,
+    CreateIncidentInput,
+    CreateWorkOrderInput,
     IncidentNumberInput,
     UpdateWorkOrderStatusInput,
     WorkOrderIdInput,
 )
 from bmc.type_defs.outputs import (
     BaseOutput,
-    IncidentCreatedData,
     IncidentDetailData,
     WorkOrderCreatedData,
     WorkOrderDetailData,
@@ -126,7 +119,7 @@ def _incident_detail_from_search(
 
 
 @tool
-async def health_check() -> str:
+async def bmc_health_check() -> str:
     """Verify BMC JWT session and API reachability with a lightweight authenticated GET.
 
     Does not create or modify tickets.
@@ -140,10 +133,10 @@ async def health_check() -> str:
     try:
         is_healthy = await h.client.health_ping()
     except MCPClientError as exc:
-        logger.warning("health_check failed: %s", exc.message)
+        logger.warning("bmc_health_check failed: %s", exc.message)
         return BaseToolHandler.failure(exc).model_dump_json()
     if is_healthy:
-        logger.info("health_check successful")
+        logger.info("bmc_health_check successful")
         return BaseOutput(success=True, message="BMC session is healthy.").model_dump_json()
     return BaseOutput(
         success=False, message="Error: BMC health check returned unexpected state."
@@ -156,7 +149,7 @@ async def health_check() -> str:
 
 
 @tool
-async def create_work_order(
+async def bmc_create_work_order(
     summary: str,
     detailed_description: str,
     categorization_tier_1: str,
@@ -164,13 +157,20 @@ async def create_work_order(
     product_cat_tier_1: str,
     product_cat_tier_2: str,
     product_cat_tier_3: str,
-    status: str = DEFAULT_WORK_ORDER_STATUS,
+    status: Annotated[
+        Literal[WORK_ORDER_STATUSES],
+        Field(description="Work order status label."),
+    ] = DEFAULT_WORK_ORDER_STATUS,
     priority: str = "Medium",
+    assigned_group: str = DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
 ) -> str:
     """Create a Work Order in BMC Helix ARUS (WOI:WorkOrderInterface_Create).
 
-    Company, submitter and customer identity are fixed per environment configuration
-    and must not be provided by the caller.
+    Take the category tiers, priority and ``assigned_group`` from a single row of the
+    ``categorias-requerimientos`` skill: creation will still succeed for combinations
+    outside that catalog (there is no backend validation), but the ticket may end up
+    inconsistently categorized. Company, submitter and customer identity are fixed per
+    environment configuration and must not be provided by the caller.
 
     Parameters
     ----------
@@ -179,19 +179,22 @@ async def create_work_order(
     detailed_description : str
         Detailed description text.
     categorization_tier_1 : str
-        Categorization tier 1.
+        Operational categorization tier 1, from the ``categorias-requerimientos`` skill.
     categorization_tier_2 : str
-        Categorization tier 2.
+        Operational categorization tier 2, same catalog row.
     product_cat_tier_1 : str
-        Product categorization tier 1.
+        Product categorization tier 1, same catalog row.
     product_cat_tier_2 : str
-        Product categorization tier 2.
+        Product categorization tier 2, same catalog row.
     product_cat_tier_3 : str
-        Product categorization tier 3.
+        Product categorization tier 3, same catalog row.
     status : str, optional
         Work order status label, by default ``'Assigned'``.
     priority : str, optional
-        Priority, by default ``'Medium'``.
+        Priority, taken from the same catalog row, by default ``'Medium'``.
+    assigned_group : str, optional
+        Support group, taken from the same catalog row; keep the default only when
+        the catalog row does not specify one.
 
     Returns
     -------
@@ -212,6 +215,7 @@ async def create_work_order(
         product_cat_tier_3=product_cat_tier_3,
         status=status,
         priority=priority,
+        assigned_group=assigned_group,
     )
     values = CreateWorkOrderValues(
         company=DEFAULT_COMPANY,
@@ -229,12 +233,13 @@ async def create_work_order(
         product_cat_tier_2=data.product_cat_tier_2,
         product_cat_tier_3=data.product_cat_tier_3,
         priority=data.priority,
+        assigned_group=data.assigned_group,
     )
     body = EntryValuesMapper.wrap_entry_body(values)
     try:
         created = await h.client.create_work_order_entry(body)
     except MCPClientError as exc:
-        logger.info("create_work_order failed")
+        logger.info("bmc_create_work_order failed")
         return BaseToolHandler.failure(exc).model_dump_json()
     wo_id = created.values.get_str(AR_FIELD_WORK_ORDER_ID_RESPONSE)
     if not wo_id:
@@ -243,13 +248,16 @@ async def create_work_order(
         work_order_id=wo_id,
         request_id=created.values.get_str(AR_FIELD_REQUEST_ID),
     )
-    logger.info("create_work_order ok work_order_id=%s", out.work_order_id)
+    logger.info("bmc_create_work_order ok work_order_id=%s", out.work_order_id)
     return BaseToolHandler.success_toon(out).model_dump_json()
 
 
 @tool
-async def get_work_order(work_order_id: str) -> str:
-    """Search a Work Order by Work Order ID in BMC Helix.
+async def bmc_get_work_order(work_order_id: str) -> str:
+    """Read one Work Order by its ID: current status, summary and remaining fields.
+
+    Use it to check a ticket before writing to it, or to confirm the result of a
+    previous write.
 
     Parameters
     ----------
@@ -278,37 +286,37 @@ async def get_work_order(work_order_id: str) -> str:
 
 
 @tool
-async def add_work_order_note(
+async def bmc_add_work_order_note(
     work_order_id: str,
     note_text: str,
     work_log_type: str = "General Information",
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
-    """Add a work log note to a Work Order without attachment (WOI:WorkInfo multipart).
+    """Add a note to the activity log of a Work Order, visible to whoever reviews it.
+
+    Fails if the Work Order is already closed.
 
     Parameters
     ----------
     work_order_id : str
         Target Work Order ID.
     note_text : str
-        Work log detailed description text.
+        Text of the note, written as it should be read by whoever reviews the ticket.
     work_log_type : str, optional
-        Work log type, by default ``'General Information'``.
+        Category of the note in the ticket activity log; keep the default unless
+        asked otherwise.
     view_access : str, optional
-        View access, by default ``'Public'``.
+        Visibility of the note in BMC; keep the default unless asked otherwise.
     secure_work_log : str, optional
-        Secure work log flag, by default ``'No'``.
+        Whether the note is flagged as secure in BMC; keep the default unless
+        asked otherwise.
 
     Returns
     -------
     str
         JSON with ``success`` and confirmation message.
     """
-    h = _get_handler()
-    blocked = h.ensure_write_allowed()
-    if blocked is not None:
-        return blocked.model_dump_json()
     data = AddWorkOrderNoteInput(
         work_order_id=work_order_id,
         note_text=note_text,
@@ -316,26 +324,12 @@ async def add_work_order_note(
         view_access=view_access,
         secure_work_log=secure_work_log,
     )
-    values = WorkInfoWorkOrderValues(
-        work_order_id=data.work_order_id,
-        work_log_type=data.work_log_type,
-        view_access=data.view_access,
-        secure_work_log=data.secure_work_log,
-        detailed_description=data.note_text,
-    )
-    work_info_body = MultipartBuilder.build(values)
-    try:
-        await h.client.post_work_info(work_info_body)
-    except MCPClientError as exc:
-        return BaseToolHandler.failure(exc).model_dump_json()
-    logger.info("add_work_order_note ok work_order_id=%s", data.work_order_id)
-    return BaseOutput(
-        success=True, message=f"Nota añadida a {data.work_order_id}."
-    ).model_dump_json()
+    result = await WorkOrderOperations(_get_handler()).add_note(data)
+    return result.model_dump_json()
 
 
 @tool
-async def add_work_order_attachment(
+async def bmc_add_work_order_attachment(
     work_order_id: str,
     note_text: str,
     file_path: str,
@@ -343,9 +337,10 @@ async def add_work_order_attachment(
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
-    """Add a work log entry with file attachment to a Work Order (WOI:WorkInfo multipart).
+    """Add a note with one file attached to the activity log of a Work Order.
 
-    ``file_path`` must be readable by the agent process.
+    The file must already exist on the machine running this agent; file content
+    cannot be sent through this tool. Fails if the Work Order is already closed.
 
     Parameters
     ----------
@@ -354,7 +349,7 @@ async def add_work_order_attachment(
     note_text : str
         Work log detailed description text.
     file_path : str
-        Local path readable by the agent process.
+        Path of the file to attach, as seen by the machine running this agent.
     work_log_type : str, optional
         Work log type, by default ``'General Information'``.
     view_access : str, optional
@@ -381,19 +376,25 @@ async def add_work_order_attachment(
 
 
 @tool
-async def update_work_order_status(
+async def bmc_update_work_order_status(
     work_order_id: str,
     description: str,
-    status: str = DEFAULT_WORK_ORDER_UPDATE_STATUS,
+    status: Annotated[
+        Literal[WORK_ORDER_STATUSES],
+        Field(description="Target status."),
+    ] = DEFAULT_WORK_ORDER_UPDATE_STATUS,
 ) -> str:
-    """PUT an intermediate status on a Work Order using Request ID from a prior search.
+    """Move a Work Order to another open status, recording a description of the change.
+
+    To close one use ``bmc_close_work_order`` instead: closing needs a sequence of
+    updates that this tool does not perform. Fails if the Work Order is already closed.
 
     Parameters
     ----------
     work_order_id : str
         Work Order ID used to resolve Request ID via search.
     description : str
-        Description text for the status update.
+        What changed and why; BMC also uses this text as the ticket title.
     status : str, optional
         Target status, by default ``'In Progress'``.
 
@@ -413,30 +414,25 @@ async def update_work_order_status(
 
 
 @tool
-async def close_work_order(
+async def bmc_close_work_order(
     work_order_id: str,
-    description: str,
     intermediate_description: str = "Rest API: Resolve WO using RestAPI",
     final_description: str = "Rest API: Resolve Work order via Mosaico",
-    final_status: str = DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
-    status_reason: str | None = None,
 ) -> str:
-    """Close a Work Order: search Request ID, PUT Completed+Assignee, then PUT Closed.
+    """Close a Work Order, taking ownership of it and moving it through Completed to Closed.
+
+    Works from any open status, but only on a Work Order created by this agent's own
+    BMC user. Once closed it accepts no further notes, attachments or status changes,
+    and there is no tool to reopen it.
 
     Parameters
     ----------
     work_order_id : str
         Work Order ID to close.
-    description : str
-        Closure description stored on the input model.
     intermediate_description : str, optional
-        Description for the first PUT (Completed + Assignee).
+        Summary of the work actually performed, recorded when moving to Completed.
     final_description : str, optional
-        Description for the final close PUT.
-    final_status : str, optional
-        Final ``Status`` on close PUT, by default ``'Closed'``.
-    status_reason : str | None, optional
-        Status reason when required by BMC characterization.
+        Documentation of the final solution, recorded when moving to Closed.
 
     Returns
     -------
@@ -446,11 +442,8 @@ async def close_work_order(
     h = _get_handler()
     data = CloseWorkOrderInput(
         work_order_id=work_order_id,
-        description=description,
         intermediate_description=intermediate_description,
         final_description=final_description,
-        final_status=final_status,
-        status_reason=status_reason,
     )
     result = await WorkOrderOperations(h).close(data)
     return result.model_dump_json()
@@ -462,7 +455,7 @@ async def close_work_order(
 
 
 @tool
-async def create_incident(
+async def bmc_create_incident(
     description: str,
     detailed_decription: str,
     product_categorization_tier_1: str,
@@ -470,16 +463,21 @@ async def create_incident(
     product_categorization_tier_3: str,
     categorization_tier_1: str = "",
     categorization_tier_2: str = "",
-    impact: str = "3-Moderate/Limited",
-    urgency: str = "3-Medium",
-    status: str = DEFAULT_INCIDENT_STATUS,
+    assigned_group: str = DEFAULT_INCIDENT_ASSIGNED_GROUP,
+    status: Annotated[
+        Literal[INCIDENT_STATUSES],
+        Field(description="Incident status."),
+    ] = "Assigned",
     reported_source: str = "Direct Input",
     service_type: str = "User Service Restoration",
 ) -> str:
     """Create an Incident in BMC Helix ARUS (HPD:IncidentInterface_Create).
 
-    Company, submitter and assigned group are fixed per environment configuration
-    and must not be provided by the caller.
+    Take the category tiers and ``assigned_group`` from a single row of the
+    ``categorias-incidentes`` skill. Company, submitter, Impact and Urgency are fixed
+    per environment configuration and must not be provided by the caller: every
+    incident created here keeps a fixed Impact/Urgency (Critical/Extensive), matching
+    the current bmc-mcp behavior.
 
     Parameters
     ----------
@@ -488,19 +486,18 @@ async def create_incident(
     detailed_decription : str
         Detailed description (preserves AR field spelling).
     product_categorization_tier_1 : str
-        Product categorization tier 1.
+        Product categorization tier 1, from the ``categorias-incidentes`` skill.
     product_categorization_tier_2 : str
-        Product categorization tier 2.
+        Product categorization tier 2, same catalog row.
     product_categorization_tier_3 : str
-        Product categorization tier 3.
+        Product categorization tier 3, same catalog row.
     categorization_tier_1 : str, optional
-        Categorization tier 1, by default ``''``.
+        Operational categorization tier 1, same catalog row, by default ``''``.
     categorization_tier_2 : str, optional
-        Categorization tier 2, by default ``''``.
-    impact : str, optional
-        Impact value, by default ``'3-Moderate/Limited'``.
-    urgency : str, optional
-        Urgency value, by default ``'3-Medium'``.
+        Operational categorization tier 2, same catalog row, by default ``''``.
+    assigned_group : str, optional
+        Assigned group, taken from the same catalog row; keep the default only when
+        the catalog row does not specify one.
     status : str, optional
         Incident status, by default ``'Assigned'``.
     reported_source : str, optional
@@ -514,9 +511,6 @@ async def create_incident(
         JSON with ``success`` and ``message`` (TOON-encoded ids on success).
     """
     h = _get_handler()
-    blocked = h.ensure_write_allowed()
-    if blocked is not None:
-        return blocked.model_dump_json()
     data = CreateIncidentInput(
         description=description,
         detailed_decription=detailed_decription,
@@ -525,47 +519,21 @@ async def create_incident(
         product_categorization_tier_1=product_categorization_tier_1,
         product_categorization_tier_2=product_categorization_tier_2,
         product_categorization_tier_3=product_categorization_tier_3,
-        impact=impact,
-        urgency=urgency,
+        assigned_group=assigned_group,
         status=status,
         reported_source=reported_source,
         service_type=service_type,
     )
-    values = CreateIncidentValues(
-        company=DEFAULT_COMPANY,
-        first_name=DEFAULT_FIRST_NAME,
-        last_name=DEFAULT_LAST_NAME,
-        description=data.description,
-        impact=data.impact,
-        urgency=data.urgency,
-        status=data.status,
-        reported_source=data.reported_source,
-        service_type=data.service_type,
-        detailed_decription=data.detailed_decription,
-        categorization_tier_1=data.categorization_tier_1,
-        categorization_tier_2=data.categorization_tier_2,
-        product_categorization_tier_1=data.product_categorization_tier_1,
-        product_categorization_tier_2=data.product_categorization_tier_2,
-        product_categorization_tier_3=data.product_categorization_tier_3,
-        assigned_group=DEFAULT_INCIDENT_ASSIGNED_GROUP,
-    )
-    body = EntryValuesMapper.wrap_entry_body(values)
-    try:
-        created = await h.client.create_incident_entry(body)
-    except MCPClientError as exc:
-        logger.info("create_incident failed")
-        return BaseToolHandler.failure(exc).model_dump_json()
-    out = IncidentCreatedData(
-        incident_number=created.values.get_str(AR_FIELD_INCIDENT_NUMBER),
-        description=created.values.get_str("Description"),
-    )
-    logger.info("create_incident ok incident_number=%s", out.incident_number)
-    return BaseToolHandler.success_toon(out).model_dump_json()
+    result = await IncidentOperations(h).create(data)
+    return result.model_dump_json()
 
 
 @tool
-async def get_incident(incident_number: str) -> str:
-    """Search an Incident by Incident Number in BMC Helix.
+async def bmc_get_incident(incident_number: str) -> str:
+    """Read one Incident by its number: current status, description and remaining fields.
+
+    Use it to check a ticket before writing to it, or to confirm the result of a
+    previous write.
 
     Parameters
     ----------
@@ -594,37 +562,37 @@ async def get_incident(incident_number: str) -> str:
 
 
 @tool
-async def add_incident_note(
+async def bmc_add_incident_note(
     incident_number: str,
     note_text: str,
     work_log_type: str = "General Information",
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
-    """Add a work log note to an Incident without attachment (WOI:WorkInfo multipart).
+    """Add a note to the activity log of an Incident, visible to whoever reviews it.
+
+    Fails if the incident is already closed.
 
     Parameters
     ----------
     incident_number : str
         Target Incident Number.
     note_text : str
-        Work log detailed description text.
+        Text of the note, written as it should be read by whoever reviews the ticket.
     work_log_type : str, optional
-        Work log type, by default ``'General Information'``.
+        Category of the note in the ticket activity log; keep the default unless
+        asked otherwise.
     view_access : str, optional
-        View access, by default ``'Public'``.
+        Visibility of the note in BMC; keep the default unless asked otherwise.
     secure_work_log : str, optional
-        Secure work log flag, by default ``'No'``.
+        Whether the note is flagged as secure in BMC; keep the default unless
+        asked otherwise.
 
     Returns
     -------
     str
         JSON with ``success`` and confirmation message.
     """
-    h = _get_handler()
-    blocked = h.ensure_write_allowed()
-    if blocked is not None:
-        return blocked.model_dump_json()
     data = AddIncidentNoteInput(
         incident_number=incident_number,
         note_text=note_text,
@@ -632,26 +600,12 @@ async def add_incident_note(
         view_access=view_access,
         secure_work_log=secure_work_log,
     )
-    values = WorkInfoIncidentValues(
-        incident_number=data.incident_number,
-        work_log_type=data.work_log_type,
-        view_access=data.view_access,
-        secure_work_log=data.secure_work_log,
-        detailed_description=data.note_text,
-    )
-    work_info_body = MultipartBuilder.build(values)
-    try:
-        await h.client.post_work_info(work_info_body)
-    except MCPClientError as exc:
-        return BaseToolHandler.failure(exc).model_dump_json()
-    logger.info("add_incident_note ok incident_number=%s", data.incident_number)
-    return BaseOutput(
-        success=True, message=f"Nota añadida a {data.incident_number}."
-    ).model_dump_json()
+    result = await IncidentOperations(_get_handler()).add_note(data)
+    return result.model_dump_json()
 
 
 @tool
-async def add_incident_attachment(
+async def bmc_add_incident_attachment(
     incident_number: str,
     note_text: str,
     file_path: str,
@@ -659,9 +613,10 @@ async def add_incident_attachment(
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
-    """Add a work log entry with file attachment to an Incident (WOI:WorkInfo multipart).
+    """Add a note with one file attached to the activity log of an Incident.
 
-    ``file_path`` must be readable by the agent process.
+    The file must already exist on the machine running this agent; file content
+    cannot be sent through this tool. Fails if the incident is already closed.
 
     Parameters
     ----------
@@ -670,7 +625,7 @@ async def add_incident_attachment(
     note_text : str
         Work log detailed description text.
     file_path : str
-        Local path readable by the agent process.
+        Path of the file to attach, as seen by the machine running this agent.
     work_log_type : str, optional
         Work log type, by default ``'General Information'``.
     view_access : str, optional
@@ -697,33 +652,24 @@ async def add_incident_attachment(
 
 
 @tool
-async def close_incident(
+async def bmc_close_incident(
     incident_number: str,
     description: str,
     resolution: str = "Solución no especificada",
-    intermediate_description: str = "Rest API: Resolve Incident via Mosaico",
-    intermediate_status: str | None = DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
-    final_status: str = DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
-    status_reason: str | None = None,
 ) -> str:
-    """Close an Incident: optional intermediate PUT, then final close PUT.
+    """Close an Incident, taking ownership of it and moving it to Resolved.
+
+    Works from any open status, but only on an incident created by this agent's own
+    BMC user. There is no tool to reopen it afterwards.
 
     Parameters
     ----------
     incident_number : str
         Incident Number to close.
     description : str
-        Closure description for the final PUT.
+        Short summary of the closure, recorded on the incident.
     resolution : str, optional
-        Resolution text, by default a placeholder string.
-    intermediate_description : str, optional
-        Description for optional intermediate PUT.
-    intermediate_status : str | None, optional
-        Intermediate ``Status`` before close; ``None`` skips the intermediate PUT.
-    final_status : str, optional
-        Final ``Status`` on close PUT, by default ``'Resolved'``.
-    status_reason : str | None, optional
-        Status reason when required by BMC characterization.
+        How the incident was actually solved; replace the placeholder default.
 
     Returns
     -------
@@ -735,10 +681,6 @@ async def close_incident(
         incident_number=incident_number,
         description=description,
         resolution=resolution,
-        intermediate_description=intermediate_description,
-        intermediate_status=intermediate_status,
-        final_status=final_status,
-        status_reason=status_reason,
     )
     result = await IncidentOperations(h).close(data)
     return result.model_dump_json()
@@ -749,18 +691,18 @@ async def close_incident(
 # ---------------------------------------------------------------------------
 
 _ALL_BMC_TOOLS: list[BaseTool] = [
-    health_check,
-    create_work_order,
-    get_work_order,
-    add_work_order_note,
-    add_work_order_attachment,
-    update_work_order_status,
-    close_work_order,
-    create_incident,
-    get_incident,
-    add_incident_note,
-    add_incident_attachment,
-    close_incident,
+    bmc_health_check,
+    bmc_create_work_order,
+    bmc_get_work_order,
+    bmc_add_work_order_note,
+    bmc_add_work_order_attachment,
+    bmc_update_work_order_status,
+    bmc_close_work_order,
+    bmc_create_incident,
+    bmc_get_incident,
+    bmc_add_incident_note,
+    bmc_add_incident_attachment,
+    bmc_close_incident,
 ]
 
 

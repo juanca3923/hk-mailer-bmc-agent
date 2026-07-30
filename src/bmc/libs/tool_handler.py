@@ -39,6 +39,17 @@ class BaseToolHandler:
         self._logger = logging.getLogger(self.__class__.__module__)
 
     @property
+    def settings(self) -> BmcSettings:
+        """Return the BMC settings used by tools.
+
+        Returns
+        -------
+        BmcSettings
+            Runtime BMC and MCP configuration.
+        """
+        return self._settings
+
+    @property
     def client(self) -> BmcClient:
         """Return the BMC HTTP client used by tools.
 

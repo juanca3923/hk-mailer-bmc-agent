@@ -112,6 +112,11 @@ class BmcSettings(BaseSettings):
         description='API key / password for service account',
         min_length=1,
     )
+    assignee_display_name: str = Field(
+        ...,
+        description='Nombre visible del asignado en Mosaico (campo AR ASCHG), distinto del login (username)',
+        min_length=1,
+    )
     jwt_ttl_seconds: int = Field(default=3600, ge=60, le=86400)
     jwt_refresh_margin_seconds: int = Field(default=300, ge=0, le=3600)
     jwt_refresh_interval_seconds: int = Field(
@@ -129,9 +134,16 @@ class BmcSettings(BaseSettings):
     form_wo_query: str = Field(default='WOI:WorkOrderInterface')
     form_wo_update: str = Field(default='WOI:WorkOrderInterface')
     form_work_info: str = Field(default='WOI:WorkInfo')
+    form_incident_work_log: str = Field(default='HPD:WorkLog')
 
-    default_wo_first_name: str = Field(default='Mosaico')
-    default_wo_last_name: str = Field(default='WebServices')
+    default_first_name: str = Field(
+        default='Mosaico',
+        description='Nombre fijo del solicitante/cliente en Work Order e Incidente creados por este agente',
+    )
+    default_last_name: str = Field(
+        default='WebServices',
+        description='Apellido fijo del solicitante/cliente en Work Order e Incidente creados por este agente',
+    )
     default_wo_company: str = Field(default='ARUS')
 
     @field_validator('base_url', mode='before')

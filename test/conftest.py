@@ -7,6 +7,7 @@ import os
 # Settings exige estas claves; load_dotenv(override=False) no las pisa si ya existen.
 _MIN_ENV: dict[str, str] = {
     "HTTP_PORT": "8000",
+    "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/agent_bmc_test",
     "OLLAMA_BASE_URL": "http://localhost:11434",
     "OLLAMA_MODEL": "qwen3.5:9b",
     "LLM_PROVIDER": "ollama",

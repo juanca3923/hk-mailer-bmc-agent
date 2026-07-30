@@ -37,11 +37,17 @@ build_agent()
 
 `src/agent/internal_tools/bmc_tools.py` define 12 herramientas `@tool` (LangChain):
 
-- **Health**: `health_check`
-- **Work Orders**: `create_work_order`, `get_work_order`, `add_work_order_note`,
-  `add_work_order_attachment`, `update_work_order_status`, `close_work_order`
-- **Incidents**: `create_incident`, `get_incident`, `add_incident_note`,
-  `add_incident_attachment`, `close_incident`
+- **Health**: `bmc_health_check`
+- **Work Orders**: `bmc_create_work_order`, `bmc_get_work_order`, `bmc_add_work_order_note`,
+  `bmc_add_work_order_attachment`, `bmc_update_work_order_status`, `bmc_close_work_order`
+- **Incidents**: `bmc_create_incident`, `bmc_get_incident`, `bmc_add_incident_note`,
+  `bmc_add_incident_attachment`, `bmc_close_incident`
+
+`bmc_close_work_order` y `bmc_close_incident` aplican guards de negocio antes de
+escribir (`src/bmc/libs/helpers/ticket_guards.py`): rechazan cualquier escritura sobre
+un ticket ya `Closed`, y el cierre además exige que el `Submitter` del ticket coincida
+con el usuario de servicio BMC configurado. `bmc_add_incident_note`/
+`bmc_add_incident_attachment` escriben contra `HPD:WorkLog` (no `WOI:WorkInfo`).
 
 Todas comparten un `BaseToolHandler` lazy-inicializado y retornan JSON con `{success, message}`.
 

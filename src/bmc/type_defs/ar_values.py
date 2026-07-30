@@ -58,6 +58,7 @@ class CreateWorkOrderValues(BaseModel):
     product_cat_tier_2: str = Field(alias='Product Cat Tier 2 (2)')
     product_cat_tier_3: str = Field(alias='Product Cat Tier 3 (2)')
     priority: str = Field(default='Medium', alias='Priority')  # TODO: actualizar caracterización
+    assigned_group: str = Field(alias='Support Group Name')  # TODO: actualizar caracterización
 
 
 class CreateIncidentValues(BaseModel):
@@ -90,7 +91,7 @@ class UpdateWorkOrderStatusValues(BaseModel):
 
     description: str = Field(alias='Description')
     status: WorkOrderStatusField = Field(alias='Status')
-    assignee: str | None = Field(default=None, alias='Assignee')
+    aschg: str | None = Field(default=None, alias='ASCHG')
 
 
 class UpdateIncidentStatusValues(BaseModel):
@@ -100,6 +101,16 @@ class UpdateIncidentStatusValues(BaseModel):
 
     description: str = Field(alias='Description')
     status: IncidentStatusField = Field(alias='Status')
+    assignee: str | None = Field(default=None, alias='Assignee')
+
+
+class UpdateIncidentCategorizationValues(BaseModel):
+    """PUT patch for the operational-category fallback workaround (see ``IncidentOperations``)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    categorization_tier_1: str = Field(alias='Categorization Tier 1')
+    categorization_tier_2: str = Field(alias='Categorization Tier 2')
 
 
 class CloseWorkOrderValues(BaseModel):
@@ -109,7 +120,6 @@ class CloseWorkOrderValues(BaseModel):
 
     description: str = Field(alias='Description')
     status: OptionalWorkOrderStatusField = Field(default=None, alias='Status')
-    status_reason: str | None = Field(default=None, alias='Status Reason')  # TODO: actualizar caracterización
 
 
 class CloseIncidentValues(BaseModel):
@@ -120,7 +130,7 @@ class CloseIncidentValues(BaseModel):
     description: str = Field(alias='Description')
     resolution: str | None = Field(default=None, alias='Resolution')
     status: OptionalIncidentStatusField = Field(default=None, alias='Status')
-    status_reason: str | None = Field(default=None, alias='Status Reason')  # TODO: actualizar caracterización
+    status_reason: str | None = Field(default=None, alias='Status_Reason')  # TODO: actualizar caracterización
 
 
 class WorkInfoWorkOrderValues(BaseModel):

@@ -33,7 +33,7 @@ AR REST API directly (no MCP server required).
 - **Create, query and update** incidents (`INC`) and work orders (`WO`) in BMC Helix ARUS.
 - **Add notes and attachments** to existing tickets via `WOI:WorkInfo`.
 - **Close tickets** following BMC's two-step flow (intermediate PUT → final PUT).
-- **Verify the BMC session** at any time via `health_check`.
+- **Verify the BMC session** at any time via `bmc_health_check`.
 - Persist conversation history in PostgreSQL via LangGraph checkpointer.
 - Expose a REST API (FastAPI) and an interactive CLI (REPL).
 
@@ -191,8 +191,9 @@ Copy `.env.example` to `.env` and fill in the required values.
 | Variable | Description |
 |----------|-------------|
 | `BMC_BASE_URL` | BMC REST API base URL (e.g. `https://arus-dev-restapi.onbmc.com`) |
-| `BMC_USERNAME` | Service account email |
+| `BMC_USERNAME` | Service account email; also compared against a ticket's `Submitter` by the `require_submitter` close guard |
 | `BMC_PASSWORD` | Service account password / API key |
+| `BMC_ASSIGNEE_DISPLAY_NAME` | Display name used for `ASCHG` (WO) / `Assignee` (incident) when taking ownership before closing; distinct from `BMC_USERNAME` |
 
 ### Optional — BMC
 
@@ -206,8 +207,8 @@ Copy `.env.example` to `.env` and fill in the required values.
 
 ### Business defaults — BMC tickets
 
-Fixed values injected by `src/bmc/libs/business_defaults.py` into every `create_work_order`
-and `create_incident` call. The LLM never sees these as tool parameters.
+Fixed values injected by `src/bmc/libs/business_defaults.py` into every `bmc_create_work_order`
+and `bmc_create_incident` call. The LLM never sees these as tool parameters.
 
 | Variable | Fallback | Used in |
 |----------|----------|---------|
@@ -217,7 +218,8 @@ and `create_incident` call. The LLM never sees these as tool parameters.
 | `BMC_DEFAULT_CUSTOMER_FIRST_NAME` | `Mosaico` | WO `Customer First Name` |
 | `BMC_DEFAULT_CUSTOMER_LAST_NAME` | `WebServices` | WO `Customer Last Name` |
 | `BMC_DEFAULT_CUSTOMER_COMPANY` | `ARUS` | WO `Customer Company` |
-| `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA MARCO` | Incident `Assigned Group` |
+| `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_incident` (not a fixed injection — the LLM should override it with the value from the `categorias-incidentes` skill row) |
+| `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` (not a fixed injection — the LLM should override it with the value from the `categorias-requerimientos` skill row) |
 
 ### Required — LLM
 
@@ -256,21 +258,26 @@ All 12 tools live in `src/agent/internal_tools/bmc_tools.py` and share a lazy-in
 
 | Tool | Operation | AR Form |
 |------|-----------|---------|
-| `health_check` | Verify JWT session | GET ping |
-| `create_work_order` | Create WO | `WOI:WorkOrderInterface_Create` |
-| `get_work_order` | Search WO by ID | `WOI:WorkOrderInterface` |
-| `add_work_order_note` | Add note without attachment | `WOI:WorkInfo` |
-| `add_work_order_attachment` | Add note with file attachment | `WOI:WorkInfo` multipart |
-| `update_work_order_status` | PUT intermediate status | `WOI:WorkOrderInterface` |
-| `close_work_order` | PUT Completed → PUT Closed | `WOI:WorkOrderInterface` |
-| `create_incident` | Create incident | `HPD:IncidentInterface_Create` |
-| `get_incident` | Search incident by number | `HPD:IncidentInterface` |
-| `add_incident_note` | Add note without attachment | `WOI:WorkInfo` |
-| `add_incident_attachment` | Add note with file attachment | `WOI:WorkInfo` multipart |
-| `close_incident` | Optional intermediate PUT → final PUT | `HPD:IncidentInterface` |
+| `bmc_health_check` | Verify JWT session | GET ping |
+| `bmc_create_work_order` | Create WO | `WOI:WorkOrderInterface_Create` |
+| `bmc_get_work_order` | Search WO by ID | `WOI:WorkOrderInterface` |
+| `bmc_add_work_order_note` | Add note without attachment (rejects if `Closed`) | `WOI:WorkInfo` |
+| `bmc_add_work_order_attachment` | Add note with file attachment (rejects if `Closed`) | `WOI:WorkInfo` multipart |
+| `bmc_update_work_order_status` | PUT intermediate status (rejects if `Closed`) | `WOI:WorkOrderInterface` |
+| `bmc_close_work_order` | Ownership PUT (`ASCHG`) → Completed PUT+note → Closed PUT+note (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
+| `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter) | `HPD:IncidentInterface_Create` |
+| `bmc_get_incident` | Search incident by number | `HPD:IncidentInterface` |
+| `bmc_add_incident_note` | Add note without attachment (rejects if `Closed`) | `HPD:WorkLog` |
+| `bmc_add_incident_attachment` | Add note with file attachment (rejects if `Closed`) | `HPD:WorkLog` multipart |
+| `bmc_close_incident` | Ownership PUT (`Assignee`) → Resolved PUT with `Status_Reason=Closing` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `HPD:IncidentInterface` |
 
 All tools return a JSON string with `{"success": bool, "message": "..."}`. On success, `message`
 contains TOON-encoded structured data. On error, `message` contains a user-facing Spanish error.
+
+Business-rule guards (`src/bmc/libs/helpers/ticket_guards.py`) run before any write: `require_not_closed`
+rejects writes on tickets already `Closed`; `require_submitter` (close only) rejects closing a ticket
+whose `Submitter` does not match `BMC_USERNAME` — adding notes/attachments to such a ticket is still
+allowed.
 
 ---
 
