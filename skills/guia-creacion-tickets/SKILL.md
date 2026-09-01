@@ -7,9 +7,19 @@ description: Guía de proceso para decidir Work Order vs Incidente, completar la
 
 Esta guía cubre el **procedimiento**, no el catálogo de categorías en sí. Para elegir
 los valores exactos de categorización usa `skill_get_guide("categorias-incidentes")` o
-`skill_get_guide("categorias-requerimientos")` según corresponda.
+`skill_get_guide("categorias-requerimientos")` según corresponda. Pero **revisa primero**
+si existe una skill de dominio más específica (stem `categorias-<dominio>`, p. ej.
+`categorias-usuario` para casos de usuario/red): esas tablas pueden cubrir tanto
+Incidente como Work Order — su columna `Tipo Servicio` decide el tipo y tiene
+prioridad sobre el heurístico de la sección 1 — ver la regla de selección de dominio en
+`system.promt.md`.
 
 ## 1. Cuándo es Work Order vs Incidente
+
+**Antes de aplicar el heurístico de esta sección**, revisa si hay un catálogo de
+dominio (`categorias-<dominio>`) con una fila que aplique al caso: su columna
+`Tipo Servicio` decide el tipo y tiene prioridad sobre lo que sigue. El heurístico de
+abajo es el *fallback* para cuando no hay dominio conocido o ninguna fila encaja.
 
 - **Incidente**: algo que ya funcionaba dejó de funcionar o se degradó sin planearlo
   (aplicación caída, usuario bloqueado, servicio inaccesible). Todo incidente creado
@@ -27,10 +37,11 @@ Si pide algo "nuevo", "programado" o "un cambio" → Work Order.
 
 Todos los campos de categorización (`categorization_tier_1/2`,
 `product_cat_tier_*`/`product_categorization_tier_*`, y `priority`/`assigned_group`
-cuando aplique) deben salir de la **misma fila** de la tabla en `categorias-incidentes`
-o `categorias-requerimientos`. Nunca combines la categoría operacional de una fila con
-la categoría de producto de otra, aunque ambas existan en la tabla — la combinación
-completa es lo que importa, no cada campo por separado.
+cuando aplique) deben salir de la **misma fila** de la tabla en `categorias-incidentes`,
+`categorias-requerimientos`, o la skill de dominio que aplicó (`categorias-<dominio>`).
+Nunca combines la categoría operacional de una fila con la categoría de producto de
+otra, aunque ambas existan en la tabla — la combinación completa es lo que importa, no
+cada campo por separado.
 
 Las tablas de esas dos skills son una **muestra pequeña**, no el catálogo completo de
 BMC. Si el caso del usuario no encaja en ninguna fila, no inventes una combinación:
@@ -74,7 +85,8 @@ silencies ni reportes el ticket como cerrado si no lo está.
 
 ## 6. Checklist final antes de llamar `bmc_create_work_order`/`bmc_create_incident`
 
-1. ¿Es Work Order o Incidente? Confirma con la regla de la sección 1.
+1. ¿Es Work Order o Incidente? Si aplicó una skill de dominio, usa su columna
+   `Tipo Servicio`; si no, confirma con el heurístico de la sección 1.
 2. ¿Leíste la skill de categorías correspondiente y elegiste una única fila completa?
 3. ¿Los campos obligatorios (descripción, categorización, y priority/assigned_group
    cuando aplique) están completos con valores reales, no inventados?

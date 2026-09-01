@@ -28,6 +28,51 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-01 — feat: catálogo de categorización por dominio ("usuario de red") y el catálogo de dominio decide Incidente vs Work Order
+
+- **Nueva skill `skills/categorias-usuario.md`**: catálogo completo (entregado por la
+  mesa de servicio, no una muestra) de categorización del dominio "usuario de red"
+  (altas/bajas de usuario, contraseñas, estado de casos). A diferencia de
+  `categorias-incidentes`/`categorias-requerimientos` (separadas por tipo), esta tabla
+  trae una columna **`Tipo Servicio`** por fila que decide si el ticket es Incidente o
+  Work Order, más `Escalamiento 1` (mapea a `assigned_group`) y
+  `¿Susceptible de cierre en mesa?` (documentada como informativa, sin regla dura de
+  auto-cierre).
+- **Motivación del reordenamiento**: se depuró un caso real ("desbloqueo de usuario")
+  donde el LLM decidió el tipo de ticket con el heurístico genérico de
+  `guia-creacion-tickets` (semántico: "roto" → Incidente) y nunca llegó a revisar el
+  catálogo de dominio, que ya tenía una fila exacta clasificada como Work Order — pese a
+  que el system prompt cargado sí incluía la skill (confirmado en
+  `logs/agent_agent_bmc.log`). La causa era de **orden/precedencia**, no de código.
+- **`system.promt.md`**: el protocolo de creación ahora busca primero un dominio
+  conocido (stem `categorias-<dominio>`, patrón genérico — no
+  `categorias-requerimientos-<dominio>`); si una fila de esa tabla aplica, su
+  `Tipo Servicio` decide el tipo y **tiene prioridad** sobre el heurístico genérico de
+  `guia-creacion-tickets`, que pasa a ser el *fallback* cuando no hay match de dominio.
+  Los flujos de ejemplo (interactivo y A2A) se reescribieron para reflejar este orden.
+- **`skills/guia-creacion-tickets/SKILL.md`**: la sección "Work Order vs Incidente" y
+  el checklist final ahora anteponen la columna `Tipo Servicio` del catálogo de dominio
+  al heurístico semántico.
+- **Asimetría documentada en la skill de dominio**: `bmc_create_incident` no recibe
+  `priority` (Impact/Urgency quedan fijos) — si `Tipo Servicio = Incidente`, la columna
+  Prioridad de la fila se ignora; y `product_cat_tier_*` (Work Order) vs
+  `product_categorization_tier_*` (Incidente) son nombres de parámetro distintos para
+  el mismo dato de la tabla.
+- **Sin cambios de código**: `bmc_tools.py`, `constants.py`, `business_defaults.py` y
+  el mecanismo de descubrimiento de skills (`src/config/skill_catalog.py`) ya soportan
+  esto sin modificación — el catálogo de skills se descubre por convención de archivo,
+  no por registro manual.
+- **Acción operativa**: tras este cambio hay que reconstruir el agente
+  (`build_agent` / reinicio del proceso, o `POST /stop` + `POST /start` en HTTP) para
+  que el bloque `<skills>` del system prompt refleje el stem `categorias-usuario` (ya
+  no `categorias-requerimientos-usuario`).
+- **Fuera de alcance de este cambio**: no se diseñó todavía la "especialización" del
+  agente por dominio a nivel de arquitectura (multi-instancia u orquestador) ni se
+  codificó ninguna regla dura de auto-cierre — quedan para un cambio posterior, cuando
+  también exista el catálogo de "eventos".
+
+---
+
 ## 2026-07-30 — fix: completa la sincronización con bmc-mcp (grupo asignado en WO y enum de Status)
 
 - **`bmc_create_work_order`** ganó el parámetro `assigned_group` (default
