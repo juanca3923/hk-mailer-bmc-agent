@@ -5,31 +5,13 @@ description: Catálogo de categorías BMC Helix ARUS para crear Incidentes. Cons
 
 # Categorías BMC Helix — Incidente
 
-Usa esta guía para seleccionar la combinación **exacta** de campos de categorización
-al crear un **incidente** con `bmc_create_incident`.
+Tabla de datos para `bmc_create_incident`. El mapeo columna → parámetro y qué hacer si
+el caso no encaja en ninguna fila están en `guia-creacion-tickets` (secciones 2 y 3) —
+no se repiten aquí.
 
-## Campos que debes completar
-
-| Parámetro en `bmc_create_incident` | Columna en esta guía |
-|-------------------------------|---------------------|
-| `categorization_tier_1` | Cat Op 1 |
-| `categorization_tier_2` | Cat Op 2 |
-| `product_categorization_tier_1` | Cat Prod 1 |
-| `product_categorization_tier_2` | Cat Prod 2 |
-| `product_categorization_tier_3` | Cat Prod 3 |
-| `assigned_group` | Grupo Asignado |
-
-`impact` y `urgency` **ya no son parámetros** de `bmc_create_incident`: todo incidente
+`impact` y `urgency` **no son parámetros** de `bmc_create_incident`: todo incidente
 creado por este agente queda fijo en Impact `1-Extensive/Widespread` / Urgency
-`1-Critical` (misma regla que aplica el servidor MCP hoy). No intentes pasarlos ni
-preguntarle al usuario por ellos.
-
-> **Regla:** elige la fila que mejor describe el caso del usuario.
-> Copia los valores **exactamente** como aparecen en la tabla, todos de la misma fila
-> (no mezcles Cat Op de una fila con Cat Prod de otra).
-> `categorization_tier_1`/`categorization_tier_2` puede dejarse vacío `""` solo si
-> ninguna fila de la tabla aplica al caso; en ese caso completa al menos la
-> categorización de producto.
+`1-Critical`.
 
 ## Muestra de categorías (ambiente de pruebas arus-dev)
 
@@ -38,9 +20,7 @@ Esta tabla es una **muestra pequeña e ilustrativa**, no el catálogo completo. 
 del **ambiente de pruebas**; el propio dato aclara que el emparejamiento categoría
 operacional↔producto es mecánico y no representa una caracterización ITSM formal).
 Cubre los escenarios más comunes de un área de TI: usuarios/telefonía, cambio de
-contraseña, caída de aplicaciones y solicitudes generales. Si el caso del usuario no
-encaja en ninguna fila, dilo explícitamente y pide confirmación en vez de inventar una
-combinación — no la adivines.
+contraseña, caída de aplicaciones y solicitudes generales.
 
 | Cat Op 1 | Cat Op 2 | Cat Prod 1 | Cat Prod 2 | Cat Prod 3 | Prioridad | Grupo Asignado |
 |----------|----------|-----------|-----------|-----------|-----------|----------------|
@@ -55,18 +35,9 @@ combinación — no la adivines.
 | Infraestructura | Crear / modificar / eliminar / suspender usuario | TB Servicio Navegacion Internet | Redes | Revision de switches | MEDIA | GTI.REDES |
 | CONECTIVIDAD | Caida del servicio | TB Otros Servicios de Infraestructura | Servidores | Alto consumo de recursos | MEDIA | GTI.REDES |
 
-## Si el caso no está en la muestra
-
-Esta guía **no reemplaza** el catálogo Maya completo (~1900 combinaciones en
-`bmc-mcp/config/categorias_maya.json`). Si el incidente no encaja en ninguna fila de
-arriba:
-
-1. No inventes una combinación de categorías que no hayas visto en esta tabla.
-2. Usa la categorización operacional/producto más general y razonable que sí conozcas
-   (p. ej. `Aplicacion` / `Software` para fallas de aplicativos genéricas), dejando
-   claro en la nota o en tu respuesta al usuario que fue una elección aproximada.
-3. Si el caso es ambiguo o crítico, prefiere preguntar antes de crear el ticket en vez
-   de adivinar.
+Esta muestra **no reemplaza** el catálogo Maya completo (~1900 combinaciones en
+`bmc-mcp/config/categorias_maya.json`). Si el incidente no encaja en ninguna fila, ver
+`guia-creacion-tickets` sección 3.
 
 ---
 _Muestra generada desde `bmc-mcp/config/categorias_maya.json` (fuente: `CCTI_ARUS.xlsx`,

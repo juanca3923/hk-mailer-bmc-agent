@@ -5,33 +5,9 @@ description: Catálogo de categorías BMC Helix ARUS para crear Work Orders (Req
 
 # Categorías BMC Helix — Requerimiento (Work Order)
 
-Usa esta guía para seleccionar la combinación **exacta** de campos de categorización
-al crear un **Work Order** con `bmc_create_work_order`.
-
-## Campos que debes completar
-
-| Parámetro en `bmc_create_work_order` | Columna en esta guía |
-|---------------------------------|---------------------|
-| `categorization_tier_1` | Cat Op 1 |
-| `categorization_tier_2` | Cat Op 2 |
-| `product_cat_tier_1` | Cat Prod 1 |
-| `product_cat_tier_2` | Cat Prod 2 |
-| `product_cat_tier_3` | Cat Prod 3 |
-| `priority` | valor de la columna Priority (ya en inglés: `Medium`, `High`, `Low`, `Critical`) |
-| `assigned_group` | Grupo (referencia) |
-
-### Mapeo Prioridad (ES) → `priority` (EN)
-
-| Prioridad | Valor para `priority` |
-|-----------|----------------------|
-| CRITICA | `Critical` |
-| ALTA | `High` |
-| MEDIA | `Medium` |
-| BAJA | `Low` |
-
-> **Regla:** elige la fila que mejor describe el caso del usuario.
-> Copia los valores **exactamente** como aparecen en la tabla, todos de la misma fila
-> (no mezcles Cat Op de una fila con Cat Prod de otra).
+Tabla de datos para `bmc_create_work_order`. El mapeo columna → parámetro, la
+traducción de Prioridad ES→EN y qué hacer si el caso no encaja en ninguna fila están en
+`guia-creacion-tickets` (secciones 2 y 3) — no se repiten aquí.
 
 ## Muestra de categorías (ambiente de pruebas arus-dev)
 
@@ -40,9 +16,7 @@ Esta tabla es una **muestra pequeña e ilustrativa**, no el catálogo completo. 
 del **ambiente de pruebas**; el propio dato aclara que el emparejamiento categoría
 operacional↔producto es mecánico y no representa una caracterización ITSM formal).
 Cubre los escenarios más comunes de un área de TI: usuarios/telefonía, cambio de
-contraseña, accesos/instalaciones y solicitudes generales. Si el caso del usuario no
-encaja en ninguna fila, dilo explícitamente y pide confirmación en vez de inventar una
-combinación — no la adivines.
+contraseña, accesos/instalaciones y solicitudes generales.
 
 | Cat Op 1 | Cat Op 2 | Cat Prod 1 | Cat Prod 2 | Cat Prod 3 | Priority | Grupo (referencia) |
 |----------|----------|-----------|-----------|-----------|----------|---------------------|
@@ -57,18 +31,9 @@ combinación — no la adivines.
 | Aplicacion | Generar acceso | TB Estaciones de Trabajo | Portatil | Eliminar temporales y cookies | Medium | MOSAICO |
 | Administrativos | Daño tarjeta de acceso | GTI | Backup | Plataforma | Medium | PUC.ADMINISTRATIVO MEDELLIN |
 
-## Si el caso no está en la muestra
-
-Esta guía **no reemplaza** el catálogo Maya completo (~1900 combinaciones en
-`bmc-mcp/config/categorias_maya.json`). Si el requerimiento no encaja en ninguna fila
-de arriba:
-
-1. No inventes una combinación de categorías que no hayas visto en esta tabla.
-2. Usa la categorización operacional/producto más general y razonable que sí conozcas,
-   dejando claro en la nota o en tu respuesta al usuario que fue una elección
-   aproximada.
-3. Si el caso es ambiguo, prefiere preguntar antes de crear el ticket en vez de
-   adivinar.
+Esta muestra **no reemplaza** el catálogo Maya completo (~1900 combinaciones en
+`bmc-mcp/config/categorias_maya.json`). Si el requerimiento no encaja en ninguna fila,
+ver `guia-creacion-tickets` sección 3.
 
 ---
 _Muestra generada desde `bmc-mcp/config/categorias_maya.json` (fuente: `CCTI_ARUS.xlsx`,

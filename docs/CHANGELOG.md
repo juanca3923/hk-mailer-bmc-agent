@@ -4,6 +4,33 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-01 — refactor: consolida procedimiento de categorización en `guia-creacion-tickets` (sin duplicación entre skills)
+
+- **`skills/guia-creacion-tickets/SKILL.md`** pasa a ser la única fuente del: mapeo
+  columna → parámetro (una tabla por concepto, válida para `bmc_create_work_order` y
+  `bmc_create_incident`), la traducción de Prioridad ES→EN, el significado de columnas
+  informativas de catálogos de dominio (`¿Susceptible de cierre en mesa?`) y qué hacer
+  si un caso no encaja en ninguna fila.
+- **`skills/categorias-incidentes.md`, `skills/categorias-requerimientos.md`,
+  `skills/categorias-usuario.md`**: recortadas a solo su tabla de datos + una línea de
+  contexto que remite a `guia-creacion-tickets` — ya no repiten el mapeo, la traducción
+  de prioridad ni el texto de fallback.
+- **Motivación**: al revisar el commit anterior se notó que cada skill de
+  categorización repetía el mismo procedimiento (mapeo, prioridad, "no inventes"), y
+  que `categorias-usuario.md` en particular traía información de proceso que no le
+  correspondía — debía limitarse a los casos que atiende y su tipificación.
+- **Balance medido**: la suma de las 4 skills bajó ~22% (20 180 → 15 673 bytes). Un
+  turno con dominio conocido (`categorias-usuario`) bajó ~15%; un turno genérico sin
+  dominio (`categorias-incidentes`/`categorias-requerimientos`) subió ligeramente
+  (~600 bytes) porque `guia-creacion-tickets` — que se lee siempre — creció al asumir
+  el mapeo consolidado. El ahorro compuesto crece con cada dominio nuevo que se agregue
+  (`categorias-eventos`, etc.), que ya no necesita repetir ese procedimiento.
+- **Sin cambios de comportamiento ni de código**: mismos datos de categorización,
+  mismo protocolo en `system.promt.md`; solo se reorganizó dónde vive cada pieza de
+  información.
+
+---
+
 ## 2026-09-01 — feat: soporte de inferencia vía Hugging Face Inference Providers
 
 - **`LLM_PROVIDER=huggingface`** como opción nueva de proveedor, junto a `ollama`,
