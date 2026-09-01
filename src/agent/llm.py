@@ -144,7 +144,7 @@ def get_huggingface_llm(settings: Settings, temperature: float = 0.6, stream: bo
         temperature=temperature,
         do_sample=temperature > 0,
         streaming=stream,
-        max_new_tokens=2048,
+        max_new_tokens=settings.huggingface_max_new_tokens,
         server_kwargs={"bill_to": bill_to} if bill_to else {},
     )
     return ChatHuggingFace(llm=endpoint)
@@ -167,7 +167,7 @@ def build_llm(settings: Settings) -> BaseChatModel:
     BaseChatModel
         Configured chat model.
     """
-    temperature = 0.6
+    temperature = settings.llm_temperature
     stream = settings.stream
 
     if settings.llm_provider == "openai":

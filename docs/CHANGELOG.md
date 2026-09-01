@@ -4,6 +4,31 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-01 — test: cobertura de `get_huggingface_llm` y temperatura/max_new_tokens configurables
+
+- **`test/test_llm_huggingface.py`** (nuevo): dobles simples (`monkeypatch`) de
+  `HuggingFaceEndpoint`/`ChatHuggingFace` — sin conexión real — verifican que
+  `HUGGINGFACE_BILL_TO` arma `server_kwargs={"bill_to": ...}` (y `{}` si está vacío),
+  que `HUGGINGFACE_PROVIDER` vacío se traduce en `provider=None`, y que
+  `_configure_huggingface_legacy_tls()` solo se invoca cuando
+  `HUGGINGFACE_ALLOW_LEGACY_TLS=true`.
+- **`src/config/settings.py`**: nuevos campos opcionales `llm_temperature` (env
+  `LLM_TEMPERATURE`, default `0.6`, compartido por los 4 proveedores) y
+  `huggingface_max_new_tokens` (env `HUGGINGFACE_MAX_NEW_TOKENS`, default `2048`).
+  Mismos valores que estaban hardcodeados en `src/agent/llm.py`, ahora configurables
+  sin cambiar el comportamiento por defecto.
+- **`src/agent/llm.py`**: `build_llm` y `get_huggingface_llm` leen esos valores de
+  `Settings` en vez de la constante fija.
+- **`.env.example`, `CLAUDE.md`**: documentadas las 2 variables nuevas.
+- **`test/test_settings_multiinstance.py`**: test de default/override para ambos
+  campos.
+- **Motivación**: auditoría cruzada desde otra sesión (portando el mismo soporte HF en
+  `knowledge-agent`) señaló que el commit 939231f de esta rama tenía cobertura de tests
+  delgada para `get_huggingface_llm` y valores de temperatura/tokens fijos sin punto de
+  configuración.
+
+---
+
 ## 2026-09-01 — refactor: consolida procedimiento de categorización en `guia-creacion-tickets` (sin duplicación entre skills)
 
 - **`skills/guia-creacion-tickets/SKILL.md`** pasa a ser la única fuente del: mapeo

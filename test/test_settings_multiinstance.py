@@ -147,6 +147,28 @@ def test_huggingface_provider_requires_api_key_and_model(monkeypatch: pytest.Mon
     Settings()
 
 
+_DEFAULT_LLM_TEMPERATURE = 0.6
+_DEFAULT_HF_MAX_NEW_TOKENS = 2048
+_CUSTOM_LLM_TEMPERATURE = 0.2
+_CUSTOM_HF_MAX_NEW_TOKENS = 512
+
+
+def test_llm_temperature_and_huggingface_max_new_tokens_default_and_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LLM_TEMPERATURE", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_MAX_NEW_TOKENS", raising=False)
+    s = Settings()
+    assert s.llm_temperature == _DEFAULT_LLM_TEMPERATURE
+    assert s.huggingface_max_new_tokens == _DEFAULT_HF_MAX_NEW_TOKENS
+
+    monkeypatch.setenv("LLM_TEMPERATURE", str(_CUSTOM_LLM_TEMPERATURE))
+    monkeypatch.setenv("HUGGINGFACE_MAX_NEW_TOKENS", str(_CUSTOM_HF_MAX_NEW_TOKENS))
+    s = Settings()
+    assert s.llm_temperature == _CUSTOM_LLM_TEMPERATURE
+    assert s.huggingface_max_new_tokens == _CUSTOM_HF_MAX_NEW_TOKENS
+
+
 def test_langfuse_prompt_name_requires_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGFUSE_PROMPT_NAME", "my-prompt")
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")

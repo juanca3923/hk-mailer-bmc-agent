@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     llm_provider: Literal["ollama", "openai", "anthropic", "huggingface"] = Field(
         alias="LLM_PROVIDER",
     )
+    # Temperatura de muestreo compartida por los 4 proveedores. Antes era 0.6 fijo en
+    # `build_llm`; se expone como opcional con ese mismo valor por defecto.
+    llm_temperature: float = Field(default=0.6, alias="LLM_TEMPERATURE")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="", alias="OPENAI_MODEL")
     openai_base_url: str = Field(default="", alias="OPENAI_BASE_URL")
@@ -50,6 +53,9 @@ class Settings(BaseSettings):
     # Nombre de la organización de HF a la que facturar el consumo de inferencia
     # (equivalente a InferenceClient(bill_to=...)). Vacío -> se factura a la cuenta del token.
     huggingface_bill_to: str = Field(default="", alias="HUGGINGFACE_BILL_TO")
+    # Límite de tokens de salida para el endpoint HF. Antes era 2048 fijo en
+    # `get_huggingface_llm`; se expone como opcional con ese mismo valor por defecto.
+    huggingface_max_new_tokens: int = Field(default=2048, alias="HUGGINGFACE_MAX_NEW_TOKENS")
     # SOLO para redes corporativas con inspección TLS cuyo CA raíz usa una clave RSA débil
     # (<2048 bits) o firma SHA-1: relaja el nivel de seguridad de OpenSSL (SECLEVEL=1) para
     # el cliente HTTP de huggingface_hub. La verificación del certificado sigue activa (no
