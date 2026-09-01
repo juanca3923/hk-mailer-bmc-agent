@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = Field(default="", alias="OLLAMA_BASE_URL")
     ollama_model: str = Field(default="", alias="OLLAMA_MODEL")
 
-    llm_provider: Literal["ollama", "openai", "anthropic"] = Field(
+    llm_provider: Literal["ollama", "openai", "anthropic", "huggingface"] = Field(
         alias="LLM_PROVIDER",
     )
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     openai_base_url: str = Field(default="", alias="OPENAI_BASE_URL")
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="", alias="ANTHROPIC_MODEL")
+    huggingface_api_key: str = Field(default="", alias="HUGGINGFACE_API_KEY")
+    huggingface_model: str = Field(default="", alias="HUGGINGFACE_MODEL")
+    # Proveedor de inferencia detrás del router de HF Inference Providers (p.ej. "together",
+    # "novita", "cerebras"). Vacío -> "auto" (HF elige el primero disponible para el modelo).
+    huggingface_provider: str = Field(default="", alias="HUGGINGFACE_PROVIDER")
+    # Nombre de la organización de HF a la que facturar el consumo de inferencia
+    # (equivalente a InferenceClient(bill_to=...)). Vacío -> se factura a la cuenta del token.
+    huggingface_bill_to: str = Field(default="", alias="HUGGINGFACE_BILL_TO")
+    # SOLO para redes corporativas con inspección TLS cuyo CA raíz usa una clave RSA débil
+    # (<2048 bits) o firma SHA-1: relaja el nivel de seguridad de OpenSSL (SECLEVEL=1) para
+    # el cliente HTTP de huggingface_hub. La verificación del certificado sigue activa (no
+    # equivale a verify=False); solo se acepta un algoritmo/tamaño de clave ya obsoleto.
+    # Requiere además `SSL_CERT_FILE` apuntando a un bundle que incluya ese CA corporativo.
+    # NUNCA activar en producción: el arreglo correcto es que el CA se reemita con clave >= 2048.
+    huggingface_allow_legacy_tls: bool = Field(default=False, alias="HUGGINGFACE_ALLOW_LEGACY_TLS")
 
     langfuse_public_key: str = Field(default="", alias="LANGFUSE_PUBLIC_KEY")
     langfuse_secret_key: str = Field(default="", alias="LANGFUSE_SECRET_KEY")
@@ -90,8 +105,8 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_llm_provider(cls, value: object) -> str:
         raw = (str(value).strip().lower() if value is not None else "") or "ollama"
-        if raw not in ("ollama", "openai", "anthropic"):
-            msg = "LLM_PROVIDER debe ser uno de: ollama, openai, anthropic"
+        if raw not in ("ollama", "openai", "anthropic", "huggingface"):
+            msg = "LLM_PROVIDER debe ser uno de: ollama, openai, anthropic, huggingface"
             raise ValueError(msg)
         return raw
 
@@ -118,6 +133,13 @@ class Settings(BaseSettings):
         if self.llm_provider == "anthropic" and not (self.anthropic_api_key or "").strip():
             msg = "ANTHROPIC_API_KEY es obligatorio cuando LLM_PROVIDER=anthropic"
             raise ValueError(msg)
+        if self.llm_provider == "huggingface":
+            if not (self.huggingface_api_key or "").strip():
+                msg = "HUGGINGFACE_API_KEY es obligatorio cuando LLM_PROVIDER=huggingface"
+                raise ValueError(msg)
+            if not (self.huggingface_model or "").strip():
+                msg = "HUGGINGFACE_MODEL es obligatorio cuando LLM_PROVIDER=huggingface"
+                raise ValueError(msg)
 
         self._validate_langfuse_prompt_required_keys()
 

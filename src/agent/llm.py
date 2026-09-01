@@ -2,8 +2,20 @@
 
 from __future__ import annotations
 
+import os
+import ssl
+
+import certifi
+import httpx
+from huggingface_hub import set_async_client_factory, set_client_factory
+from huggingface_hub.utils._http import (
+    async_hf_request_event_hook,
+    async_hf_response_event_hook,
+    hf_request_event_hook,
+)
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
@@ -11,6 +23,48 @@ from config import Settings
 
 # Anthropic prompt caching (system prompt, tools, long prefixes).
 ANTHROPIC_CACHE_CONTROL: dict[str, str] = {"type": "ephemeral"}
+
+_legacy_tls_configured = False
+
+
+def _configure_huggingface_legacy_tls() -> None:
+    """Relax OpenSSL's security level for huggingface_hub's HTTP client (idempotent).
+
+    For corporate networks that TLS-intercept outbound HTTPS with a root CA using a weak
+    key (<2048-bit RSA) or a SHA-1 signature: OpenSSL 3.x's default security level rejects
+    that chain outright (``CA certificate key too weak``). Lowering to ``SECLEVEL=1`` keeps
+    certificate verification on (uses ``SSL_CERT_FILE`` if set, else certifi) but stops
+    rejecting on algorithm/key-size grounds. Never enable this in production; the correct
+    fix is reissuing the corporate CA with a modern key.
+    """
+    global _legacy_tls_configured  # noqa: PLW0603
+    if _legacy_tls_configured:
+        return
+
+    cafile = os.environ.get("SSL_CERT_FILE") or certifi.where()
+
+    def _build_ssl_context() -> ssl.SSLContext:
+        ctx = ssl.create_default_context(cafile=cafile)
+        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+        return ctx
+
+    set_client_factory(
+        lambda: httpx.Client(
+            verify=_build_ssl_context(),
+            event_hooks={"request": [hf_request_event_hook]},
+            follow_redirects=True,
+            timeout=None,
+        )
+    )
+    set_async_client_factory(
+        lambda: httpx.AsyncClient(
+            verify=_build_ssl_context(),
+            event_hooks={"request": [async_hf_request_event_hook], "response": [async_hf_response_event_hook]},
+            follow_redirects=True,
+            timeout=None,
+        )
+    )
+    _legacy_tls_configured = True
 
 
 def openai_prompt_cache_key(settings: Settings) -> str:
@@ -57,6 +111,45 @@ def get_openai_llm(settings: Settings, temperature: float = 0.6, stream: bool = 
     )
 
 
+def get_huggingface_llm(settings: Settings, temperature: float = 0.6, stream: bool = False) -> BaseChatModel:
+    """Get a Hugging Face chat model via the Inference Providers router.
+
+    Uses ``HuggingFaceEndpoint`` with ``repo_id`` (no ``endpoint_url``), which routes the
+    call through https://router.huggingface.co to whichever provider serves that model.
+    Tool calling depends entirely on the chosen model/provider supporting it; unlike
+    OpenAI/Anthropic this is not guaranteed for every ``HUGGINGFACE_MODEL``.
+
+    Parameters
+    ----
+    settings : Settings
+        Application settings.
+    temperature : float
+        Sampling temperature.
+    stream : bool
+        Whether to stream tokens.
+
+    Returns
+    ----
+    BaseChatModel
+        ``ChatHuggingFace`` wrapping the endpoint, with tool-calling support.
+    """
+    if settings.huggingface_allow_legacy_tls:
+        _configure_huggingface_legacy_tls()
+
+    bill_to = (settings.huggingface_bill_to or "").strip()
+    endpoint = HuggingFaceEndpoint(
+        repo_id=settings.huggingface_model,
+        provider=(settings.huggingface_provider or "").strip() or None,
+        huggingfacehub_api_token=settings.huggingface_api_key.strip(),
+        temperature=temperature,
+        do_sample=temperature > 0,
+        streaming=stream,
+        max_new_tokens=2048,
+        server_kwargs={"bill_to": bill_to} if bill_to else {},
+    )
+    return ChatHuggingFace(llm=endpoint)
+
+
 def build_llm(settings: Settings) -> BaseChatModel:
     """Build the chat model for ``settings.llm_provider``.
 
@@ -88,6 +181,9 @@ def build_llm(settings: Settings) -> BaseChatModel:
             streaming=stream,
         )
         return llm.bind(cache_control=ANTHROPIC_CACHE_CONTROL)
+
+    if settings.llm_provider == "huggingface":
+        return get_huggingface_llm(settings, temperature, stream)
 
     return ChatOllama(
         model=settings.ollama_model,

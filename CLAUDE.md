@@ -225,10 +225,15 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | `ollama` | `ollama` \| `openai` \| `anthropic` |
+| `LLM_PROVIDER` | `ollama` | `ollama` \| `openai` \| `anthropic` \| `huggingface` |
 | `OLLAMA_MODEL` | `qwen3.5:9b` | Model name when using Ollama |
 | `OPENAI_API_KEY` | — | Required when `LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | — | Required when `LLM_PROVIDER=anthropic` |
+| `HUGGINGFACE_API_KEY` | — | Required when `LLM_PROVIDER=huggingface` |
+| `HUGGINGFACE_MODEL` | — | Required when `LLM_PROVIDER=huggingface`; repo id routed through HF Inference Providers (e.g. `meta-llama/Llama-3.3-70B-Instruct`). Must support tool calling — not guaranteed for every model |
+| `HUGGINGFACE_PROVIDER` | `auto` | Optional underlying inference provider behind the HF router (e.g. `together`, `novita`, `cerebras`) |
+| `HUGGINGFACE_BILL_TO` | — | Optional HF organization to bill inference to (`InferenceClient(bill_to=...)`); empty bills the token's own account |
+| `HUGGINGFACE_ALLOW_LEGACY_TLS` | `false` | **Dev-only.** Relaxes OpenSSL's security level (`SECLEVEL=1`) for `huggingface_hub`'s HTTP client, to accept a corporate TLS-inspection root CA with a weak key (<2048-bit RSA) or SHA-1 signature. Certificate verification stays on; requires `SSL_CERT_FILE` pointing to a bundle that trusts that CA. Never enable in production — fix is reissuing the CA with a modern key |
 
 ### Required — Database
 

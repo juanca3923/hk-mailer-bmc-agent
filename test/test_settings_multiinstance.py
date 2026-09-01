@@ -132,6 +132,21 @@ def test_openai_provider_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> No
         Settings()
 
 
+def test_huggingface_provider_requires_api_key_and_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "huggingface")
+    monkeypatch.delenv("HUGGINGFACE_API_KEY", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_MODEL", raising=False)
+    with pytest.raises(ValidationError):
+        Settings()
+
+    monkeypatch.setenv("HUGGINGFACE_API_KEY", "hf_test")
+    with pytest.raises(ValidationError):
+        Settings()
+
+    monkeypatch.setenv("HUGGINGFACE_MODEL", "meta-llama/Llama-3.3-70B-Instruct")
+    Settings()
+
+
 def test_langfuse_prompt_name_requires_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGFUSE_PROMPT_NAME", "my-prompt")
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")

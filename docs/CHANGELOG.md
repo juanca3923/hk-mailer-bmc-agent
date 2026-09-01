@@ -4,6 +4,30 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-01 — feat: soporte de inferencia vía Hugging Face Inference Providers
+
+- **`LLM_PROVIDER=huggingface`** como opción nueva de proveedor, junto a `ollama`,
+  `openai` y `anthropic` (`src/config/settings.py`). Requiere `HUGGINGFACE_API_KEY` y
+  `HUGGINGFACE_MODEL` (validado en `Settings`).
+- **`src/agent/llm.py`**: `get_huggingface_llm()` construye un `ChatHuggingFace` sobre
+  `HuggingFaceEndpoint` (`langchain-huggingface`), enrutando por
+  `https://router.huggingface.co` (HF Inference Providers). Soporta `HUGGINGFACE_PROVIDER`
+  (proveedor detrás del router, ej. `together`/`novita`/`cerebras`) y
+  `HUGGINGFACE_BILL_TO` (organización a la que facturar).
+- **`HUGGINGFACE_ALLOW_LEGACY_TLS`** (solo dev): relaja `SECLEVEL` de OpenSSL para el
+  cliente HTTP de `huggingface_hub` en redes corporativas con inspección TLS cuyo CA
+  raíz usa clave débil o firma SHA-1; la verificación de certificado sigue activa.
+  Nunca debe activarse en producción.
+- **Riesgo a tener en cuenta**: el tool calling con modelos servidos vía HF **no está
+  garantizado** — depende del modelo/proveedor elegido, a diferencia de OpenAI/Anthropic.
+  Este agente depende de tool calling para todas sus operaciones (BMC, memoria, skills),
+  así que hay que validar explícitamente el modelo elegido antes de usarlo en producción.
+- **Dependencia nueva**: `langchain-huggingface==1.2.2` (`pyproject.toml`, `uv.lock`).
+- **`.env.example` y `CLAUDE.md`**: documentadas las nuevas variables de entorno.
+- **Test**: `test/test_settings_multiinstance.py::test_huggingface_provider_requires_api_key_and_model`.
+
+---
+
 ## 2026-07-30 — fix: completa la sincronización con bmc-mcp (grupo asignado en WO y enum de Status)
 
 - **`bmc_create_work_order`** ganó el parámetro `assigned_group` (default
