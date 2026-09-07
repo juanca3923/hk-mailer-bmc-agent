@@ -4,6 +4,45 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-07 — feat: Categoría Operacional 1/2/3 para el catálogo de "eventos"
+
+- **`skills/categorias-eventos.md`**: la mesa de servicio entregó las columnas
+  `Categoria Operacional 1/2/3` que faltaban para las dos subtablas del dominio
+  "eventos". Cierra el vacío documentado en el commit anterior (2026-09-02).
+- Ambas subtablas quedan con `Categoria Operacional 1 = Aplicacion` y
+  `Categoria Operacional 3` vacía; `Categoria Operacional 2` distingue el tipo de
+  evento (`Evento de disponibilidad` en Incidente, `Evento de capacidad` en
+  Requerimiento), reforzando la regla semántica ya documentada en la skill.
+- Con este dato, `bmc_create_work_order` ya puede categorizar un caso de "eventos de
+  capacidad" sin depender de una pregunta adicional al usuario — se retira la
+  instrucción de no crear el Work Order sin confirmar antes.
+- **Sin cambios de código**: solo se completan filas de la tabla de datos.
+
+---
+
+## 2026-09-02 — feat: catálogo de categorización por dominio ("eventos": disponibilidad vs. capacidad)
+
+- **Nueva skill `skills/categorias-eventos.md`**: catálogo completo (entregado por la
+  mesa de servicio) del dominio "eventos" — servicios GTI (AWS, redes, aplicaciones,
+  backup, servidores, base de datos, seguridad perimetral, telefonía). Cierra el
+  pendiente dejado en el commit d2d29f4 ("cuando también exista el catálogo de
+  'eventos'").
+- **Dos subtablas en vez de una columna `Tipo Servicio` mezclada** (a diferencia de
+  `categorias-usuario`): "Eventos de disponibilidad" (todas `Incidente`) y "Eventos de
+  capacidad" (todas `Requerimiento`). La skill documenta la regla semántica que decide
+  entre ambas incluso fuera de las filas exactas: disponibilidad = ausencia, caída o
+  degradación del servicio (ej. disco lleno, porque hace caer el servicio); capacidad =
+  aumento, modificación o adición planeada sobre el servicio (ej. aumentar la capacidad
+  de disco).
+- **Vacío de datos documentado en su momento**: el catálogo entregado no traía columnas
+  de Categoría Operacional 1/2, obligatorias para `bmc_create_work_order`
+  (`min_length=1`, `src/bmc/type_defs/inputs.py:49-50`). Resuelto el 2026-09-07 (ver
+  entrada de esa fecha).
+- **Sin cambios de código**: mismo mecanismo de descubrimiento de skills por
+  convención de archivo (`categorias-<dominio>`) usado por `categorias-usuario`.
+
+---
+
 ## 2026-09-01 — test: cobertura de `get_huggingface_llm` y temperatura/max_new_tokens configurables
 
 - **`test/test_llm_huggingface.py`** (nuevo): dobles simples (`monkeypatch`) de
