@@ -81,6 +81,8 @@ class CreateIncidentValues(BaseModel):
     product_categorization_tier_1: str = Field(alias='Product Categorization Tier 1')
     product_categorization_tier_2: str = Field(alias='Product Categorization Tier 2')
     product_categorization_tier_3: str = Field(alias='Product Categorization Tier 3')
+    assigned_support_company: str = Field(alias='Assigned Support Company')
+    assigned_support_organization: str = Field(alias='Assigned Support Organization')
     assigned_group: str = Field(alias='Assigned Group')  # TODO: actualizar caracterización
 
 

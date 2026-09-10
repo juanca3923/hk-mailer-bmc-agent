@@ -6,7 +6,13 @@ from typing import Protocol
 from bmc.config.settings import BmcSettings
 from bmc.exceptions.mcp import MCPClientError
 from bmc.libs.api_client import BmcClient
-from bmc.libs.business_defaults import DEFAULT_COMPANY, DEFAULT_FIRST_NAME, DEFAULT_LAST_NAME
+from bmc.libs.business_defaults import (
+    DEFAULT_COMPANY,
+    DEFAULT_FIRST_NAME,
+    DEFAULT_INCIDENT_SUPPORT_COMPANY,
+    DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
+    DEFAULT_LAST_NAME,
+)
 from bmc.libs.constants import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
@@ -156,6 +162,8 @@ class IncidentOperations:
             product_categorization_tier_1=data.product_categorization_tier_1,
             product_categorization_tier_2=data.product_categorization_tier_2,
             product_categorization_tier_3=data.product_categorization_tier_3,
+            assigned_support_company=DEFAULT_INCIDENT_SUPPORT_COMPANY,
+            assigned_support_organization=DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
             assigned_group=data.assigned_group,
         )
         try:

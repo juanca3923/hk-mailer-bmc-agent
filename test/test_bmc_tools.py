@@ -127,6 +127,8 @@ def test_bmc_create_incident_has_no_impact_urgency_params_but_has_assigned_group
     schema_keys = set(bmc_tools.bmc_create_incident.args.keys())
     assert 'impact' not in schema_keys
     assert 'urgency' not in schema_keys
+    assert 'assigned_support_company' not in schema_keys
+    assert 'assigned_support_organization' not in schema_keys
     assert 'assigned_group' in schema_keys
 
 
