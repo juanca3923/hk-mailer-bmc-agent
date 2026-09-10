@@ -4,6 +4,166 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-07 — feat: Categoría Operacional 1/2/3 para el catálogo de "eventos"
+
+- **`skills/categorias-eventos.md`**: la mesa de servicio entregó las columnas
+  `Categoria Operacional 1/2/3` que faltaban para las dos subtablas del dominio
+  "eventos". Cierra el vacío documentado en el commit anterior (2026-09-02).
+- Ambas subtablas quedan con `Categoria Operacional 1 = Aplicacion` y
+  `Categoria Operacional 3` vacía; `Categoria Operacional 2` distingue el tipo de
+  evento (`Evento de disponibilidad` en Incidente, `Evento de capacidad` en
+  Requerimiento), reforzando la regla semántica ya documentada en la skill.
+- Con este dato, `bmc_create_work_order` ya puede categorizar un caso de "eventos de
+  capacidad" sin depender de una pregunta adicional al usuario — se retira la
+  instrucción de no crear el Work Order sin confirmar antes.
+- **Sin cambios de código**: solo se completan filas de la tabla de datos.
+
+---
+
+## 2026-09-02 — feat: catálogo de categorización por dominio ("eventos": disponibilidad vs. capacidad)
+
+- **Nueva skill `skills/categorias-eventos.md`**: catálogo completo (entregado por la
+  mesa de servicio) del dominio "eventos" — servicios GTI (AWS, redes, aplicaciones,
+  backup, servidores, base de datos, seguridad perimetral, telefonía). Cierra el
+  pendiente dejado en el commit d2d29f4 ("cuando también exista el catálogo de
+  'eventos'").
+- **Dos subtablas en vez de una columna `Tipo Servicio` mezclada** (a diferencia de
+  `categorias-usuario`): "Eventos de disponibilidad" (todas `Incidente`) y "Eventos de
+  capacidad" (todas `Requerimiento`). La skill documenta la regla semántica que decide
+  entre ambas incluso fuera de las filas exactas: disponibilidad = ausencia, caída o
+  degradación del servicio (ej. disco lleno, porque hace caer el servicio); capacidad =
+  aumento, modificación o adición planeada sobre el servicio (ej. aumentar la capacidad
+  de disco).
+- **Vacío de datos documentado en su momento**: el catálogo entregado no traía columnas
+  de Categoría Operacional 1/2, obligatorias para `bmc_create_work_order`
+  (`min_length=1`, `src/bmc/type_defs/inputs.py:49-50`). Resuelto el 2026-09-07 (ver
+  entrada de esa fecha).
+- **Sin cambios de código**: mismo mecanismo de descubrimiento de skills por
+  convención de archivo (`categorias-<dominio>`) usado por `categorias-usuario`.
+
+---
+
+## 2026-09-01 — test: cobertura de `get_huggingface_llm` y temperatura/max_new_tokens configurables
+
+- **`test/test_llm_huggingface.py`** (nuevo): dobles simples (`monkeypatch`) de
+  `HuggingFaceEndpoint`/`ChatHuggingFace` — sin conexión real — verifican que
+  `HUGGINGFACE_BILL_TO` arma `server_kwargs={"bill_to": ...}` (y `{}` si está vacío),
+  que `HUGGINGFACE_PROVIDER` vacío se traduce en `provider=None`, y que
+  `_configure_huggingface_legacy_tls()` solo se invoca cuando
+  `HUGGINGFACE_ALLOW_LEGACY_TLS=true`.
+- **`src/config/settings.py`**: nuevos campos opcionales `llm_temperature` (env
+  `LLM_TEMPERATURE`, default `0.6`, compartido por los 4 proveedores) y
+  `huggingface_max_new_tokens` (env `HUGGINGFACE_MAX_NEW_TOKENS`, default `2048`).
+  Mismos valores que estaban hardcodeados en `src/agent/llm.py`, ahora configurables
+  sin cambiar el comportamiento por defecto.
+- **`src/agent/llm.py`**: `build_llm` y `get_huggingface_llm` leen esos valores de
+  `Settings` en vez de la constante fija.
+- **`.env.example`, `CLAUDE.md`**: documentadas las 2 variables nuevas.
+- **`test/test_settings_multiinstance.py`**: test de default/override para ambos
+  campos.
+- **Motivación**: auditoría cruzada desde otra sesión (portando el mismo soporte HF en
+  `knowledge-agent`) señaló que el commit 939231f de esta rama tenía cobertura de tests
+  delgada para `get_huggingface_llm` y valores de temperatura/tokens fijos sin punto de
+  configuración.
+
+---
+
+## 2026-09-01 — refactor: consolida procedimiento de categorización en `guia-creacion-tickets` (sin duplicación entre skills)
+
+- **`skills/guia-creacion-tickets/SKILL.md`** pasa a ser la única fuente del: mapeo
+  columna → parámetro (una tabla por concepto, válida para `bmc_create_work_order` y
+  `bmc_create_incident`), la traducción de Prioridad ES→EN, el significado de columnas
+  informativas de catálogos de dominio (`¿Susceptible de cierre en mesa?`) y qué hacer
+  si un caso no encaja en ninguna fila.
+- **`skills/categorias-incidentes.md`, `skills/categorias-requerimientos.md`,
+  `skills/categorias-usuario.md`**: recortadas a solo su tabla de datos + una línea de
+  contexto que remite a `guia-creacion-tickets` — ya no repiten el mapeo, la traducción
+  de prioridad ni el texto de fallback.
+- **Motivación**: al revisar el commit anterior se notó que cada skill de
+  categorización repetía el mismo procedimiento (mapeo, prioridad, "no inventes"), y
+  que `categorias-usuario.md` en particular traía información de proceso que no le
+  correspondía — debía limitarse a los casos que atiende y su tipificación.
+- **Balance medido**: la suma de las 4 skills bajó ~22% (20 180 → 15 673 bytes). Un
+  turno con dominio conocido (`categorias-usuario`) bajó ~15%; un turno genérico sin
+  dominio (`categorias-incidentes`/`categorias-requerimientos`) subió ligeramente
+  (~600 bytes) porque `guia-creacion-tickets` — que se lee siempre — creció al asumir
+  el mapeo consolidado. El ahorro compuesto crece con cada dominio nuevo que se agregue
+  (`categorias-eventos`, etc.), que ya no necesita repetir ese procedimiento.
+- **Sin cambios de comportamiento ni de código**: mismos datos de categorización,
+  mismo protocolo en `system.promt.md`; solo se reorganizó dónde vive cada pieza de
+  información.
+
+---
+
+## 2026-09-01 — feat: soporte de inferencia vía Hugging Face Inference Providers
+
+- **`LLM_PROVIDER=huggingface`** como opción nueva de proveedor, junto a `ollama`,
+  `openai` y `anthropic` (`src/config/settings.py`). Requiere `HUGGINGFACE_API_KEY` y
+  `HUGGINGFACE_MODEL` (validado en `Settings`).
+- **`src/agent/llm.py`**: `get_huggingface_llm()` construye un `ChatHuggingFace` sobre
+  `HuggingFaceEndpoint` (`langchain-huggingface`), enrutando por
+  `https://router.huggingface.co` (HF Inference Providers). Soporta `HUGGINGFACE_PROVIDER`
+  (proveedor detrás del router, ej. `together`/`novita`/`cerebras`) y
+  `HUGGINGFACE_BILL_TO` (organización a la que facturar).
+- **`HUGGINGFACE_ALLOW_LEGACY_TLS`** (solo dev): relaja `SECLEVEL` de OpenSSL para el
+  cliente HTTP de `huggingface_hub` en redes corporativas con inspección TLS cuyo CA
+  raíz usa clave débil o firma SHA-1; la verificación de certificado sigue activa.
+  Nunca debe activarse en producción.
+- **Riesgo a tener en cuenta**: el tool calling con modelos servidos vía HF **no está
+  garantizado** — depende del modelo/proveedor elegido, a diferencia de OpenAI/Anthropic.
+  Este agente depende de tool calling para todas sus operaciones (BMC, memoria, skills),
+  así que hay que validar explícitamente el modelo elegido antes de usarlo en producción.
+- **Dependencia nueva**: `langchain-huggingface==1.2.2` (`pyproject.toml`, `uv.lock`).
+- **`.env.example` y `CLAUDE.md`**: documentadas las nuevas variables de entorno.
+- **Test**: `test/test_settings_multiinstance.py::test_huggingface_provider_requires_api_key_and_model`.
+
+---
+
+## 2026-09-01 — feat: catálogo de categorización por dominio ("usuario de red") y el catálogo de dominio decide Incidente vs Work Order
+
+- **Nueva skill `skills/categorias-usuario.md`**: catálogo completo (entregado por la
+  mesa de servicio, no una muestra) de categorización del dominio "usuario de red"
+  (altas/bajas de usuario, contraseñas, estado de casos). A diferencia de
+  `categorias-incidentes`/`categorias-requerimientos` (separadas por tipo), esta tabla
+  trae una columna **`Tipo Servicio`** por fila que decide si el ticket es Incidente o
+  Work Order, más `Escalamiento 1` (mapea a `assigned_group`) y
+  `¿Susceptible de cierre en mesa?` (documentada como informativa, sin regla dura de
+  auto-cierre).
+- **Motivación del reordenamiento**: se depuró un caso real ("desbloqueo de usuario")
+  donde el LLM decidió el tipo de ticket con el heurístico genérico de
+  `guia-creacion-tickets` (semántico: "roto" → Incidente) y nunca llegó a revisar el
+  catálogo de dominio, que ya tenía una fila exacta clasificada como Work Order — pese a
+  que el system prompt cargado sí incluía la skill (confirmado en
+  `logs/agent_agent_bmc.log`). La causa era de **orden/precedencia**, no de código.
+- **`system.promt.md`**: el protocolo de creación ahora busca primero un dominio
+  conocido (stem `categorias-<dominio>`, patrón genérico — no
+  `categorias-requerimientos-<dominio>`); si una fila de esa tabla aplica, su
+  `Tipo Servicio` decide el tipo y **tiene prioridad** sobre el heurístico genérico de
+  `guia-creacion-tickets`, que pasa a ser el *fallback* cuando no hay match de dominio.
+  Los flujos de ejemplo (interactivo y A2A) se reescribieron para reflejar este orden.
+- **`skills/guia-creacion-tickets/SKILL.md`**: la sección "Work Order vs Incidente" y
+  el checklist final ahora anteponen la columna `Tipo Servicio` del catálogo de dominio
+  al heurístico semántico.
+- **Asimetría documentada en la skill de dominio**: `bmc_create_incident` no recibe
+  `priority` (Impact/Urgency quedan fijos) — si `Tipo Servicio = Incidente`, la columna
+  Prioridad de la fila se ignora; y `product_cat_tier_*` (Work Order) vs
+  `product_categorization_tier_*` (Incidente) son nombres de parámetro distintos para
+  el mismo dato de la tabla.
+- **Sin cambios de código**: `bmc_tools.py`, `constants.py`, `business_defaults.py` y
+  el mecanismo de descubrimiento de skills (`src/config/skill_catalog.py`) ya soportan
+  esto sin modificación — el catálogo de skills se descubre por convención de archivo,
+  no por registro manual.
+- **Acción operativa**: tras este cambio hay que reconstruir el agente
+  (`build_agent` / reinicio del proceso, o `POST /stop` + `POST /start` en HTTP) para
+  que el bloque `<skills>` del system prompt refleje el stem `categorias-usuario` (ya
+  no `categorias-requerimientos-usuario`).
+- **Fuera de alcance de este cambio**: no se diseñó todavía la "especialización" del
+  agente por dominio a nivel de arquitectura (multi-instancia u orquestador) ni se
+  codificó ninguna regla dura de auto-cierre — quedan para un cambio posterior, cuando
+  también exista el catálogo de "eventos".
+
+---
+
 ## 2026-07-30 — fix: completa la sincronización con bmc-mcp (grupo asignado en WO y enum de Status)
 
 - **`bmc_create_work_order`** ganó el parámetro `assigned_group` (default
