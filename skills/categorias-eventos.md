@@ -50,7 +50,7 @@ para cualquier caso de este dominio (ver esa skill, sección 1).
 | Requerimiento | Aplicacion | Evento de capacidad | | GTI | AWS | Infraestructura | CRITICO | NO | GTI.CLOUD |
 | Requerimiento | Aplicacion | Evento de capacidad | | GTI | Redes | Infraestructura | CRITICO | NO | GTI.REDES |
 | Requerimiento | Aplicacion | Evento de capacidad | | GTI | Administracion de aplicaciones | Plataforma | CRITICO | NO | GTI.APLICACIONES |
-| Requerimiento | Aplicacion | Evento de capacidad | | GTI | Backup | Plataforma | CRITICO | NO | GTI.BACKUP |
+| Requerimiento | Aplicacion | Evento de capacidad | | GTI | Backup | Plataforma | CRITICO | NO | GTI.BACKUPS |
 | Requerimiento | Aplicacion | Evento de capacidad | | GTI | Servidor microsoft | Plataforma | CRITICO | NO | GTI.MICROSOFT |
 | Requerimiento | Aplicacion | Evento de capacidad | | GTI | Seguridad perimetral | Infraestructura | CRITICO | NO | GTI.CIBERSEGURIDAD SOC |
 | Requerimiento | Aplicacion | Evento de capacidad | | GTI | Base de datos | Plataforma | CRITICO | NO | GTI.DBA |
@@ -58,9 +58,11 @@ para cualquier caso de este dominio (ver esa skill, sección 1).
 | Requerimiento | Aplicacion | Evento de capacidad | | Software | Telefonia especializada | Aplicacion | CRITICO | NO | TELEFONIA |
 
 Nota: la subtabla de capacidad no trae fila de "Virtualizacion" (sí presente en
-disponibilidad) y difiere en el nombre exacto de `Escalamiento 1` para Backup
-(`GTI.BACKUPS` en disponibilidad vs. `GTI.BACKUP` en capacidad) — se transcribe tal
-cual fue entregado por la mesa de servicio, sin corregir la asimetría.
+disponibilidad). El `Escalamiento 1` de Backup se corrigió de `GTI.BACKUP` a
+`GTI.BACKUPS` (2026-09-11) para que coincida con disponibilidad: `GTI.BACKUP` no
+existe como grupo real en BMC — confirmado en la corrida 4 de pruebas end-to-end,
+donde ese caso quedó reasignado a `SOPORTE MESA DE SERVICIO` pese al fix de grupo
+de Work Order, mientras que `GTI.BACKUPS` sí fue respetado por BMC.
 
 Si el caso no encaja en ninguna fila de ninguna subtabla, ver `guia-creacion-tickets`
 sección 3.

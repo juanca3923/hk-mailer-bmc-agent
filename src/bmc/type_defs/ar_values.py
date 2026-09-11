@@ -58,6 +58,8 @@ class CreateWorkOrderValues(BaseModel):
     product_cat_tier_2: str = Field(alias='Product Cat Tier 2 (2)')
     product_cat_tier_3: str = Field(alias='Product Cat Tier 3 (2)')
     priority: str = Field(default='Medium', alias='Priority')  # TODO: actualizar caracterización
+    support_company: str = Field(alias='Support Company')
+    support_organization: str = Field(alias='Support Organization')
     assigned_group: str = Field(alias='Support Group Name')  # TODO: actualizar caracterización
 
 

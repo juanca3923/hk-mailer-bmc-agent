@@ -222,6 +222,8 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters.
 | `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` | `ARUS` | Fixed incident `Assigned Support Company`, required alongside `Assigned Support Organization` for BMC to honor the `Assigned Group` sent by the caller (otherwise BMC silently reassigns the incident per its own ITSM configuration) |
 | `BMC_DEFAULT_INCIDENT_SUPPORT_ORGANIZATION` | `MAYA` | Fixed incident `Assigned Support Organization` — see `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` |
 | `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` (not a fixed injection — the LLM should override it with the value from the `categorias-requerimientos` skill row) |
+| `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` | `ARUS` | Fixed work order `Support Company`, required alongside `Support Organization` for BMC to honor the `Support Group Name` sent by the caller (otherwise BMC silently reassigns the work order per its own ITSM configuration) |
+| `BMC_DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION` | `MAYA` | Fixed work order `Support Organization` — see `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` |
 
 ### Required — LLM
 

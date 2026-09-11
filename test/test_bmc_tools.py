@@ -7,14 +7,16 @@ import json
 import pytest
 
 from agent.internal_tools import bmc_tools
+from bmc.libs.business_defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from bmc.libs.constants import (
     AR_FIELD_REQUEST_ID,
     AR_FIELD_STATUS,
     AR_FIELD_SUBMITTER,
+    AR_FIELD_WORK_ORDER_ID_RESPONSE,
     INCIDENT_STATUSES,
     WORK_ORDER_STATUSES,
 )
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from bmc.type_defs.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
 
 
 class FakeSettings:
@@ -39,6 +41,13 @@ class FakeClient:
         self._request_id = request_id
         self.update_calls: list[tuple[str, dict]] = []
         self.post_incident_work_log_calls: list[object] = []
+        self.create_work_order_calls: list[dict] = []
+
+    async def create_work_order_entry(self, json_body: dict) -> BmcCreateEntryResponse:
+        self.create_work_order_calls.append(json_body)
+        return BmcCreateEntryResponse(
+            values=BmcEntryValues(data={AR_FIELD_WORK_ORDER_ID_RESPONSE: 'WO1', 'Summary': 'S'}),
+        )
 
     async def search_work_order(self, work_order_id: str) -> BmcEntryListResponse:  # noqa: ARG002
         return self._search_result()
@@ -146,9 +155,35 @@ def test_bmc_close_incident_has_no_obsolete_status_params() -> None:
     assert 'final_status' not in schema_keys
 
 
-def test_bmc_create_work_order_has_assigned_group_param() -> None:
+def test_bmc_create_work_order_has_no_support_company_organization_params_but_has_assigned_group() -> None:
     schema_keys = set(bmc_tools.bmc_create_work_order.args.keys())
+    assert 'support_company' not in schema_keys
+    assert 'support_organization' not in schema_keys
     assert 'assigned_group' in schema_keys
+
+
+async def test_bmc_create_work_order_sends_support_company_and_organization(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeClient()
+    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+
+    raw = await bmc_tools.bmc_create_work_order.ainvoke({
+        'summary': 'S',
+        'detailed_description': 'DD',
+        'categorization_tier_1': 'T1',
+        'categorization_tier_2': 'T2',
+        'product_cat_tier_1': 'P1',
+        'product_cat_tier_2': 'P2',
+        'product_cat_tier_3': 'P3',
+        'assigned_group': 'GTI.GROUP',
+    })
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert len(client.create_work_order_calls) == 1
+    body_values = client.create_work_order_calls[0]['values']
+    assert body_values['Support Company'] == DEFAULT_WORK_ORDER_SUPPORT_COMPANY
+    assert body_values['Support Organization'] == DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
+    assert body_values['Support Group Name'] == 'GTI.GROUP'
 
 
 def test_status_params_expose_enum_to_the_model() -> None:

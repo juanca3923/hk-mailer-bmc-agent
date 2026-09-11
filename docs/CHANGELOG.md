@@ -4,6 +4,43 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-11 — fix: corrige grupo inválido de Backup en el catálogo de capacidad
+
+- **`skills/categorias-eventos.md`**: la fila de Backup en la subtabla "Eventos de
+  capacidad" (Work Order) apuntaba a `GTI.BACKUP`, un grupo que no existe como tal en
+  BMC. Se corrigió a `GTI.BACKUPS`, igual que en la subtabla de disponibilidad
+  (Incidente).
+- **Contexto**: detectado en la corrida 4 de pruebas end-to-end del fix de grupo de
+  Work Order — ese caso puntual quedó reasignado a `SOPORTE MESA DE SERVICIO` pese al
+  fix, mientras que una prueba con `GTI.BACKUPS` sí fue respetada por BMC
+  (`WO0000000107923`). No es una regresión del fix, sino un dato de catálogo.
+
+---
+
+## 2026-09-11 — fix: BMC ignoraba el `Support Group Name` de work orders sin dos campos adicionales
+
+- **Problema confirmado en Postman**: `WOI:WorkOrderInterface_Create` acepta el POST con
+  `Support Group Name` correcto pero BMC no lo respetaba salvo que viajaran junto con él
+  dos campos adicionales — mismo síntoma que el fix de incidentes del 2026-09-10, esta
+  vez validado directamente contra el formulario de Work Order.
+- **Fix**: se envían siempre dos campos fijos junto con `Support Group Name`:
+  `Support Company` (`ARUS`) y `Support Organization` (`MAYA`), configurables vía
+  `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` / `BMC_DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION`
+  en `business_defaults.py`. Con los tres campos juntos, BMC sí respeta el grupo enviado
+  por el caller.
+- **Nombres de campo distintos a los de incidente**: el formulario de Work Order usa
+  `Support Company`/`Support Organization` (sin el prefijo `Assigned`), a diferencia de
+  `Assigned Support Company`/`Assigned Support Organization` en incidentes — confirmado
+  en Postman contra ambos formularios.
+- **Alcance**: `CreateWorkOrderValues` (`src/bmc/type_defs/ar_values.py`) y la inyección
+  en `bmc_create_work_order` (`src/agent/internal_tools/bmc_tools.py`), ya que la
+  creación de Work Order no pasa por una clase `WorkOrderOperations.create()` como sí
+  ocurre con `IncidentOperations`.
+- **Sin cambios de superficie del tool**: los dos campos nuevos son fijos por ambiente,
+  igual que en el fix de incidentes — no son parámetros de `bmc_create_work_order`.
+
+---
+
 ## 2026-09-10 — fix: BMC ignoraba el `Assigned Group` de incidentes sin dos campos adicionales
 
 - **Problema confirmado en Postman**: `HPD:IncidentInterface_Create` acepta el POST con
