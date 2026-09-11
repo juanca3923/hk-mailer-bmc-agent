@@ -24,6 +24,8 @@ from bmc.libs.business_defaults import (
     DEFAULT_INCIDENT_ASSIGNED_GROUP,
     DEFAULT_LAST_NAME,
     DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
+    DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
+    DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
 )
 from bmc.libs.constants import (
     AR_FIELD_REQUEST_ID,
@@ -169,8 +171,10 @@ async def bmc_create_work_order(
     Take the category tiers, priority and ``assigned_group`` from a single row of the
     ``categorias-requerimientos`` skill: creation will still succeed for combinations
     outside that catalog (there is no backend validation), but the ticket may end up
-    inconsistently categorized. Company, submitter and customer identity are fixed per
-    environment configuration and must not be provided by the caller.
+    inconsistently categorized. Company, submitter, customer identity and the
+    Support Company/Organization (BMC only honors the caller's ``Support Group Name``
+    when these two travel together in the same payload) are fixed per environment
+    configuration and must not be provided by the caller.
 
     Parameters
     ----------
@@ -233,6 +237,8 @@ async def bmc_create_work_order(
         product_cat_tier_2=data.product_cat_tier_2,
         product_cat_tier_3=data.product_cat_tier_3,
         priority=data.priority,
+        support_company=DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
+        support_organization=DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
         assigned_group=data.assigned_group,
     )
     body = EntryValuesMapper.wrap_entry_body(values)

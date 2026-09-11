@@ -40,8 +40,10 @@ class IncidentNumberInput(BaseModel):
 class CreateWorkOrderInput(BaseModel):
     """Parameters to create a work order in BMC.
 
-    Company, submitter and customer identity are injected from ``business_defaults``
-    by the tool layer and are not part of this input.
+    Company, submitter, customer identity and the Support Company/Organization (BMC
+    only honors the caller's ``Support Group Name`` when these two travel together in
+    the same payload) are injected from ``business_defaults`` by the tool layer and are
+    not part of this input.
     """
 
     summary: str = Field(..., min_length=1)
