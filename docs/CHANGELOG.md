@@ -4,6 +4,19 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-11 — fix: corrige grupo inválido de Backup en el catálogo de capacidad
+
+- **`skills/categorias-eventos.md`**: la fila de Backup en la subtabla "Eventos de
+  capacidad" (Work Order) apuntaba a `GTI.BACKUP`, un grupo que no existe como tal en
+  BMC. Se corrigió a `GTI.BACKUPS`, igual que en la subtabla de disponibilidad
+  (Incidente).
+- **Contexto**: detectado en la corrida 4 de pruebas end-to-end del fix de grupo de
+  Work Order — ese caso puntual quedó reasignado a `SOPORTE MESA DE SERVICIO` pese al
+  fix, mientras que una prueba con `GTI.BACKUPS` sí fue respetada por BMC
+  (`WO0000000107923`). No es una regresión del fix, sino un dato de catálogo.
+
+---
+
 ## 2026-09-11 — fix: BMC ignoraba el `Support Group Name` de work orders sin dos campos adicionales
 
 - **Problema confirmado en Postman**: `WOI:WorkOrderInterface_Create` acepta el POST con
