@@ -63,8 +63,10 @@ class CreateWorkOrderInput(BaseModel):
 class CreateIncidentInput(BaseModel):
     """Parameters to create an incident in BMC.
 
-    Company, submitter and assigned group are injected from ``business_defaults``
-    by the tool layer and are not part of this input.
+    Company, submitter, assigned group and the Assigned Support Company/Organization
+    (BMC only honors the caller's ``Assigned Group`` when these two travel together in
+    the same payload) are injected from ``business_defaults`` by the tool layer and are
+    not part of this input.
     """
 
     description: str = Field(..., min_length=1)

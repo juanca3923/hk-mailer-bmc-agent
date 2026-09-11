@@ -1,5 +1,6 @@
 """Unit tests for IncidentOperations.create() and the categorization fallback workaround."""
 
+from bmc.libs.business_defaults import DEFAULT_INCIDENT_SUPPORT_COMPANY, DEFAULT_INCIDENT_SUPPORT_ORGANIZATION
 from bmc.libs.constants import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
@@ -22,8 +23,10 @@ class FakeClient:
         self._request_id = request_id
         self.update_calls: list[tuple[str, dict]] = []
         self.post_incident_work_log_calls: list[object] = []
+        self.create_incident_calls: list[dict] = []
 
-    async def create_incident_entry(self, json_body: dict) -> BmcCreateEntryResponse:  # noqa: ARG002
+    async def create_incident_entry(self, json_body: dict) -> BmcCreateEntryResponse:
+        self.create_incident_calls.append(json_body)
         return BmcCreateEntryResponse(
             values=BmcEntryValues(data={AR_FIELD_INCIDENT_NUMBER: 'INC1', 'Description': 'D'}),
         )
@@ -107,3 +110,14 @@ async def test_create_incident_skips_fallback_without_request_id() -> None:
     assert client.update_calls == []
     assert client.post_incident_work_log_calls == []
     assert 'categorization_fallback_applied: false' in result.message
+
+
+async def test_create_incident_sends_assigned_support_company_and_organization() -> None:
+    client = FakeClient(search_tier1='T1', search_tier2='T2')
+    result = await IncidentOperations(FakeHandler(client)).create(_create_input())
+    assert result.success is True
+    assert len(client.create_incident_calls) == 1
+    body_values = client.create_incident_calls[0]['values']
+    assert body_values['Assigned Support Company'] == DEFAULT_INCIDENT_SUPPORT_COMPANY
+    assert body_values['Assigned Support Organization'] == DEFAULT_INCIDENT_SUPPORT_ORGANIZATION
+    assert body_values['Assigned Group'] == 'GTI.GROUP'

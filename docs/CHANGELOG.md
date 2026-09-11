@@ -4,6 +4,26 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-10 — fix: BMC ignoraba el `Assigned Group` de incidentes sin dos campos adicionales
+
+- **Problema confirmado en Postman**: `HPD:IncidentInterface_Create` acepta el POST con
+  `Assigned Group` correcto (p. ej. `GTI.CLOUD`) pero BMC no lo respeta y reasigna el
+  incidente a una cola de asignación por defecto propia de su configuración ITSM (varía
+  según la Company del ticket, algo que el agente no controla ni decide) — el incidente
+  queda creado pero en la cola equivocada, sin error.
+- **Fix**: se envían siempre dos campos fijos junto con `Assigned Group`:
+  `Assigned Support Company` (`ARUS`) y `Assigned Support Organization` (`MAYA`),
+  configurables vía `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` /
+  `BMC_DEFAULT_INCIDENT_SUPPORT_ORGANIZATION` en `business_defaults.py`. Con los tres
+  campos juntos, BMC sí respeta el grupo enviado por el caller.
+- **Alcance solo incidentes**: `CreateWorkOrderValues`, `WorkOrderOperations` y el tool
+  `bmc_create_work_order` no se tocan; ese flujo se validará por separado más adelante.
+- **Sin cambios de superficie del tool**: los dos campos nuevos son fijos por ambiente,
+  igual que `Company`/`First_Name`/`Last_Name` — no son parámetros de
+  `bmc_create_incident` porque el catálogo Maya no trae esa información por fila.
+
+---
+
 ## 2026-09-07 — feat: Categoría Operacional 1/2/3 para el catálogo de "eventos"
 
 - **`skills/categorias-eventos.md`**: la mesa de servicio entregó las columnas
