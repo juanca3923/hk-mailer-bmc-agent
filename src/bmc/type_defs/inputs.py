@@ -46,8 +46,25 @@ class CreateWorkOrderInput(BaseModel):
     not part of this input.
     """
 
-    summary: str = Field(..., min_length=1)
-    detailed_description: str = Field(..., min_length=1)
+    summary: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            'Asunto breve y específico: qué se solicita y para quién o qué sistema '
+            '(ej. "Alta de usuario de red - Juan Perez, sede Bogota"), nunca una '
+            'etiqueta genérica como "Solicitud de usuario".'
+        ),
+    )
+    detailed_description: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            'Descripción detallada de la solicitud: quién la requiere, qué se debe '
+            'hacer exactamente, y cualquier dato necesario para ejecutarla (accesos, '
+            'equipo, ubicación, fechas). Debe bastar para que la mesa ejecute la '
+            'tarea sin volver a preguntar al usuario.'
+        ),
+    )
     categorization_tier_1: str = Field(..., min_length=1)
     categorization_tier_2: str = Field(..., min_length=1)
     product_cat_tier_1: str = Field(..., min_length=1)
@@ -71,8 +88,26 @@ class CreateIncidentInput(BaseModel):
     not part of this input.
     """
 
-    description: str = Field(..., min_length=1)
-    detailed_decription: str = Field(..., min_length=1)
+    description: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            'Asunto breve y específico: qué servicio o sistema se afectó y el '
+            'síntoma concreto (ej. "Aplicacion de nomina caida para todos los '
+            'usuarios de la sede Medellin"), nunca una etiqueta genérica como '
+            '"No funciona el sistema".'
+        ),
+    )
+    detailed_decription: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            'Descripción detallada del incidente: quién lo reporta, cuándo comenzó, '
+            'el síntoma exacto observado, el sistema/aplicación afectado y el '
+            'alcance (cuántos usuarios o qué sede). Debe bastar para diagnosticar '
+            'sin volver a preguntar al usuario.'
+        ),
+    )
     status: IncidentStatusField = Field(
         default=DEFAULT_INCIDENT_STATUS,
         json_schema_extra={'enum': list(INCIDENT_STATUSES)},

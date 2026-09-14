@@ -4,6 +4,25 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — mejora: refuerza la calidad del asunto y la descripción de tickets
+
+- **Problema detectado**: el protocolo de creación de tickets (`system.promt.md`,
+  `guia-creacion-tickets`) y el schema de las tools (`inputs.py`, `bmc_tools.py`)
+  reforzaban con detalle la categorización (Cat Op/Prod, priority, assigned_group),
+  pero el asunto (`summary`/`description`) y la descripción detallada
+  (`detailed_description`/`detailed_decription`) solo tenían validación de no-vacío
+  (`min_length=1`), sin ninguna guía de contenido — quedaban a criterio libre del LLM.
+- **Cambio**: se agregó una sección de criterios de calidad (con ejemplo bueno/malo) a
+  `skills/guia-creacion-tickets/SKILL.md` y un ítem al checklist final; se enriquecieron
+  los `Field(description=...)` de `CreateWorkOrderInput`/`CreateIncidentInput` en
+  `src/bmc/type_defs/inputs.py` y los docstrings NumPy correspondientes en
+  `src/agent/internal_tools/bmc_tools.py`, para que el LLM reciba la guía directamente
+  en el schema de la tool, no solo en el prompt.
+- **Sin cambios de contrato**: mismos nombres, tipos y valores por defecto de los
+  parámetros existentes.
+
+---
+
 ## 2026-09-11 — fix: corrige grupo inválido de Backup en el catálogo de capacidad
 
 - **`skills/categorias-eventos.md`**: la fila de Backup en la subtabla "Eventos de

@@ -110,14 +110,33 @@ sección 2: categoría operacional 1/2, categorización de producto (2-3 niveles
   puede quedar en un estado intermedio (`In Progress`/`Completed`); no asumas que quedó
   cerrado — recomienda reintentar el cierre o escalar a un humano.
 
-## 6. Modo automatizado (A2A)
+## 6. Calidad del asunto y la descripción
+
+El `summary`/`description` (asunto) y el `detailed_description`/`detailed_decription`
+(descripción detallada) de un ticket **no son campos de relleno**: la mesa y el
+solicitante dependen de ellos para entender el caso sin volver a preguntar. Redáctalos
+siempre a partir del mensaje real del usuario, nunca con una etiqueta genérica.
+
+- **Asunto**: breve y específico — qué se afectó o qué se solicita, y para quién o qué
+  sistema. Evita frases genéricas como "Solicitud de usuario" o "No funciona el
+  sistema"; usa algo como "Alta de usuario de red — Juan Pérez, sede Bogotá" o
+  "Aplicación de nómina caída para todos los usuarios de la sede Medellín".
+- **Descripción detallada**: incluye quién reporta o solicita, cuándo empezó (para
+  incidentes) o para cuándo se necesita (para Work Orders), el síntoma o
+  requerimiento exacto, el sistema/aplicación involucrado, y el alcance (cuántos
+  usuarios o qué sede). Debe bastar para que la mesa actúe o diagnostique sin
+  contactar de nuevo al usuario.
+- Nunca copies el asunto como descripción ni dejes la descripción sin contenido real
+  (ej. "Ver asunto"): son dos campos con propósito distinto.
+
+## 7. Modo automatizado (A2A)
 
 Los guards de arriba aplican igual cuando el mensaje viene de otro agente
 orquestador. Si `bmc_close_work_order`/`bmc_close_incident` devuelve `success: false`
 por un guard, refleja ese fallo en el resumen estructurado que devuelves — no lo
 silencies ni reportes el ticket como cerrado si no lo está.
 
-## 7. Checklist final antes de llamar `bmc_create_work_order`/`bmc_create_incident`
+## 8. Checklist final antes de llamar `bmc_create_work_order`/`bmc_create_incident`
 
 1. ¿Es Work Order o Incidente? Si aplicó una skill de dominio, usa su columna
    `Tipo Servicio`; si no, confirma con el heurístico de la sección 1.
@@ -125,6 +144,8 @@ silencies ni reportes el ticket como cerrado si no lo está.
    una única fila completa, mapeada según la sección 2?
 3. ¿Los campos obligatorios (descripción, categorización, y priority/assigned_group
    cuando aplique) están completos con valores reales, no inventados?
-4. ¿Evitaste pasar campos fijados por el entorno (company, identidad, impact/urgency)?
-5. Si el caso no encajaba en ninguna fila del catálogo, ¿dejaste eso explícito en vez
+4. ¿El asunto y la descripción detallada son específicos y están redactados a partir
+   del caso real (sección 6), no una etiqueta genérica?
+5. ¿Evitaste pasar campos fijados por el entorno (company, identidad, impact/urgency)?
+6. Si el caso no encajaba en ninguna fila del catálogo, ¿dejaste eso explícito en vez
    de simular certeza?

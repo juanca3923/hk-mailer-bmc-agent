@@ -179,9 +179,13 @@ async def bmc_create_work_order(
     Parameters
     ----------
     summary : str
-        Short summary of the work order.
+        Short, specific subject line: what is requested and for whom or which
+        system (e.g. "New network user - Juan Perez, Bogota site"), never a
+        generic label like "User request".
     detailed_description : str
-        Detailed description text.
+        Full request detail: who needs it, exactly what must be done, and any
+        data required to execute it (access, equipment, location, dates) —
+        enough for the service desk to act without asking the user again.
     categorization_tier_1 : str
         Operational categorization tier 1, from the ``categorias-requerimientos`` skill.
     categorization_tier_2 : str
@@ -488,9 +492,14 @@ async def bmc_create_incident(
     Parameters
     ----------
     description : str
-        Short incident description.
+        Short, specific subject line: which service/system is affected and the
+        concrete symptom (e.g. "Payroll app down for all users at Medellin
+        site"), never a generic label like "System not working".
     detailed_decription : str
-        Detailed description (preserves AR field spelling).
+        Full incident detail (preserves AR field spelling): who reported it,
+        when it started, the exact symptom observed, the affected
+        system/application, and scope (how many users or which site) —
+        enough to diagnose without asking the user again.
     product_categorization_tier_1 : str
         Product categorization tier 1, from the ``categorias-incidentes`` skill.
     product_categorization_tier_2 : str
