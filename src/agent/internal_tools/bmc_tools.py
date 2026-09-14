@@ -169,15 +169,20 @@ async def bmc_create_work_order(
 ) -> str:
     """Create a Work Order in BMC Helix ARUS (WOI:WorkOrderInterface_Create).
 
-    Take the category tiers, priority and ``assigned_group`` from a single row of the
-    ``categorias-requerimientos`` skill: creation will still succeed for combinations
-    outside that catalog (there is no backend validation), but the ticket may end up
-    inconsistently categorized. Company, customer identity and the Support
-    Company/Organization (BMC only honors the caller's ``Support Group Name`` when
-    these two travel together in the same payload) are fixed per environment
-    configuration and must not be provided by the caller. The submitter's First/Last
-    Name are resolved from ``reporter_email`` against BMC's ``CTM:People`` — this
-    call fails with no Work Order created if that person cannot be found.
+    Take the category tiers and priority from a single row of a matching
+    ``categorias-<dominio>`` skill (e.g. ``categorias-eventos``,
+    ``categorias-usuario``) when one applies to this request: creation will still
+    succeed for combinations outside that catalog (there is no backend validation),
+    but the ticket may end up inconsistently categorized. When NO domain skill
+    applies, use the fixed catch-all combination documented in
+    ``guia-creacion-tickets`` (section 1) instead — read that skill for the exact
+    values, never guess a different combination or leave these blank. Company,
+    customer identity and the Support Company/Organization (BMC only honors the
+    caller's ``Support Group Name`` when these two travel together in the same
+    payload) are fixed per environment configuration and must not be provided by the
+    caller. The submitter's First/Last Name are resolved from ``reporter_email``
+    against BMC's ``CTM:People`` — this call fails with no Work Order created if
+    that person cannot be found.
 
     Parameters
     ----------
@@ -196,22 +201,24 @@ async def bmc_create_work_order(
         this value — ask the user for it, or take it from the incoming
         structured message in A2A mode.
     categorization_tier_1 : str
-        Operational categorization tier 1, from the ``categorias-requerimientos`` skill.
+        Operational categorization tier 1: from the matching
+        ``categorias-<dominio>`` skill row when one applies, otherwise the
+        catch-all value from ``guia-creacion-tickets`` (section 1).
     categorization_tier_2 : str
-        Operational categorization tier 2, same catalog row.
+        Operational categorization tier 2, same row/catch-all as tier 1.
     product_cat_tier_1 : str
-        Product categorization tier 1, same catalog row.
+        Product categorization tier 1, same row/catch-all as tier 1.
     product_cat_tier_2 : str
-        Product categorization tier 2, same catalog row.
+        Product categorization tier 2, same row/catch-all as tier 1.
     product_cat_tier_3 : str
-        Product categorization tier 3, same catalog row.
+        Product categorization tier 3, same row/catch-all as tier 1.
     status : str, optional
         Work order status label, by default ``'Assigned'``.
     priority : str, optional
         Priority, taken from the same catalog row, by default ``'Medium'``.
     assigned_group : str, optional
         Support group, taken from the same catalog row; keep the default only when
-        the catalog row does not specify one.
+        no domain skill applies.
 
     Returns
     -------
@@ -509,13 +516,17 @@ async def bmc_create_incident(
 ) -> str:
     """Create an Incident in BMC Helix ARUS (HPD:IncidentInterface_Create).
 
-    Take the category tiers and ``assigned_group`` from a single row of the
-    ``categorias-incidentes`` skill. Company, Impact and Urgency are fixed per
-    environment configuration and must not be provided by the caller: every
-    incident created here keeps a fixed Impact/Urgency (Critical/Extensive), matching
-    the current bmc-mcp behavior. The submitter's First/Last Name are resolved from
-    ``reporter_email`` against BMC's ``CTM:People`` — this call fails with no
-    Incident created if that person cannot be found.
+    Take the category tiers and ``assigned_group`` from a single row of a matching
+    ``categorias-<dominio>`` skill (e.g. ``categorias-eventos``, ``categorias-usuario``)
+    whose ``Tipo Servicio`` column says ``Incidente`` for this case — there is no
+    generic incident catalog: a request outside every known domain is always filed as
+    a Work Order instead (see ``bmc_create_work_order``), never guessed as an
+    incident. Company, Impact and Urgency are fixed per environment configuration and
+    must not be provided by the caller: every incident created here keeps a fixed
+    Impact/Urgency (Critical/Extensive), matching the current bmc-mcp behavior. The
+    submitter's First/Last Name are resolved from ``reporter_email`` against BMC's
+    ``CTM:People`` — this call fails with no Incident created if that person cannot
+    be found.
 
     Parameters
     ----------
@@ -536,7 +547,7 @@ async def bmc_create_incident(
         reporter. Never invent or guess this value — ask the user for it, or
         take it from the incoming structured message in A2A mode.
     product_categorization_tier_1 : str
-        Product categorization tier 1, from the ``categorias-incidentes`` skill.
+        Product categorization tier 1, from the matching ``categorias-<dominio>`` skill row.
     product_categorization_tier_2 : str
         Product categorization tier 2, same catalog row.
     product_categorization_tier_3 : str

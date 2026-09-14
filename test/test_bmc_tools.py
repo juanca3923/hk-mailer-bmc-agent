@@ -324,3 +324,18 @@ def test_create_incident_input_rejects_description_over_100_chars() -> None:
 def test_close_incident_input_rejects_description_over_100_chars() -> None:
     with pytest.raises(pydantic.ValidationError):
         CloseIncidentInput(incident_number='INC1', description='x' * (INCIDENT_DESCRIPTION_MAX_LENGTH + 1))
+
+
+def test_bmc_create_work_order_requires_categorization_params_explicitly() -> None:
+    """No code-level catch-all: the LLM must always pass these five, sourced from a
+    domain skill row or from guia-creacion-tickets' documented catch-all values —
+    editable by the service desk without redeploying the agent."""
+    schema = bmc_tools.bmc_create_work_order.args_schema
+    for field_name in (
+        'categorization_tier_1',
+        'categorization_tier_2',
+        'product_cat_tier_1',
+        'product_cat_tier_2',
+        'product_cat_tier_3',
+    ):
+        assert schema.model_fields[field_name].is_required()

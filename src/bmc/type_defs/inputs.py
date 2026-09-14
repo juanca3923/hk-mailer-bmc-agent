@@ -47,7 +47,12 @@ class CreateWorkOrderInput(BaseModel):
     part of this input. The submitter's ``First Name``/``Last Name`` are NOT a fixed
     default: they are resolved from ``reporter_email`` via BMC's ``CTM:People``
     (see ``bmc.libs.helpers.person_lookup``) so the ticket is attributed to the real
-    person, not this agent's service-account persona.
+    person, not this agent's service-account persona. The five categorization fields
+    are always required: from a matching ``categorias-<dominio>`` skill row when one
+    applies, or from the fixed catch-all combination documented in
+    ``guia-creacion-tickets`` (section 1) when no domain applies — never a fixed
+    default in code, so the service desk can change that combination by editing the
+    skill file alone, without redeploying the agent.
     """
 
     summary: str = Field(
@@ -78,11 +83,35 @@ class CreateWorkOrderInput(BaseModel):
             'enough for the service desk to act without asking the user again.'
         ),
     )
-    categorization_tier_1: str = Field(..., min_length=1)
-    categorization_tier_2: str = Field(..., min_length=1)
-    product_cat_tier_1: str = Field(..., min_length=1)
-    product_cat_tier_2: str = Field(..., min_length=1)
-    product_cat_tier_3: str = Field(..., min_length=1)
+    categorization_tier_1: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            'Operational categorization tier 1: from the matching categorias-<dominio> '
+            'skill row when one applies, otherwise the fixed catch-all combination from '
+            'guia-creacion-tickets (section 1) — never invent a value.'
+        ),
+    )
+    categorization_tier_2: str = Field(
+        ...,
+        min_length=1,
+        description='Operational categorization tier 2, same row/catch-all as tier 1.',
+    )
+    product_cat_tier_1: str = Field(
+        ...,
+        min_length=1,
+        description='Product categorization tier 1, same row/catch-all as categorization_tier_1.',
+    )
+    product_cat_tier_2: str = Field(
+        ...,
+        min_length=1,
+        description='Product categorization tier 2, same row/catch-all as categorization_tier_1.',
+    )
+    product_cat_tier_3: str = Field(
+        ...,
+        min_length=1,
+        description='Product categorization tier 3, same row/catch-all as categorization_tier_1.',
+    )
     status: WorkOrderStatusField = Field(
         default=DEFAULT_WORK_ORDER_STATUS,
         json_schema_extra={'enum': list(WORK_ORDER_STATUSES)},

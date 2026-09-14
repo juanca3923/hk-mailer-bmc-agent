@@ -4,6 +4,40 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — feat: elimina catálogos genéricos ficticios, agrega catch-all real de WO
+
+- **Problema**: `categorias-incidentes.md`/`categorias-requerimientos.md` eran una
+  muestra pequeña e ilustrativa del ambiente de pruebas (`CCTI_ARUS.xlsx`), no el
+  catálogo real — cualquier caso fuera de los dominios `eventos`/`usuario` se
+  categorizaba con datos ficticios.
+- **Cambio de diseño confirmado con la mesa de servicio (2026-09-14)**: un caso fuera
+  de todo dominio conocido se crea **siempre como Work Order** (nunca como Incidente,
+  sin importar si "suena" a algo roto) con esta categorización catch-all fija:
+  `Categoria Operacional 1/2 = Gestion de tickets / Acompañamiento`,
+  `Categoria de Producto 1/2/3 = Gestion de casos / Control / Casos`. No existe
+  catch-all de Incidente.
+- **Implementación — el catch-all vive en el skill, no en código/env vars**: se
+  descartó a propósito el patrón de `assigned_group` (constante en
+  `business_defaults.py` + default de tool parameter). Los `categorization_tier_1/2`/
+  `product_cat_tier_1/2/3` de `bmc_create_work_order` siguen siendo **obligatorios**
+  (`src/bmc/type_defs/inputs.py`, `src/agent/internal_tools/bmc_tools.py`); el LLM los
+  pasa explícitamente leyendo los valores exactos de `guia-creacion-tickets` (sección
+  1). Motivo: `skill_get_guide` lee el archivo en vivo en cada llamada, mientras que
+  env vars y `system.promt.md` solo se cargan una vez al iniciar el proceso — un
+  constante en código habría obligado a reconstruir y reiniciar el agente cada vez que
+  la mesa de servicio quiera cambiar esta combinación, cuando basta con editar el
+  `.md`. Como `guia-creacion-tickets` ya se lee siempre en todo flujo de creación, no
+  cuesta ninguna llamada extra frente a la alternativa de un skill dedicado de 1 fila.
+- **Eliminados**: `skills/categorias-incidentes.md`, `skills/categorias-requerimientos.md`.
+- **Prompt**: `system.promt.md` y `guia-creacion-tickets/SKILL.md` reescriben el
+  protocolo de creación — ya no hay heurístico genérico Incidente-vs-WO ni catálogo
+  genérico que consultar; sin dominio conocido, se llama `bmc_create_work_order`
+  pasando los valores catch-all documentados en `guia-creacion-tickets`.
+- **Test**: `test_bmc_create_work_order_requires_categorization_params_explicitly`
+  confirma que esos 5 campos siguen siendo obligatorios en el schema (sin default).
+
+---
+
 ## 2026-09-14 — fix: `description` de incidente rechazado por BMC al pasar 100 caracteres
 
 - **Problema confirmado contra BMC real**: `Value does not fall within the limits

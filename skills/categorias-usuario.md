@@ -1,15 +1,13 @@
 ---
 name: categorias-usuario
-description: Catálogo de categorización BMC Helix ARUS del dominio "usuario de red". Cubre Incidente y Work Order — la columna Tipo Servicio de cada fila decide cuál. Consúltalo antes que las skills genéricas cuando el caso encaje en este dominio.
+description: Catálogo de categorización BMC Helix ARUS del dominio "usuario de red". Cubre Incidente y Work Order — la columna Tipo Servicio de cada fila decide cuál. Consúltalo cuando el caso encaje en este dominio.
 ---
 
 # Categorías BMC Helix — dominio "usuario de red"
 
 Tabla de datos para el dominio **usuario de red** (altas/bajas de usuario,
-contraseñas, estado de casos). A diferencia de `categorias-incidentes`/
-`categorias-requerimientos` (separadas por tipo), esta tabla mezcla ambos: la columna
-**`Tipo Servicio`** de la fila decide si es Incidente o Work Order, con prioridad sobre
-el heurístico genérico (`guia-creacion-tickets`, sección 1). El mapeo columna →
+contraseñas, estado de casos). Esta tabla mezcla ambos tipos de ticket: la columna
+**`Tipo Servicio`** de la fila decide si es Incidente o Work Order. El mapeo columna →
 parámetro, la traducción de Prioridad y el significado de
 `¿Susceptible de cierre en mesa?` están en `guia-creacion-tickets` (sección 2) — no se
 repiten aquí.
