@@ -284,7 +284,7 @@ All 12 tools live in `src/agent/internal_tools/bmc_tools.py` and share a lazy-in
 | `bmc_get_incident` | Search incident by number | `HPD:IncidentInterface` |
 | `bmc_add_incident_note` | Add note without attachment (rejects if `Closed`) | `HPD:WorkLog` |
 | `bmc_add_incident_attachment` | Add note with file attachment (rejects if `Closed`) | `HPD:WorkLog` multipart |
-| `bmc_close_incident` | Ownership PUT (`Assignee`) → Resolved PUT with `Status_Reason=Closing` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `HPD:IncidentInterface` |
+| `bmc_close_incident` | Ownership PUT (`Assignee`) → Resolved PUT with `Status_Reason=Closing`, resending `Assignee` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `HPD:IncidentInterface` |
 
 All tools return a JSON string with `{"success": bool, "message": "..."}`. On success, `message`
 contains TOON-encoded structured data. On error, `message` contains a user-facing Spanish error.

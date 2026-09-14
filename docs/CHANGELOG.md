@@ -4,6 +4,28 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — fix: `bmc_close_incident` fallaba en el PUT final por `Assignee` vacío
+
+- **Problema confirmado contra BMC real** (INC000000019427): el cierre fallaba con
+  `The Assignee field must contain a value. Choose an assignee from the associated
+  field menu, then save the Incident.` justo al transicionar a `Resolved`.
+- **Causa**: `IncidentOperations.close()` mandaba `Assignee` solo en el primer PUT
+  (toma de propiedad, `Status=In Progress`); `CloseIncidentValues` (el PUT final,
+  `Status=Resolved`) no tenía siquiera el campo. BMC no conserva `Assignee` como ya
+  poblado al transicionar de estado si no viaja de nuevo en ese mismo PUT — el mismo
+  comportamiento que este proyecto ya había descubierto y corregido para
+  `WorkOrderOperations.close()` (`ASCHG` reenviado en cada PUT de estado), pero nunca
+  se aplicó al cierre de incidente.
+- **Fix**: `CloseIncidentValues` (`src/bmc/type_defs/ar_values.py`) gana el campo
+  `assignee` (alias `Assignee`); `IncidentOperations.close()`
+  (`src/bmc/libs/helpers/incident_operations.py`) lo reenvía en el PUT final con
+  `BMC_ASSIGNEE_DISPLAY_NAME`, igual que en el PUT de toma de propiedad.
+- **Alcance**: el cierre de incidente se portó desde `bmc-mcp` el 2026-07-29 (2 PUT,
+  sin nota) y nunca se había probado end-to-end contra BMC real hasta ahora — el
+  cierre de Work Order sí se validó en Postman el 2026-09-11, el de incidente no.
+
+---
+
 ## 2026-09-14 — feat: identidad real del solicitante vía CTM:People (`reporter_email`)
 
 - **Problema**: `bmc_create_work_order`/`bmc_create_incident` siempre creaban el ticket a

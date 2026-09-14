@@ -153,6 +153,22 @@ async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.Mon
     assert client.update_calls == []
 
 
+async def test_bmc_close_incident_resends_assignee_on_final_put(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: BMC rejects the transition to Resolved with "The Assignee field
+    must contain a value" unless Assignee travels in that same PUT, not only in the
+    earlier ownership PUT."""
+    client = FakeClient(status='Assigned', submitter='svc_mosaico')
+    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+
+    raw = await bmc_tools.bmc_close_incident.ainvoke({'incident_number': 'INC1', 'description': 'cierre'})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    ownership_call, close_call = client.update_calls
+    assert ownership_call[1]['values']['Assignee'] == 'Mosaico WebServices'
+    assert close_call[1]['values']['Assignee'] == 'Mosaico WebServices'
+
+
 async def test_bmc_add_incident_note_uses_work_log_not_work_info(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
     monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))

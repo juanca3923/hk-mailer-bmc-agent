@@ -343,7 +343,10 @@ class IncidentOperations:
         Does not require the ticket to already be ``In Progress``: the first PUT takes
         ownership (``Assignee``) and moves it there from any non-``Closed`` status. Only
         rejects tickets already ``Closed`` and tickets not opened by this agent's own BMC
-        user (``Submitter``), before issuing any write.
+        user (``Submitter``), before issuing any write. ``Assignee`` is resent on the
+        final PUT too — BMC rejects the transition to ``Resolved`` with "The Assignee
+        field must contain a value" if it is not present in that same PUT, even though
+        the ownership PUT already set it.
 
         Parameters
         ----------
@@ -385,6 +388,7 @@ class IncidentOperations:
                 resolution=data.resolution,
                 status=DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
                 status_reason=DEFAULT_INCIDENT_CLOSE_STATUS_REASON,
+                assignee=self._handler.settings.assignee_display_name,
             )
             await self._handler.client.update_incident(
                 state.request_id,

@@ -127,7 +127,15 @@ class CloseWorkOrderValues(BaseModel):
 
 
 class CloseIncidentValues(BaseModel):
-    """Close PUT for incident."""
+    """Close PUT for incident.
+
+    ``assignee`` must be resent here even though the ownership PUT
+    (``UpdateIncidentStatusValues``) already set it: BMC does not treat it as
+    already-populated when transitioning to ``Resolved`` and rejects the PUT with
+    "The Assignee field must contain a value" if it travels empty — the same
+    per-transition resend behavior ``WorkOrderOperations.close`` already applies to
+    ``ASCHG``.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -135,6 +143,7 @@ class CloseIncidentValues(BaseModel):
     resolution: str | None = Field(default=None, alias='Resolution')
     status: OptionalIncidentStatusField = Field(default=None, alias='Status')
     status_reason: str | None = Field(default=None, alias='Status_Reason')  # TODO: actualizar caracterización
+    assignee: str | None = Field(default=None, alias='Assignee')
 
 
 class WorkInfoWorkOrderValues(BaseModel):
