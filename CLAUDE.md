@@ -57,6 +57,7 @@ agent-bmc/
 │   │       ├── bmc_tools.py          # 12 BMC LangChain @tool functions + get_bmc_tools()
 │   │       ├── memory_tools.py       # memory_* tools (chat/run history)
 │   │       ├── skill_tools.py        # skill_get_guide
+│   │       ├── datetime_tools.py     # get_current_date (system clock, AGENT_TIMEZONE)
 │   │       └── a2a_tools.py          # a2a_list_remote_agents, a2a_send_to_remote
 │   ├── bmc/                          # BMC Helix client layer
 │   │   ├── config/settings.py        # BmcSettings (BMC_BASE_URL, BMC_USERNAME, …)
@@ -111,6 +112,7 @@ User (CLI / HTTP)
         ├─ Internal tools
         │   ├─ memory_*         (chat/run history)
         │   ├─ skill_get_guide  (Markdown guides)
+        │   ├─ get_current_date (system clock, AGENT_TIMEZONE)
         │   ├─ BMC tools        (12 tools → BmcClient → BMC Helix REST)
         │   └─ a2a_*            (remote agents, optional)
         └─ MCP tools (optional, from MCP_URLS)
@@ -252,6 +254,7 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AGENT_SLUG` | `agent_bmc` | Unique identifier (pattern `^[a-z][a-z0-9_]*$`) |
+| `AGENT_TIMEZONE` | `America/Bogota` | IANA timezone (`zoneinfo` name) used by the `get_current_date` tool; independent of the container OS's `TZ` |
 
 ### System prompt precedence
 
@@ -351,6 +354,13 @@ uv run alembic upgrade head
 ### Skills
 Local Markdown guides under `skills/`. The agent discovers them and injects a `<skills>` catalog
 into the system prompt. Guides are read on demand via `skill_get_guide`. See `docs/skills-implementation.md`.
+
+### Date/time
+`get_current_date` (`src/agent/internal_tools/datetime_tools.py`) returns the real current
+date/time from the container's system clock, converted to `AGENT_TIMEZONE` (default
+`America/Bogota`). Weekday/month names are Spanish, computed from fixed tables (no OS locale
+dependency). The agent must call it instead of guessing "today" from the conversation or from
+training data — see `system.promt.md` § "Fecha y hora".
 
 ---
 

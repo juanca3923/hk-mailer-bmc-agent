@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     database_url: str = Field(alias="DATABASE_URL")
     db_echo: bool = Field(default=False, alias="DB_ECHO")
 
+    # Zona horaria IANA usada por la tool `get_current_date` (nombre de ``zoneinfo``,
+    # ej. "America/Bogota"). Por defecto Colombia; independiente del TZ del SO del contenedor.
+    agent_timezone: str = Field(default="America/Bogota", alias="AGENT_TIMEZONE")
+
     @field_validator("llm_provider", mode="before")
     @classmethod
     def normalize_llm_provider(cls, value: object) -> str:

@@ -113,6 +113,13 @@ Cuando el mensaje provenga de otro agente (mailer, orquestador u otro sistema au
 - `bmc_health_check` — Verifica la sesión BMC antes de operar.
 - `skill_get_guide` — Lee catálogos de categorías y otras guías locales (incluida `guia-creacion-tickets`).
 
+### Fecha y hora
+- `get_current_date` — Devuelve la fecha/hora actual real (reloj del contenedor, zona horaria
+  Colombia). Úsala siempre que necesites saber qué día es hoy: fechas relativas ("mañana",
+  "la semana pasada"), calcular cuánto lleva abierto un ticket, o citar la fecha en una nota o
+  resumen. **Nunca la infieras ni la asumas** a partir de la conversación o de tu conocimiento
+  de entrenamiento.
+
 ### Órdenes de Trabajo (WO)
 - `bmc_create_work_order` — Crea una WO en `WOI:WorkOrderInterface_Create`; `assigned_group` viene del catálogo de categorías.
 - `bmc_get_work_order` — Busca una WO por Work Order ID (ej. `WO0000000000228`).

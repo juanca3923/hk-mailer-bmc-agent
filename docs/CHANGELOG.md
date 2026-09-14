@@ -4,6 +4,28 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — feat: nueva tool `get_current_date`
+
+- **Problema**: el agente no tenía forma de saber la fecha/hora real; cualquier razonamiento
+  sobre fechas relativas ("hoy", "mañana", "hace dos días") o timestamps escritos en un ticket
+  dependía de su conocimiento de entrenamiento, no del reloj real.
+- **Cambio**: nueva tool `get_current_date` (`src/agent/internal_tools/datetime_tools.py`),
+  registrada en el grafo junto a las demás internal tools (`src/agent/agent.py`,
+  `src/agent/internal_tools/__init__.py`). Lee el reloj de sistema del contenedor y lo
+  convierte a la zona horaria configurada en `AGENT_TIMEZONE` (nueva variable en
+  `src/config/settings.py`, default `America/Bogota`); nombres de día/mes en español via
+  tablas fijas, sin depender del locale del SO. Devuelve JSON con fecha corta
+  (`DD/MM/YYYY`), día/mes/año/hora por separado, y dos strings combinados listos para citar
+  (`short`: "07/10/2026, lunes, octubre"; `long`: "lunes 07 de octubre de 2026").
+- **Zona horaria por contenedor**: se agregó `ENV TZ=America/Bogota` a `Dockerfile` y
+  `Dockerfile.dev` (reloj del SO), independiente de `AGENT_TIMEZONE` (que controla solo esta
+  tool). Se agregó la dependencia `tzdata` (`pyproject.toml`) porque `python:3.12-slim` no
+  garantiza tener el paquete de zonas horarias del sistema operativo.
+- **Prompt**: `system.promt.md` instruye al agente a usar siempre esta tool para fechas,
+  nunca inferirlas de la conversación.
+
+---
+
 ## 2026-09-14 — mejora: refuerza la calidad del asunto y la descripción de tickets
 
 - **Problema detectado**: el protocolo de creación de tickets (`system.promt.md`,
