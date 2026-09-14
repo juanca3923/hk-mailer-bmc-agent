@@ -50,19 +50,18 @@ class CreateWorkOrderInput(BaseModel):
         ...,
         min_length=1,
         description=(
-            'Asunto breve y específico: qué se solicita y para quién o qué sistema '
-            '(ej. "Alta de usuario de red - Juan Perez, sede Bogota"), nunca una '
-            'etiqueta genérica como "Solicitud de usuario".'
+            'Short, specific subject line: what is requested and for whom or which '
+            'system (e.g. "New network user - Juan Perez, Bogota site"), never a '
+            'generic label like "User request".'
         ),
     )
     detailed_description: str = Field(
         ...,
         min_length=1,
         description=(
-            'Descripción detallada de la solicitud: quién la requiere, qué se debe '
-            'hacer exactamente, y cualquier dato necesario para ejecutarla (accesos, '
-            'equipo, ubicación, fechas). Debe bastar para que la mesa ejecute la '
-            'tarea sin volver a preguntar al usuario.'
+            'Full request detail: who needs it, exactly what must be done, and any '
+            'data required to execute it (access, equipment, location, dates) - '
+            'enough for the service desk to act without asking the user again.'
         ),
     )
     categorization_tier_1: str = Field(..., min_length=1)
@@ -92,20 +91,18 @@ class CreateIncidentInput(BaseModel):
         ...,
         min_length=1,
         description=(
-            'Asunto breve y específico: qué servicio o sistema se afectó y el '
-            'síntoma concreto (ej. "Aplicacion de nomina caida para todos los '
-            'usuarios de la sede Medellin"), nunca una etiqueta genérica como '
-            '"No funciona el sistema".'
+            'Short, specific subject line: which service/system is affected and the '
+            'concrete symptom (e.g. "Payroll app down for all users at Medellin '
+            'site"), never a generic label like "System not working".'
         ),
     )
     detailed_decription: str = Field(
         ...,
         min_length=1,
         description=(
-            'Descripción detallada del incidente: quién lo reporta, cuándo comenzó, '
-            'el síntoma exacto observado, el sistema/aplicación afectado y el '
-            'alcance (cuántos usuarios o qué sede). Debe bastar para diagnosticar '
-            'sin volver a preguntar al usuario.'
+            'Full incident detail: who reported it, when it started, the exact '
+            'symptom observed, the affected system/application, and scope (how many '
+            'users or which site) - enough to diagnose without asking the user again.'
         ),
     )
     status: IncidentStatusField = Field(
