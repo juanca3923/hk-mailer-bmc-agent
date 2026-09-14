@@ -24,6 +24,12 @@ AR_FIELD_SUBMITTER: Final[str] = 'Submitter'
 AR_FIELD_CATEGORIZATION_TIER_1: Final[str] = 'Categorization Tier 1'
 AR_FIELD_CATEGORIZATION_TIER_2: Final[str] = 'Categorization Tier 2'
 
+# CTM:People (reporter identity lookup by email — see bmc.libs.helpers.person_lookup)
+AR_FIELD_PEOPLE_LOGIN_ID: Final[str] = 'Remedy Login ID'
+AR_FIELD_PEOPLE_FIRST_NAME: Final[str] = 'First Name'
+AR_FIELD_PEOPLE_LAST_NAME: Final[str] = 'Last Name'
+AR_FIELD_PEOPLE_EMAIL: Final[str] = 'Internet E-mail'
+
 AR_ACTION_CREATE: Final[str] = 'CREATE'
 AR_Z1D_ACTION_CREATE: Final[str] = 'CREATE'
 AR_Z1D_ACTION_FIELD_WO: Final[str] = 'z1D_Action'
@@ -122,4 +128,8 @@ USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED: Final[str] = (
 )
 USER_ERROR_MESSAGE_CLOSE_NOT_OWNER: Final[str] = (
     'Error: Solo el usuario de servicio de este agente puede cerrar este ticket. Submitter actual: {submitter}.'
+)
+USER_ERROR_MESSAGE_PERSON_NOT_FOUND: Final[str] = (
+    'Error: No se encontró en BMC ninguna persona registrada con el correo {email}. '
+    'No se creó el ticket.'
 )

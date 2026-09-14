@@ -73,7 +73,8 @@ agent-bmc/
 │   │   │       ├── entry_values_mapper.py
 │   │   │       ├── multipart_builder.py
 │   │   │       ├── work_order_operations.py
-│   │   │       └── incident_operations.py
+│   │   │       ├── incident_operations.py
+│   │   │       └── person_lookup.py       # CTM:People reporter identity resolution
 │   │   └── type_defs/                # Pydantic models for BMC inputs/outputs
 │   │       ├── inputs.py             # CreateWorkOrderInput, CreateIncidentInput, …
 │   │       ├── outputs.py            # BaseOutput, WorkOrderCreatedData, …
@@ -210,13 +211,13 @@ Copy `.env.example` to `.env` and fill in the required values.
 ### Business defaults — BMC tickets
 
 Fixed values injected by `src/bmc/libs/business_defaults.py` into every `bmc_create_work_order`
-and `bmc_create_incident` call. The LLM never sees these as tool parameters.
+and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
+`First Name`/`Last Name` are **not** in this table — they are resolved per-call from
+`reporter_email` (see "Reporter identity resolution" above), not a fixed default.
 
 | Variable | Fallback | Used in |
 |----------|----------|---------|
 | `BMC_DEFAULT_COMPANY` | `ARUS` | WO + incident `Company` |
-| `BMC_DEFAULT_FIRST_NAME` | `Mosaico` | WO + incident `First_Name` |
-| `BMC_DEFAULT_LAST_NAME` | `WebServices` | WO + incident `Last_Name` |
 | `BMC_DEFAULT_CUSTOMER_FIRST_NAME` | `Mosaico` | WO `Customer First Name` |
 | `BMC_DEFAULT_CUSTOMER_LAST_NAME` | `WebServices` | WO `Customer Last Name` |
 | `BMC_DEFAULT_CUSTOMER_COMPANY` | `ARUS` | WO `Customer Company` |
@@ -273,13 +274,13 @@ All 12 tools live in `src/agent/internal_tools/bmc_tools.py` and share a lazy-in
 | Tool | Operation | AR Form |
 |------|-----------|---------|
 | `bmc_health_check` | Verify JWT session | GET ping |
-| `bmc_create_work_order` | Create WO | `WOI:WorkOrderInterface_Create` |
+| `bmc_create_work_order` | Create WO; `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
 | `bmc_get_work_order` | Search WO by ID | `WOI:WorkOrderInterface` |
 | `bmc_add_work_order_note` | Add note without attachment (rejects if `Closed`) | `WOI:WorkInfo` |
 | `bmc_add_work_order_attachment` | Add note with file attachment (rejects if `Closed`) | `WOI:WorkInfo` multipart |
 | `bmc_update_work_order_status` | PUT intermediate status (rejects if `Closed`) | `WOI:WorkOrderInterface` |
 | `bmc_close_work_order` | Ownership PUT (`ASCHG`) → Completed PUT+note → Closed PUT+note (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
-| `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter) | `HPD:IncidentInterface_Create` |
+| `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter); `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no incident created if not found) | `HPD:IncidentInterface_Create` |
 | `bmc_get_incident` | Search incident by number | `HPD:IncidentInterface` |
 | `bmc_add_incident_note` | Add note without attachment (rejects if `Closed`) | `HPD:WorkLog` |
 | `bmc_add_incident_attachment` | Add note with file attachment (rejects if `Closed`) | `HPD:WorkLog` multipart |
@@ -292,6 +293,21 @@ Business-rule guards (`src/bmc/libs/helpers/ticket_guards.py`) run before any wr
 rejects writes on tickets already `Closed`; `require_submitter` (close only) rejects closing a ticket
 whose `Submitter` does not match `BMC_USERNAME` — adding notes/attachments to such a ticket is still
 allowed.
+
+### Reporter identity resolution (`bmc_create_work_order` / `bmc_create_incident`)
+
+BMC's create forms have no "create from just an email" field — `First Name`/`Last Name`
+(submitter identity, distinct from the fixed `Customer` identity) must be sent as free text.
+`src/bmc/libs/helpers/person_lookup.py` resolves them from the required `reporter_email`
+parameter by querying `CTM:People` (`BmcClient.search_person_by_email`, form
+`BmcSettings.form_people_query`, default `CTM:People`) instead of a fixed persona. If no
+person is found (or the matched record has an incomplete name), the call fails with no
+ticket created — it never falls back to a fixed identity. `Internet E-mail` is **not** a
+unique key in BMC: when more than one person shares the email, the entry whose `Remedy
+Login ID` looks like a real email (contains `@`) wins over a bot-style id (observed in
+practice: this agent's own bot identity can share an email with a real person); if zero or
+several candidates qualify, the first entry BMC returns is used and a WARNING is logged,
+since BMC's result order for a non-unique match is not guaranteed.
 
 ---
 

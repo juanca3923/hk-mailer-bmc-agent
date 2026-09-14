@@ -4,6 +4,43 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — feat: identidad real del solicitante vía CTM:People (`reporter_email`)
+
+- **Problema**: `bmc_create_work_order`/`bmc_create_incident` siempre creaban el ticket a
+  nombre de una identidad fija (`BMC_DEFAULT_FIRST_NAME`/`BMC_DEFAULT_LAST_NAME` = "Agentes
+  IA"), sin forma de atribuirlo a la persona real que reportó el incidente o solicitó el
+  Work Order.
+- **Cambio**: nuevo parámetro **obligatorio** `reporter_email` en ambas tools. Antes de
+  crear el ticket, se busca ese correo en BMC (`CTM:People`, nuevo
+  `BmcClient.search_person_by_email` en `src/bmc/libs/api_client.py`, form
+  `BmcSettings.form_people_query` default `CTM:People`) y se usa el `First Name`/`Last
+  Name` real encontrado — nunca el fijo. Si no se encuentra a esa persona (o el registro
+  tiene el nombre incompleto), **no se crea ningún ticket** y se retorna
+  `success: false` con el correo en el mensaje.
+- **Desambiguación (`Internet E-mail` no es único en BMC)**: nuevo
+  `src/bmc/libs/helpers/person_lookup.py`. Cuando el correo devuelve más de una persona
+  (caso real observado: el propio bot de este agente comparte un correo alterno con una
+  persona real), se prefiere la coincidencia cuyo `Remedy Login ID` tiene forma de correo
+  (contiene `@`) sobre un id tipo bot (`AgentesIA`). Si 0 o 2+ candidatas califican, se usa
+  la primera que devuelve BMC (orden no garantizado por la API) y se registra un WARNING —
+  la identidad asignada en ese caso puede ser incorrecta; queda documentado explícitamente
+  porque puede ser confuso de depurar.
+- **`Customer First/Last Name` (Work Order) sin cambios**: siguen fijos por
+  `business_defaults.py` — el correo solo resuelve la identidad del *submitter*, no la del
+  cliente.
+- **Limpieza**: `BMC_DEFAULT_FIRST_NAME`/`BMC_DEFAULT_LAST_NAME` quedaron sin uso (ya nada
+  las lee) y se eliminaron de `business_defaults.py`, `.env.example` y `CLAUDE.md`.
+- **Riesgo conocido, sin resolver en este cambio**: el `Company` del submitter sigue fijo
+  en `ARUS`; si la persona encontrada no pertenece a esa compañía en BMC, el combo
+  First+Last+Company podría no calzar con su registro real en `CTM:People` (comportamiento
+  de BMC ante eso no ha sido probado).
+- **Impacto en el protocolo A2A**: `system.promt.md` ahora exige que el mensaje entrante
+  traiga el correo del solicitante; si no lo trae, el agente debe detenerse y reportar el
+  error en el resumen estructurado en vez de inventar un correo o crear el ticket con la
+  identidad del bot.
+
+---
+
 ## 2026-09-14 — feat: nueva tool `get_current_date`
 
 - **Problema**: el agente no tenía forma de saber la fecha/hora real; cualquier razonamiento

@@ -87,12 +87,21 @@ dominio ni genérica):
 No pidas estos datos al usuario ni intentes pasarlos como parámetro — están fijados
 por configuración del agente, no por el catálogo de categorías:
 
-- Company, nombre/apellido del solicitante y del cliente (Work Order e Incidente).
+- Company, y nombre/apellido del **cliente** (`Customer First/Last Name`, solo Work
+  Order — es una identidad fija distinta del solicitante).
 - Impact y Urgency (solo Incidente, siempre fijos).
 
 Sí son obligatorios y deben salir del catálogo de categorías, según el mapeo de la
 sección 2: categoría operacional 1/2, categorización de producto (2-3 niveles), y
 `priority`/`assigned_group` cuando el tool los reciba como parámetro.
+
+**`reporter_email` es obligatorio y NO sale del catálogo de categorías ni está
+fijado**: es el correo de quien reporta el incidente o solicita el Work Order (pídelo
+al usuario en modo interactivo, o tómalo del mensaje entrante en modo A2A). El nombre
+y apellido del **solicitante** (`First Name`/`Last Name`, distinto del cliente) ya no
+es un valor fijo — la tool lo resuelve buscando ese correo en `CTM:People`, y la
+creación falla sin crear ningún ticket si no encuentra a esa persona registrada en
+BMC. Ver `docs/CHANGELOG.md` para el detalle de esta resolución de identidad.
 
 ## 5. Guards de negocio que pueden rechazar la operación
 
@@ -146,6 +155,9 @@ silencies ni reportes el ticket como cerrado si no lo está.
    cuando aplique) están completos con valores reales, no inventados?
 4. ¿El asunto y la descripción detallada son específicos y están redactados a partir
    del caso real (sección 6), no una etiqueta genérica?
-5. ¿Evitaste pasar campos fijados por el entorno (company, identidad, impact/urgency)?
-6. Si el caso no encajaba en ninguna fila del catálogo, ¿dejaste eso explícito en vez
+5. ¿Tienes el correo real de quien reporta/solicita (`reporter_email`), sin inventarlo
+   ni usar el tuyo propio?
+6. ¿Evitaste pasar campos fijados por el entorno (company, identidad del cliente,
+   impact/urgency)?
+7. Si el caso no encajaba en ninguna fila del catálogo, ¿dejaste eso explícito en vez
    de simular certeza?

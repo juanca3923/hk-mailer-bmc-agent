@@ -8,10 +8,8 @@ from bmc.exceptions.mcp import MCPClientError
 from bmc.libs.api_client import BmcClient
 from bmc.libs.business_defaults import (
     DEFAULT_COMPANY,
-    DEFAULT_FIRST_NAME,
     DEFAULT_INCIDENT_SUPPORT_COMPANY,
     DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
-    DEFAULT_LAST_NAME,
 )
 from bmc.libs.constants import (
     AR_FIELD_CATEGORIZATION_TIER_1,
@@ -35,6 +33,7 @@ from bmc.libs.constants import (
 )
 from bmc.libs.helpers.entry_values_mapper import EntryValuesMapper
 from bmc.libs.helpers.multipart_builder import AttachmentPart, MultipartBuilder
+from bmc.libs.helpers.person_lookup import resolve_reporter_identity
 from bmc.libs.helpers.ticket_guards import (
     TicketState,
     require_not_closed,
@@ -124,7 +123,10 @@ class IncidentOperations:
     async def create(self, data: CreateIncidentInput) -> BaseOutput:
         """Create an incident, then patch the operational category if BMC left it empty.
 
-        Runs ``HPD:IncidentInterface_Create`` and immediately searches the created incident
+        Resolves the submitter's real identity from ``data.reporter_email`` via
+        ``CTM:People`` first (see ``bmc.libs.helpers.person_lookup``) and aborts
+        without creating anything if that person cannot be found. Otherwise runs
+        ``HPD:IncidentInterface_Create`` and immediately searches the created incident
         to check whether ``Categorization Tier 1``/``Categorization Tier 2`` came back
         populated. BMC silently drops some catalog-valid combinations at creation time
         without erroring, leaving the incident uncloseable; when that happens, this reapplies
@@ -141,15 +143,19 @@ class IncidentOperations:
         Returns
         -------
         BaseOutput
-            ``success=True`` with TOON-encoded created ids; ``success=False`` on error.
+            ``success=True`` with TOON-encoded created ids; ``success=False`` on
+            error, including an unresolvable ``reporter_email`` (no ticket created).
         """
         blocked = self._handler.ensure_write_allowed()
         if blocked is not None:
             return blocked
+        identity = await resolve_reporter_identity(self._handler.client, data.reporter_email)
+        if isinstance(identity, BaseOutput):
+            return identity
         values = CreateIncidentValues(
             company=DEFAULT_COMPANY,
-            first_name=DEFAULT_FIRST_NAME,
-            last_name=DEFAULT_LAST_NAME,
+            first_name=identity.first_name,
+            last_name=identity.last_name,
             description=data.description,
             impact=INCIDENT_FIXED_IMPACT,
             urgency=INCIDENT_FIXED_URGENCY,

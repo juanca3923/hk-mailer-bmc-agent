@@ -9,6 +9,9 @@ import pytest
 from agent.internal_tools import bmc_tools
 from bmc.libs.business_defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from bmc.libs.constants import (
+    AR_FIELD_PEOPLE_FIRST_NAME,
+    AR_FIELD_PEOPLE_LAST_NAME,
+    AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_STATUS,
     AR_FIELD_SUBMITTER,
@@ -17,6 +20,8 @@ from bmc.libs.constants import (
     WORK_ORDER_STATUSES,
 )
 from bmc.type_defs.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
+
+REPORTER_EMAIL = 'ana.reportante@arus.com.co'
 
 
 class FakeSettings:
@@ -35,18 +40,45 @@ class FakeClient:
     ``AttributeError`` instead of silently succeeding against the wrong form.
     """
 
-    def __init__(self, status: str = 'Assigned', submitter: str = 'svc_mosaico', request_id: str = 'REQ001') -> None:
+    def __init__(
+        self,
+        status: str = 'Assigned',
+        submitter: str = 'svc_mosaico',
+        request_id: str = 'REQ001',
+        person_entries: list[BmcEntry] | None = None,
+    ) -> None:
         self._status = status
         self._submitter = submitter
         self._request_id = request_id
+        self._person_entries = (
+            [BmcEntry(values=BmcEntryValues(data={
+                AR_FIELD_PEOPLE_LOGIN_ID: 'ana.reportante@arus.com.co',
+                AR_FIELD_PEOPLE_FIRST_NAME: 'Ana',
+                AR_FIELD_PEOPLE_LAST_NAME: 'Reportante',
+            }))]
+            if person_entries is None
+            else person_entries
+        )
         self.update_calls: list[tuple[str, dict]] = []
         self.post_incident_work_log_calls: list[object] = []
         self.create_work_order_calls: list[dict] = []
+        self.create_incident_calls: list[dict] = []
+        self.search_person_by_email_calls: list[str] = []
 
     async def create_work_order_entry(self, json_body: dict) -> BmcCreateEntryResponse:
         self.create_work_order_calls.append(json_body)
         return BmcCreateEntryResponse(
             values=BmcEntryValues(data={AR_FIELD_WORK_ORDER_ID_RESPONSE: 'WO1', 'Summary': 'S'}),
+        )
+
+    async def search_person_by_email(self, email: str) -> BmcEntryListResponse:
+        self.search_person_by_email_calls.append(email)
+        return BmcEntryListResponse(entries=self._person_entries)
+
+    async def create_incident_entry(self, json_body: dict) -> BmcCreateEntryResponse:
+        self.create_incident_calls.append(json_body)
+        return BmcCreateEntryResponse(
+            values=BmcEntryValues(data={'Incident Number': 'INC1', 'Description': 'D'}),
         )
 
     async def search_work_order(self, work_order_id: str) -> BmcEntryListResponse:  # noqa: ARG002
@@ -169,6 +201,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
         'detailed_description': 'DD',
+        'reporter_email': REPORTER_EMAIL,
         'categorization_tier_1': 'T1',
         'categorization_tier_2': 'T2',
         'product_cat_tier_1': 'P1',
@@ -180,10 +213,75 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     payload = json.loads(raw)
     assert payload['success'] is True
     assert len(client.create_work_order_calls) == 1
+    assert client.search_person_by_email_calls == [REPORTER_EMAIL]
     body_values = client.create_work_order_calls[0]['values']
     assert body_values['Support Company'] == DEFAULT_WORK_ORDER_SUPPORT_COMPANY
     assert body_values['Support Organization'] == DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
     assert body_values['Support Group Name'] == 'GTI.GROUP'
+    assert body_values['First Name'] == 'Ana'
+    assert body_values['Last Name'] == 'Reportante'
+
+
+async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeClient(person_entries=[])
+    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+
+    raw = await bmc_tools.bmc_create_work_order.ainvoke({
+        'summary': 'S',
+        'detailed_description': 'DD',
+        'reporter_email': REPORTER_EMAIL,
+        'categorization_tier_1': 'T1',
+        'categorization_tier_2': 'T2',
+        'product_cat_tier_1': 'P1',
+        'product_cat_tier_2': 'P2',
+        'product_cat_tier_3': 'P3',
+    })
+
+    payload = json.loads(raw)
+    assert payload['success'] is False
+    assert REPORTER_EMAIL in payload['message']
+    assert client.create_work_order_calls == []
+
+
+async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeClient()
+    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+
+    raw = await bmc_tools.bmc_create_incident.ainvoke({
+        'description': 'D',
+        'detailed_decription': 'DD',
+        'reporter_email': REPORTER_EMAIL,
+        'product_categorization_tier_1': 'P1',
+        'product_categorization_tier_2': 'P2',
+        'product_categorization_tier_3': 'P3',
+    })
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert len(client.create_incident_calls) == 1
+    assert client.search_person_by_email_calls == [REPORTER_EMAIL]
+    body_values = client.create_incident_calls[0]['values']
+    assert body_values['First_Name'] == 'Ana'
+    assert body_values['Last_Name'] == 'Reportante'
+
+
+async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeClient(person_entries=[])
+    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+
+    raw = await bmc_tools.bmc_create_incident.ainvoke({
+        'description': 'D',
+        'detailed_decription': 'DD',
+        'reporter_email': REPORTER_EMAIL,
+        'product_categorization_tier_1': 'P1',
+        'product_categorization_tier_2': 'P2',
+        'product_categorization_tier_3': 'P3',
+    })
+
+    payload = json.loads(raw)
+    assert payload['success'] is False
+    assert REPORTER_EMAIL in payload['message']
+    assert client.create_incident_calls == []
 
 
 def test_status_params_expose_enum_to_the_model() -> None:

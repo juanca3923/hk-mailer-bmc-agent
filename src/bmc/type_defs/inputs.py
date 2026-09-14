@@ -40,10 +40,13 @@ class IncidentNumberInput(BaseModel):
 class CreateWorkOrderInput(BaseModel):
     """Parameters to create a work order in BMC.
 
-    Company, submitter, customer identity and the Support Company/Organization (BMC
-    only honors the caller's ``Support Group Name`` when these two travel together in
-    the same payload) are injected from ``business_defaults`` by the tool layer and are
-    not part of this input.
+    Company, customer identity and the Support Company/Organization (BMC only honors
+    the caller's ``Support Group Name`` when these two travel together in the same
+    payload) are injected from ``business_defaults`` by the tool layer and are not
+    part of this input. The submitter's ``First Name``/``Last Name`` are NOT a fixed
+    default: they are resolved from ``reporter_email`` via BMC's ``CTM:People``
+    (see ``bmc.libs.helpers.person_lookup``) so the ticket is attributed to the real
+    person, not this agent's service-account persona.
     """
 
     summary: str = Field(
@@ -53,6 +56,16 @@ class CreateWorkOrderInput(BaseModel):
             'Short, specific subject line: what is requested and for whom or which '
             'system (e.g. "New network user - Juan Perez, Bogota site"), never a '
             'generic label like "User request".'
+        ),
+    )
+    reporter_email: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Email of the person requesting this, looked up in BMC's CTM:People to "
+            'fill the submitter First Name/Last Name (not the fixed Customer '
+            'identity) with the real requester. Creation fails with no ticket '
+            'created if no matching person is found in BMC.'
         ),
     )
     detailed_description: str = Field(
@@ -81,10 +94,13 @@ class CreateWorkOrderInput(BaseModel):
 class CreateIncidentInput(BaseModel):
     """Parameters to create an incident in BMC.
 
-    Company, submitter, assigned group and the Assigned Support Company/Organization
-    (BMC only honors the caller's ``Assigned Group`` when these two travel together in
-    the same payload) are injected from ``business_defaults`` by the tool layer and are
-    not part of this input.
+    Company, assigned group and the Assigned Support Company/Organization (BMC only
+    honors the caller's ``Assigned Group`` when these two travel together in the same
+    payload) are injected from ``business_defaults`` by the tool layer and are not
+    part of this input. The submitter's ``First_Name``/``Last_Name`` are NOT a fixed
+    default: they are resolved from ``reporter_email`` via BMC's ``CTM:People`` (see
+    ``bmc.libs.helpers.person_lookup``) so the ticket is attributed to the real
+    person, not this agent's service-account persona.
     """
 
     description: str = Field(
@@ -94,6 +110,16 @@ class CreateIncidentInput(BaseModel):
             'Short, specific subject line: which service/system is affected and the '
             'concrete symptom (e.g. "Payroll app down for all users at Medellin '
             'site"), never a generic label like "System not working".'
+        ),
+    )
+    reporter_email: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Email of the person reporting this, looked up in BMC's CTM:People to "
+            'fill the submitter First_Name/Last_Name (not the fixed Customer '
+            'identity) with the real reporter. Creation fails with no ticket '
+            'created if no matching person is found in BMC.'
         ),
     )
     detailed_decription: str = Field(
