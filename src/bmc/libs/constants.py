@@ -24,6 +24,11 @@ AR_FIELD_SUBMITTER: Final[str] = 'Submitter'
 AR_FIELD_CATEGORIZATION_TIER_1: Final[str] = 'Categorization Tier 1'
 AR_FIELD_CATEGORIZATION_TIER_2: Final[str] = 'Categorization Tier 2'
 
+# HPD:IncidentInterface field "Description" (AR field id 1000000000, shared with
+# HPD:IncidentInterface_Create) rejects the request outright above this length:
+# "Value does not fall within the limits specified for the field... Maximum length -100".
+INCIDENT_DESCRIPTION_MAX_LENGTH: Final[int] = 100
+
 # CTM:People (reporter identity lookup by email — see bmc.libs.helpers.person_lookup)
 AR_FIELD_PEOPLE_LOGIN_ID: Final[str] = 'Remedy Login ID'
 AR_FIELD_PEOPLE_FIRST_NAME: Final[str] = 'First Name'

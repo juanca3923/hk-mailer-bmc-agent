@@ -31,6 +31,7 @@ from bmc.libs.constants import (
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
+    INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     WORK_ORDER_STATUSES,
 )
@@ -477,7 +478,20 @@ async def bmc_close_work_order(
 
 @tool
 async def bmc_create_incident(
-    description: str,
+    description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
+            description=(
+                "Short, specific subject line (hard limit: 100 characters — BMC rejects "
+                "the whole request above that): which service/system is affected and the "
+                'concrete symptom (e.g. "Payroll app down for all users at Medellin '
+                'site"), never a generic label like "System not working". Put extra '
+                "detail in `detailed_decription` instead of exceeding this limit."
+            ),
+        ),
+    ],
     detailed_decription: str,
     reporter_email: str,
     product_categorization_tier_1: str,
@@ -506,9 +520,11 @@ async def bmc_create_incident(
     Parameters
     ----------
     description : str
-        Short, specific subject line: which service/system is affected and the
+        Short, specific subject line (hard limit: 100 characters — BMC rejects
+        the whole request above that): which service/system is affected and the
         concrete symptom (e.g. "Payroll app down for all users at Medellin
-        site"), never a generic label like "System not working".
+        site"), never a generic label like "System not working". Put extra
+        detail in ``detailed_decription`` instead of exceeding this limit.
     detailed_decription : str
         Full incident detail (preserves AR field spelling): who reported it,
         when it started, the exact symptom observed, the affected
@@ -689,7 +705,19 @@ async def bmc_add_incident_attachment(
 @tool
 async def bmc_close_incident(
     incident_number: str,
-    description: str,
+    description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
+            description=(
+                "Short closing summary (hard limit: 100 characters — BMC rejects the "
+                "whole request above that). Summarize, do not narrate the full "
+                "resolution here; put the full explanation in `resolution` or as a "
+                "separate note via `bmc_add_incident_note` before closing."
+            ),
+        ),
+    ],
     resolution: str = "Solución no especificada",
 ) -> str:
     """Close an Incident, taking ownership of it and moving it to Resolved.
@@ -702,7 +730,10 @@ async def bmc_close_incident(
     incident_number : str
         Incident Number to close.
     description : str
-        Short summary of the closure, recorded on the incident.
+        Short closing summary (hard limit: 100 characters — BMC rejects the
+        whole request above that). Summarize, do not narrate the full
+        resolution here; put the full explanation in ``resolution`` or as a
+        separate note via ``bmc_add_incident_note`` before closing.
     resolution : str, optional
         How the incident was actually solved; replace the placeholder default.
 

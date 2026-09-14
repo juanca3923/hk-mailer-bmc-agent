@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pydantic
 import pytest
 
 from agent.internal_tools import bmc_tools
@@ -16,10 +17,12 @@ from bmc.libs.constants import (
     AR_FIELD_STATUS,
     AR_FIELD_SUBMITTER,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
+    INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     WORK_ORDER_STATUSES,
 )
 from bmc.type_defs.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
+from bmc.type_defs.inputs import CloseIncidentInput, CreateIncidentInput
 
 REPORTER_EMAIL = 'ana.reportante@arus.com.co'
 
@@ -296,3 +299,28 @@ def test_status_params_expose_enum_to_the_model() -> None:
 def test_all_bmc_tools_are_prefixed() -> None:
     for t in bmc_tools._ALL_BMC_TOOLS:  # noqa: SLF001
         assert t.name.startswith('bmc_')
+
+
+def test_incident_description_fields_expose_100_char_limit_to_the_model() -> None:
+    """BMC rejects the whole request (not a truncation) above 100 chars on this
+    AR field — regression for 'Value does not fall within the limits specified
+    for the field... Maximum length -100'."""
+    assert bmc_tools.bmc_create_incident.args['description']['maxLength'] == INCIDENT_DESCRIPTION_MAX_LENGTH
+    assert bmc_tools.bmc_close_incident.args['description']['maxLength'] == INCIDENT_DESCRIPTION_MAX_LENGTH
+
+
+def test_create_incident_input_rejects_description_over_100_chars() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        CreateIncidentInput(
+            description='x' * (INCIDENT_DESCRIPTION_MAX_LENGTH + 1),
+            detailed_decription='detalle',
+            reporter_email=REPORTER_EMAIL,
+            product_categorization_tier_1='P1',
+            product_categorization_tier_2='P2',
+            product_categorization_tier_3='P3',
+        )
+
+
+def test_close_incident_input_rejects_description_over_100_chars() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        CloseIncidentInput(incident_number='INC1', description='x' * (INCIDENT_DESCRIPTION_MAX_LENGTH + 1))

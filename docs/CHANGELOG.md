@@ -4,6 +4,30 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — fix: `description` de incidente rechazado por BMC al pasar 100 caracteres
+
+- **Problema confirmado contra BMC real**: `Value does not fall within the limits
+  specified for the field(Field ID and Name - HPD:IncidentInterface
+  <1000000000 : Description>, Maximum length -100)`. BMC rechaza toda la petición
+  (no trunca) cuando `description` supera 100 caracteres — mismo campo AR en
+  `bmc_create_incident` (asunto) y `bmc_close_incident` (resumen de cierre).
+- **Fix**: nueva constante `INCIDENT_DESCRIPTION_MAX_LENGTH = 100`
+  (`src/bmc/libs/constants.py`). `CreateIncidentInput.description` y
+  `CloseIncidentInput.description` (`src/bmc/type_defs/inputs.py`) ganan
+  `max_length`. Los parámetros `description` de `bmc_create_incident` y
+  `bmc_close_incident` (`src/agent/internal_tools/bmc_tools.py`) pasan de `str`
+  plano a `Annotated[str, Field(max_length=...)]` — necesario para que el límite
+  llegue al schema que ve el LLM (`Field` sin `Annotated` en la firma de la tool no
+  sobrevive la reconstrucción del schema de LangChain, mismo hallazgo que el de
+  `status`/`Literal` documentado el 2026-07-30).
+- **Guía**: `skills/guia-creacion-tickets/SKILL.md` documenta el límite (secciones
+  5, 6 y 8) e instruye a resumir en `description` y mover el detalle a
+  `detailed_decription` (creación) o `resolution`/una nota (cierre).
+- **Sin cambios en `resolution`**: el error de BMC solo mencionó el campo
+  `Description`; no se confirmó un límite para `Resolution`, así que no se tocó.
+
+---
+
 ## 2026-09-14 — feat: identidad real del solicitante vía CTM:People (`reporter_email`)
 
 - **Problema**: `bmc_create_work_order`/`bmc_create_incident` siempre creaban el ticket a

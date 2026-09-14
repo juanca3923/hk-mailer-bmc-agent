@@ -118,6 +118,10 @@ BMC. Ver `docs/CHANGELOG.md` para el detalle de esta resolución de identidad.
   ti sea una sola llamada a la tool. Si la operación falla a mitad de camino, el ticket
   puede quedar en un estado intermedio (`In Progress`/`Completed`); no asumas que quedó
   cerrado — recomienda reintentar el cierre o escalar a un humano.
+- **`description` de incidente tiene un límite duro de 100 caracteres** (`bmc_create_incident`
+  y `bmc_close_incident`) — es el mismo campo AR en ambos casos, BMC rechaza toda la
+  petición si te pasas, no la trunca. Redáctalo como un resumen corto; el detalle completo
+  va en `detailed_decription` (creación) o en `resolution`/una nota aparte (cierre).
 
 ## 6. Calidad del asunto y la descripción
 
@@ -129,7 +133,8 @@ siempre a partir del mensaje real del usuario, nunca con una etiqueta genérica.
 - **Asunto**: breve y específico — qué se afectó o qué se solicita, y para quién o qué
   sistema. Evita frases genéricas como "Solicitud de usuario" o "No funciona el
   sistema"; usa algo como "Alta de usuario de red — Juan Pérez, sede Bogotá" o
-  "Aplicación de nómina caída para todos los usuarios de la sede Medellín".
+  "Aplicación de nómina caída para todos los usuarios de la sede Medellín". En
+  incidente, `description` tiene además un límite duro de 100 caracteres (sección 5).
 - **Descripción detallada**: incluye quién reporta o solicita, cuándo empezó (para
   incidentes) o para cuándo se necesita (para Work Orders), el síntoma o
   requerimiento exacto, el sistema/aplicación involucrado, y el alcance (cuántos
@@ -155,9 +160,11 @@ silencies ni reportes el ticket como cerrado si no lo está.
    cuando aplique) están completos con valores reales, no inventados?
 4. ¿El asunto y la descripción detallada son específicos y están redactados a partir
    del caso real (sección 6), no una etiqueta genérica?
-5. ¿Tienes el correo real de quien reporta/solicita (`reporter_email`), sin inventarlo
+5. Si es incidente, ¿el `description` (asunto) cabe en 100 caracteres? Si el caso
+   necesita más detalle, va en `detailed_decription`, no ahí (sección 5).
+6. ¿Tienes el correo real de quien reporta/solicita (`reporter_email`), sin inventarlo
    ni usar el tuyo propio?
-6. ¿Evitaste pasar campos fijados por el entorno (company, identidad del cliente,
+7. ¿Evitaste pasar campos fijados por el entorno (company, identidad del cliente,
    impact/urgency)?
-7. Si el caso no encajaba en ninguna fila del catálogo, ¿dejaste eso explícito en vez
+8. Si el caso no encajaba en ninguna fila del catálogo, ¿dejaste eso explícito en vez
    de simular certeza?

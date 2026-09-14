@@ -9,6 +9,7 @@ from bmc.libs.constants import (
     DEFAULT_INCIDENT_STATUS,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
+    INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     WORK_ORDER_STATUSES,
 )
@@ -106,10 +107,13 @@ class CreateIncidentInput(BaseModel):
     description: str = Field(
         ...,
         min_length=1,
+        max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
         description=(
-            'Short, specific subject line: which service/system is affected and the '
-            'concrete symptom (e.g. "Payroll app down for all users at Medellin '
-            'site"), never a generic label like "System not working".'
+            f'Short, specific subject line (hard limit: {INCIDENT_DESCRIPTION_MAX_LENGTH} '
+            'characters, rejected by BMC above that): which service/system is affected and '
+            'the concrete symptom (e.g. "Payroll app down for all users at Medellin site"), '
+            'never a generic label like "System not working". Put any extra detail in '
+            '``detailed_decription`` instead of exceeding this limit.'
         ),
     )
     reporter_email: str = Field(
@@ -220,5 +224,15 @@ class CloseIncidentInput(IncidentNumberInput):
     Reason`` is always ``'Closing'``, matching bmc-mcp.
     """
 
-    description: str = Field(..., min_length=1)
+    description: str = Field(
+        ...,
+        min_length=1,
+        max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
+        description=(
+            f'Short closing summary (hard limit: {INCIDENT_DESCRIPTION_MAX_LENGTH} '
+            'characters, rejected by BMC above that) — summarize, do not narrate the full '
+            'resolution here. Put the full explanation in ``resolution`` instead, or as a '
+            'separate note via ``bmc_add_incident_note`` before closing.'
+        ),
+    )
     resolution: str = Field(default='Solución no especificada', min_length=1)
