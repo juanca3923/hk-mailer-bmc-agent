@@ -134,26 +134,36 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_provider_keys_and_langfuse(self) -> Self:
-        if self.llm_provider == "ollama" and not (self.ollama_model or "").strip():
-            msg = "OLLAMA_MODEL es obligatorio cuando LLM_PROVIDER=ollama"
-            raise ValueError(msg)
-        if self.llm_provider == "openai" and not (self.openai_api_key or "").strip():
-            msg = "OPENAI_API_KEY es obligatorio cuando LLM_PROVIDER=openai"
-            raise ValueError(msg)
-        if self.llm_provider == "anthropic" and not (self.anthropic_api_key or "").strip():
-            msg = "ANTHROPIC_API_KEY es obligatorio cuando LLM_PROVIDER=anthropic"
-            raise ValueError(msg)
-        if self.llm_provider == "huggingface":
-            if not (self.huggingface_api_key or "").strip():
-                msg = "HUGGINGFACE_API_KEY es obligatorio cuando LLM_PROVIDER=huggingface"
-                raise ValueError(msg)
-            if not (self.huggingface_model or "").strip():
-                msg = "HUGGINGFACE_MODEL es obligatorio cuando LLM_PROVIDER=huggingface"
-                raise ValueError(msg)
-
+        self._validate_provider_required_keys()
         self._validate_langfuse_prompt_required_keys()
-
         return self
+
+    def _required_fields_for_provider(self) -> list[tuple[str, str]]:
+        """Campos obligatorios (valor, nombre de variable de entorno) para ``llm_provider``.
+
+        Returns
+        -------
+        list[tuple[str, str]]
+            Pares ``(valor, ENV_VAR)`` en el orden en que deben validarse; vacío si el
+            proveedor activo no tiene campos adicionales que validar aquí.
+        """
+        by_provider: dict[str, list[tuple[str, str]]] = {
+            "ollama": [(self.ollama_model, "OLLAMA_MODEL")],
+            "openai": [(self.openai_api_key, "OPENAI_API_KEY")],
+            "anthropic": [(self.anthropic_api_key, "ANTHROPIC_API_KEY")],
+            "huggingface": [
+                (self.huggingface_api_key, "HUGGINGFACE_API_KEY"),
+                (self.huggingface_model, "HUGGINGFACE_MODEL"),
+            ],
+        }
+        return by_provider.get(self.llm_provider, [])
+
+    def _validate_provider_required_keys(self) -> None:
+        """Lanza ``ValueError`` si falta algún campo obligatorio del ``llm_provider`` activo."""
+        for value, env_name in self._required_fields_for_provider():
+            if not (value or "").strip():
+                msg = f"{env_name} es obligatorio cuando LLM_PROVIDER={self.llm_provider}"
+                raise ValueError(msg)
 
     @staticmethod
     def repo_root() -> Path:

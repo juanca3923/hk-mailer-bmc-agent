@@ -29,13 +29,13 @@ OptionalIncidentStatusField = Annotated[str | None, BeforeValidator(validate_opt
 class WorkOrderIdInput(BaseModel):
     """Input requiring a work order id."""
 
-    work_order_id: str = Field(..., min_length=1, description='Work Order ID (e.g. WO0000000000228).')
+    work_order_id: str = Field(..., min_length=1, description="Work Order ID (e.g. WO0000000000228).")
 
 
 class IncidentNumberInput(BaseModel):
     """Input requiring an incident number."""
 
-    incident_number: str = Field(..., min_length=1, description='Incident Number (e.g. INC000000002106).')
+    incident_number: str = Field(..., min_length=1, description="Incident Number (e.g. INC000000002106).")
 
 
 class CreateWorkOrderInput(BaseModel):
@@ -59,7 +59,7 @@ class CreateWorkOrderInput(BaseModel):
         ...,
         min_length=1,
         description=(
-            'Short, specific subject line: what is requested and for whom or which '
+            "Short, specific subject line: what is requested and for whom or which "
             'system (e.g. "New network user - Juan Perez, Bogota site"), never a '
             'generic label like "User request".'
         ),
@@ -69,55 +69,55 @@ class CreateWorkOrderInput(BaseModel):
         min_length=1,
         description=(
             "Email of the person requesting this, looked up in BMC's CTM:People to "
-            'fill the submitter First Name/Last Name (not the fixed Customer '
-            'identity) with the real requester. Creation fails with no ticket '
-            'created if no matching person is found in BMC.'
+            "fill the submitter First Name/Last Name (not the fixed Customer "
+            "identity) with the real requester. Creation fails with no ticket "
+            "created if no matching person is found in BMC."
         ),
     )
     detailed_description: str = Field(
         ...,
         min_length=1,
         description=(
-            'Full request detail: who needs it, exactly what must be done, and any '
-            'data required to execute it (access, equipment, location, dates) - '
-            'enough for the service desk to act without asking the user again.'
+            "Full request detail: who needs it, exactly what must be done, and any "
+            "data required to execute it (access, equipment, location, dates) - "
+            "enough for the service desk to act without asking the user again."
         ),
     )
     categorization_tier_1: str = Field(
         ...,
         min_length=1,
         description=(
-            'Operational categorization tier 1: from the matching categorias-<dominio> '
-            'skill row when one applies, otherwise the fixed catch-all combination from '
-            'guia-creacion-tickets (section 1) — never invent a value.'
+            "Operational categorization tier 1: from the matching categorias-<dominio> "
+            "skill row when one applies, otherwise the fixed catch-all combination from "
+            "guia-creacion-tickets (section 1) — never invent a value."
         ),
     )
     categorization_tier_2: str = Field(
         ...,
         min_length=1,
-        description='Operational categorization tier 2, same row/catch-all as tier 1.',
+        description="Operational categorization tier 2, same row/catch-all as tier 1.",
     )
     product_cat_tier_1: str = Field(
         ...,
         min_length=1,
-        description='Product categorization tier 1, same row/catch-all as categorization_tier_1.',
+        description="Product categorization tier 1, same row/catch-all as categorization_tier_1.",
     )
     product_cat_tier_2: str = Field(
         ...,
         min_length=1,
-        description='Product categorization tier 2, same row/catch-all as categorization_tier_1.',
+        description="Product categorization tier 2, same row/catch-all as categorization_tier_1.",
     )
     product_cat_tier_3: str = Field(
         ...,
         min_length=1,
-        description='Product categorization tier 3, same row/catch-all as categorization_tier_1.',
+        description="Product categorization tier 3, same row/catch-all as categorization_tier_1.",
     )
     status: WorkOrderStatusField = Field(
         default=DEFAULT_WORK_ORDER_STATUS,
-        json_schema_extra={'enum': list(WORK_ORDER_STATUSES)},
+        json_schema_extra={"enum": list(WORK_ORDER_STATUSES)},
     )
-    priority: str = Field(default='Medium')  # TODO: actualizar caracterización
-    # TODO: actualizar caracterización
+    priority: str = Field(default="Medium")
+
     assigned_group: str = Field(default=DEFAULT_WORK_ORDER_ASSIGNED_GROUP, min_length=1)
 
 
@@ -138,11 +138,11 @@ class CreateIncidentInput(BaseModel):
         min_length=1,
         max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
         description=(
-            f'Short, specific subject line (hard limit: {INCIDENT_DESCRIPTION_MAX_LENGTH} '
-            'characters, rejected by BMC above that): which service/system is affected and '
+            f"Short, specific subject line (hard limit: {INCIDENT_DESCRIPTION_MAX_LENGTH} "
+            "characters, rejected by BMC above that): which service/system is affected and "
             'the concrete symptom (e.g. "Payroll app down for all users at Medellin site"), '
             'never a generic label like "System not working". Put any extra detail in '
-            '``detailed_decription`` instead of exceeding this limit.'
+            "``detailed_decription`` instead of exceeding this limit."
         ),
     )
     reporter_email: str = Field(
@@ -150,32 +150,31 @@ class CreateIncidentInput(BaseModel):
         min_length=1,
         description=(
             "Email of the person reporting this, looked up in BMC's CTM:People to "
-            'fill the submitter First_Name/Last_Name (not the fixed Customer '
-            'identity) with the real reporter. Creation fails with no ticket '
-            'created if no matching person is found in BMC.'
+            "fill the submitter First_Name/Last_Name (not the fixed Customer "
+            "identity) with the real reporter. Creation fails with no ticket "
+            "created if no matching person is found in BMC."
         ),
     )
     detailed_decription: str = Field(
         ...,
         min_length=1,
         description=(
-            'Full incident detail: who reported it, when it started, the exact '
-            'symptom observed, the affected system/application, and scope (how many '
-            'users or which site) - enough to diagnose without asking the user again.'
+            "Full incident detail: who reported it, when it started, the exact "
+            "symptom observed, the affected system/application, and scope (how many "
+            "users or which site) - enough to diagnose without asking the user again."
         ),
     )
     status: IncidentStatusField = Field(
         default=DEFAULT_INCIDENT_STATUS,
-        json_schema_extra={'enum': list(INCIDENT_STATUSES)},
+        json_schema_extra={"enum": list(INCIDENT_STATUSES)},
     )
-    reported_source: str = Field(default='Direct Input')  # TODO: actualizar caracterización
-    service_type: str = Field(default='User Service Restoration')  # TODO: actualizar caracterización
-    categorization_tier_1: str = Field(default='')
-    categorization_tier_2: str = Field(default='')
+    reported_source: str = Field(default="Direct Input")
+    service_type: str = Field(default="User Service Restoration")
+    categorization_tier_1: str = Field(default="")
+    categorization_tier_2: str = Field(default="")
     product_categorization_tier_1: str = Field(..., min_length=1)
     product_categorization_tier_2: str = Field(..., min_length=1)
     product_categorization_tier_3: str = Field(..., min_length=1)
-    # TODO: actualizar caracterización
     assigned_group: str = Field(default=DEFAULT_INCIDENT_ASSIGNED_GROUP, min_length=1)
 
 
@@ -183,30 +182,30 @@ class AddWorkOrderNoteInput(WorkOrderIdInput):
     """Add a work log note to a work order."""
 
     note_text: str = Field(..., min_length=1)
-    work_log_type: str = Field(default='General Information')  # TODO: actualizar caracterización
-    view_access: str = Field(default='Public')  # TODO: actualizar caracterización
-    secure_work_log: str = Field(default='No')  # TODO: actualizar caracterización
+    work_log_type: str = Field(default="General Information")
+    view_access: str = Field(default="Public")
+    secure_work_log: str = Field(default="No")
 
 
 class AddWorkOrderAttachmentInput(AddWorkOrderNoteInput):
     """Add a work log note with file attachment to a work order."""
 
-    file_path: str = Field(..., min_length=1, description='Local path readable by the MCP server.')
+    file_path: str = Field(..., min_length=1, description="Local path readable by the MCP server.")
 
 
 class AddIncidentNoteInput(IncidentNumberInput):
     """Add a work log note to an incident."""
 
     note_text: str = Field(..., min_length=1)
-    work_log_type: str = Field(default='General Information')  # TODO: actualizar caracterización
-    view_access: str = Field(default='Public')  # TODO: actualizar caracterización
-    secure_work_log: str = Field(default='No')  # TODO: actualizar caracterización
+    work_log_type: str = Field(default="General Information")
+    view_access: str = Field(default="Public")
+    secure_work_log: str = Field(default="No")
 
 
 class AddIncidentAttachmentInput(AddIncidentNoteInput):
     """Add a work log note with file attachment to an incident."""
 
-    file_path: str = Field(..., min_length=1, description='Local path readable by the MCP server.')
+    file_path: str = Field(..., min_length=1, description="Local path readable by the MCP server.")
 
 
 class UpdateWorkOrderStatusInput(WorkOrderIdInput):
@@ -215,7 +214,7 @@ class UpdateWorkOrderStatusInput(WorkOrderIdInput):
     description: str = Field(..., min_length=1)
     status: WorkOrderStatusField = Field(
         default=DEFAULT_WORK_ORDER_UPDATE_STATUS,
-        json_schema_extra={'enum': list(WORK_ORDER_STATUSES)},
+        json_schema_extra={"enum": list(WORK_ORDER_STATUSES)},
     )
 
 
@@ -227,20 +226,20 @@ class CloseWorkOrderInput(WorkOrderIdInput):
     """
 
     intermediate_description: str = Field(
-        default='Rest API: Resolve WO using RestAPI',
+        default="Rest API: Resolve WO using RestAPI",
         min_length=1,
         description=(
-            'Resumen de lo realizado, para el PUT intermedio que pasa Status=Completed '
-            'y fija ASCHG = BMC_ASSIGNEE_DISPLAY_NAME (BMC no permite la transición directa '
-            'In Progress -> Closed; requiere pasar por Completed con este campo poblado).'
+            "Resumen de lo realizado, para el PUT intermedio que pasa Status=Completed "
+            "y fija ASCHG = BMC_ASSIGNEE_DISPLAY_NAME (BMC no permite la transición directa "
+            "In Progress -> Closed; requiere pasar por Completed con este campo poblado)."
         ),
     )
     final_description: str = Field(
-        default='Rest API: Resolve Work order via Mosaico',
+        default="Rest API: Resolve Work order via Mosaico",
         min_length=1,
         description=(
-            'Documentación correcta de la solución del ticket, para el PUT final que cierra '
-            'el Work Order con Status=Closed.'
+            "Documentación correcta de la solución del ticket, para el PUT final que cierra "
+            "el Work Order con Status=Closed."
         ),
     )
 
@@ -258,10 +257,10 @@ class CloseIncidentInput(IncidentNumberInput):
         min_length=1,
         max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
         description=(
-            f'Short closing summary (hard limit: {INCIDENT_DESCRIPTION_MAX_LENGTH} '
-            'characters, rejected by BMC above that) — summarize, do not narrate the full '
-            'resolution here. Put the full explanation in ``resolution`` instead, or as a '
-            'separate note via ``bmc_add_incident_note`` before closing.'
+            f"Short closing summary (hard limit: {INCIDENT_DESCRIPTION_MAX_LENGTH} "
+            "characters, rejected by BMC above that) — summarize, do not narrate the full "
+            "resolution here. Put the full explanation in ``resolution`` instead, or as a "
+            "separate note via ``bmc_add_incident_note`` before closing."
         ),
     )
-    resolution: str = Field(default='Solución no especificada', min_length=1)
+    resolution: str = Field(default="Solución no especificada", min_length=1)

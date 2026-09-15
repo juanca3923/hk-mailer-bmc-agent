@@ -40,6 +40,7 @@ from bmc.libs.helpers.ticket_guards import (
     require_submitter,
 )
 from bmc.libs.toon_encoder import ToonResponseEncoder
+from bmc.type_defs.ar_api import BmcEntryListResponse
 from bmc.type_defs.ar_values import (
     CloseIncidentValues,
     CreateIncidentValues,
@@ -175,17 +176,36 @@ class IncidentOperations:
         try:
             created = await self._handler.client.create_incident_entry(EntryValuesMapper.wrap_entry_body(values))
         except MCPClientError as exc:
-            logger.info('create_incident failed')
+            logger.info("create_incident failed")
             return BaseOutput(success=False, message=exc.message)
         incident_number = created.values.get_str(AR_FIELD_INCIDENT_NUMBER)
         fallback_applied = await self._apply_categorization_fallback(incident_number)
         out = IncidentCreatedData(
             incident_number=incident_number,
-            description=created.values.get_str('Description'),
+            description=created.values.get_str("Description"),
             categorization_fallback_applied=fallback_applied,
         )
-        logger.info('create_incident ok incident_number=%s', incident_number)
+        logger.info("create_incident ok incident_number=%s", incident_number)
         return BaseOutput(success=True, message=ToonResponseEncoder.encode_model(out))
+
+    async def _search_created_incident(self, incident_number: str) -> BmcEntryListResponse | None:
+        """Search a just-created incident, swallowing failures for a best-effort follow-up check.
+
+        Parameters
+        ----------
+        incident_number : str
+            Incident Number just created.
+
+        Returns
+        -------
+        BmcEntryListResponse | None
+            Search result, or ``None`` when the incident could not be searched.
+        """
+        try:
+            return await self._handler.client.search_incident(incident_number)
+        except MCPClientError:
+            logger.warning("create_incident categorization check failed incident_number=%s", incident_number)
+            return None
 
     async def _find_request_id_with_empty_categorization(self, incident_number: str) -> str | None:
         """Search a just-created incident and return its Request ID if the category is empty.
@@ -201,20 +221,16 @@ class IncidentOperations:
             Request ID to patch, or ``None`` when categorization is already populated, the
             incident could not be searched, or Request ID is unavailable.
         """
-        if not incident_number:
-            return None
-        try:
-            search = await self._handler.client.search_incident(incident_number)
-        except MCPClientError:
-            logger.warning('create_incident categorization check failed incident_number=%s', incident_number)
-            return None
-        first = search.first_values()
+        search = await self._search_created_incident(incident_number) if incident_number else None
+        first = search.first_values() if search is not None else None
         if first is None:
             return None
-        if first.get_str(AR_FIELD_CATEGORIZATION_TIER_1) and first.get_str(AR_FIELD_CATEGORIZATION_TIER_2):
+        has_categorization = first.get_str(AR_FIELD_CATEGORIZATION_TIER_1) and first.get_str(
+            AR_FIELD_CATEGORIZATION_TIER_2
+        )
+        if has_categorization:
             return None
-        request_id = first.get_str(AR_FIELD_REQUEST_ID)
-        return request_id or None
+        return first.get_str(AR_FIELD_REQUEST_ID) or None
 
     async def _apply_categorization_fallback(self, incident_number: str) -> bool:
         """Patch ``Categorization Tier 1``/``Tier 2`` when BMC left them empty after creation.
@@ -248,9 +264,9 @@ class IncidentOperations:
             )
             await self._handler.client.post_incident_work_log(MultipartBuilder.build(note_values))
         except MCPClientError:
-            logger.warning('create_incident categorization fallback failed incident_number=%s', incident_number)
+            logger.warning("create_incident categorization fallback failed incident_number=%s", incident_number)
             return False
-        logger.info('create_incident categorization fallback applied incident_number=%s', incident_number)
+        logger.info("create_incident categorization fallback applied incident_number=%s", incident_number)
         return True
 
     async def add_note(self, data: AddIncidentNoteInput) -> BaseOutput:
@@ -273,25 +289,23 @@ class IncidentOperations:
         state, error = await self.resolve_ticket_state(data.incident_number)
         if error is not None or state is None:
             return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING)
-        guard_error = require_not_closed(state.status)
-        if guard_error is not None:
-            return guard_error
 
-        output: BaseOutput
-        try:
-            values = WorkInfoIncidentValues(
-                incident_number=data.incident_number,
-                work_log_type=data.work_log_type,
-                view_access=data.view_access,
-                secure_work_log=data.secure_work_log,
-                detailed_description=data.note_text,
-            )
-            work_info_body = MultipartBuilder.build(values)
-            await self._handler.client.post_incident_work_log(work_info_body)
-            logger.info('add_incident_note ok incident_number=%s', data.incident_number)
-            output = BaseOutput(success=True, message=f'Nota añadida a {data.incident_number}.')
-        except MCPClientError as exc:
-            output = BaseOutput(success=False, message=exc.message)
+        output = require_not_closed(state.status)
+        if output is None:
+            try:
+                values = WorkInfoIncidentValues(
+                    incident_number=data.incident_number,
+                    work_log_type=data.work_log_type,
+                    view_access=data.view_access,
+                    secure_work_log=data.secure_work_log,
+                    detailed_description=data.note_text,
+                )
+                work_info_body = MultipartBuilder.build(values)
+                await self._handler.client.post_incident_work_log(work_info_body)
+                logger.info("add_incident_note ok incident_number=%s", data.incident_number)
+                output = BaseOutput(success=True, message=f"Nota añadida a {data.incident_number}.")
+            except MCPClientError as exc:
+                output = BaseOutput(success=False, message=exc.message)
         return output
 
     async def add_attachment(self, data: AddIncidentAttachmentInput) -> BaseOutput:
@@ -314,27 +328,25 @@ class IncidentOperations:
         state, error = await self.resolve_ticket_state(data.incident_number)
         if error is not None or state is None:
             return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING)
-        guard_error = require_not_closed(state.status)
-        if guard_error is not None:
-            return guard_error
 
-        output: BaseOutput
-        try:
-            attachment = self._handler.load_attachment(data.file_path)
-            values = WorkInfoIncidentValues(
-                incident_number=data.incident_number,
-                work_log_type=data.work_log_type,
-                view_access=data.view_access,
-                secure_work_log=data.secure_work_log,
-                detailed_description=data.note_text,
-                attachment_marker=WORK_LOG_ATTACHMENT_MARKER,
-            )
-            work_info_body = MultipartBuilder.build(values, attachment)
-            await self._handler.client.post_incident_work_log(work_info_body)
-            logger.info('add_incident_attachment ok incident_number=%s', data.incident_number)
-            output = BaseOutput(success=True, message=f'Adjunto añadido a {data.incident_number}.')
-        except MCPClientError as exc:
-            output = BaseOutput(success=False, message=exc.message)
+        output = require_not_closed(state.status)
+        if output is None:
+            try:
+                attachment = self._handler.load_attachment(data.file_path)
+                values = WorkInfoIncidentValues(
+                    incident_number=data.incident_number,
+                    work_log_type=data.work_log_type,
+                    view_access=data.view_access,
+                    secure_work_log=data.secure_work_log,
+                    detailed_description=data.note_text,
+                    attachment_marker=WORK_LOG_ATTACHMENT_MARKER,
+                )
+                work_info_body = MultipartBuilder.build(values, attachment)
+                await self._handler.client.post_incident_work_log(work_info_body)
+                logger.info("add_incident_attachment ok incident_number=%s", data.incident_number)
+                output = BaseOutput(success=True, message=f"Adjunto añadido a {data.incident_number}.")
+            except MCPClientError as exc:
+                output = BaseOutput(success=False, message=exc.message)
         return output
 
     async def close(self, data: CloseIncidentInput) -> BaseOutput:
@@ -362,36 +374,31 @@ class IncidentOperations:
         state, error = await self.resolve_ticket_state(data.incident_number)
         if error is not None or state is None:
             return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING)
-        guard_error = require_not_closed(state.status)
-        if guard_error is not None:
-            return guard_error
-        guard_error = require_submitter(state.submitter, self._handler.settings.username)
-        if guard_error is not None:
-            return guard_error
 
-        output: BaseOutput
-        try:
-            ownership = UpdateIncidentStatusValues(
-                description=DEFAULT_INCIDENT_CLOSE_OWNERSHIP_DESCRIPTION,
-                status=DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
-                assignee=self._handler.settings.assignee_display_name,
-            )
-            await self._handler.client.update_incident(
-                state.request_id,
-                EntryValuesMapper.wrap_entry_body(ownership),
-            )
-            close_values = CloseIncidentValues(
-                description=data.description,
-                resolution=data.resolution,
-                status=DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
-                status_reason=DEFAULT_INCIDENT_CLOSE_STATUS_REASON,
-            )
-            await self._handler.client.update_incident(
-                state.request_id,
-                EntryValuesMapper.wrap_entry_body(close_values),
-            )
-            logger.info('close_incident ok incident_number=%s', data.incident_number)
-            output = BaseOutput(success=True, message=f'Incidente {data.incident_number} cerrado.')
-        except MCPClientError as exc:
-            output = BaseOutput(success=False, message=exc.message)
+        output = require_not_closed(state.status) or require_submitter(state.submitter, self._handler.settings.username)
+        if output is None:
+            try:
+                ownership = UpdateIncidentStatusValues(
+                    description=DEFAULT_INCIDENT_CLOSE_OWNERSHIP_DESCRIPTION,
+                    status=DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
+                    assignee=self._handler.settings.assignee_display_name,
+                )
+                await self._handler.client.update_incident(
+                    state.request_id,
+                    EntryValuesMapper.wrap_entry_body(ownership),
+                )
+                close_values = CloseIncidentValues(
+                    description=data.description,
+                    resolution=data.resolution,
+                    status=DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
+                    status_reason=DEFAULT_INCIDENT_CLOSE_STATUS_REASON,
+                )
+                await self._handler.client.update_incident(
+                    state.request_id,
+                    EntryValuesMapper.wrap_entry_body(close_values),
+                )
+                logger.info("close_incident ok incident_number=%s", data.incident_number)
+                output = BaseOutput(success=True, message=f"Incidente {data.incident_number} cerrado.")
+            except MCPClientError as exc:
+                output = BaseOutput(success=False, message=exc.message)
         return output
