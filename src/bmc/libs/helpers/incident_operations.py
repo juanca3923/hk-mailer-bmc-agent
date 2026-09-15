@@ -173,6 +173,21 @@ class IncidentOperations:
             assigned_support_organization=DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
             assigned_group=data.assigned_group,
         )
+        return await self._create_incident_entry(values)
+
+    async def _create_incident_entry(self, values: CreateIncidentValues) -> BaseOutput:
+        """Create the incident entry in BMC, apply the categorization fallback, and build output.
+
+        Parameters
+        ----------
+        values : CreateIncidentValues
+            Mapped AR field values for ``HPD:IncidentInterface_Create``.
+
+        Returns
+        -------
+        BaseOutput
+            ``success=True`` with TOON-encoded created ids; ``success=False`` on error.
+        """
         try:
             created = await self._handler.client.create_incident_entry(EntryValuesMapper.wrap_entry_body(values))
         except MCPClientError as exc:

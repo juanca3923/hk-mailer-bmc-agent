@@ -392,7 +392,7 @@ class BmcClient:
             return response.json()
         except MCPClientError:
             raise
-        except BaseException as exc:
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="POST", path=path)
             raise AssertionError("unreachable") from exc
 
