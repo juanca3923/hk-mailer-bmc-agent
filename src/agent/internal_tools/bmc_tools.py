@@ -5,8 +5,33 @@ functions using the ``bmc`` package.  All tools share a lazy-initialized
 ``BaseToolHandler`` so settings are validated only once, at first access.
 """
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+#
+# Some ``@tool``-decorated functions below (``bmc_create_work_order``,
+# ``bmc_create_incident``) exceed the configured argument limits. This is not
+# fixable by restructuring the function, and disabling it here is intentional
+# rather than a workaround:
+#
+# LangChain's ``@tool`` decorator builds the JSON schema the LLM sees directly from
+# the function's *own* signature — one schema property per parameter, each with its
+# own type/default so the model can fill it independently. That flat parameter list
+# is the real, user-facing interface of the tool; it is not incidental complexity.
+#
+# Packing the parameters into a single ``dataclass``/Pydantic argument does not
+# reduce that complexity, it only hides it from Pylint's counter — and it does not
+# even work transparently: verified empirically that a function declared as
+# ``async def tool_fn(data: SomeModel)`` with ``args_schema=SomeModel`` still gets
+# called by LangChain with the model's fields as separate keyword arguments (never
+# a single packed object), raising ``TypeError: unexpected keyword argument``. The
+# only way to make a single-parameter signature actually work is ``**kwargs: Any``
+# reconstructing the model inside the function body — which trades a self-documented,
+# type-checked parameter list for an opaque one just to satisfy the linter, with no
+# behavior or schema benefit. The BMC creation forms genuinely require this many
+# independent fields (categorization tiers, product categories, etc.); the count
+# reflects that domain requirement, not a design smell.
 from __future__ import annotations
 
+import functools
 import logging
 import os
 from typing import Annotated, Literal
@@ -65,21 +90,21 @@ from bmc.type_defs.outputs import (
 
 logger = logging.getLogger(__name__)
 
-_handler: BaseToolHandler | None = None
 
-
+@functools.cache
 def _get_handler() -> BaseToolHandler:
     """Return the module-level handler, initializing it on first access.
+
+    Idempotency is provided by ``functools.cache`` (a niladic function, so it runs its
+    body only on the first call and returns the cached instance on every call after),
+    instead of a module-level flag.
 
     Returns
     -------
     BaseToolHandler
         Singleton handler backed by ``BmcSettings`` from environment.
     """
-    global _handler  # noqa: PLW0603
-    if _handler is None:
-        _handler = BaseToolHandler()
-    return _handler
+    return BaseToolHandler()
 
 
 def _wo_detail_from_search(

@@ -268,8 +268,6 @@ class BmcClient:
         try:
             response = await self._request_with_retry("GET", path, params=params)
             return response.json()
-        except MCPClientError:
-            raise
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="GET", path=path)
             raise AssertionError("unreachable") from exc
@@ -317,8 +315,6 @@ class BmcClient:
                 self._raise_from_httpx(exc, method="POST", path=path)
                 raise AssertionError("unreachable") from exc
             return body, location
-        except MCPClientError:
-            raise
         except httpx.HTTPError as exc:
             self._raise_from_httpx(exc, method="POST", path=path)
             raise AssertionError("unreachable") from exc
@@ -349,8 +345,6 @@ class BmcClient:
             if not response.content:
                 return {}
             return response.json()
-        except MCPClientError:
-            raise
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="PUT", path=path)
             raise AssertionError("unreachable") from exc
@@ -390,8 +384,6 @@ class BmcClient:
             if not response.content:
                 return {}
             return response.json()
-        except MCPClientError:
-            raise
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="POST", path=path)
             raise AssertionError("unreachable") from exc

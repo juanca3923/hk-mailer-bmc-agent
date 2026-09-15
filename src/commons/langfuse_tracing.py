@@ -54,20 +54,20 @@ def _build_insecure_span_exporter(
     OTLPSpanExporter
         Exporter pointing at ``{host}/api/public/otel/v1/traces`` with SSL disabled.
     """
-    token = base64.b64encode(f'{public_key}:{secret_key}'.encode()).decode()
+    token = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
     exporter = OTLPSpanExporter(
-        endpoint=f'{host.rstrip("/")}/api/public/otel/v1/traces',
+        endpoint=f"{host.rstrip('/')}/api/public/otel/v1/traces",
         headers={
-            'Authorization': f'Basic {token}',
-            'x-langfuse-sdk-name': 'python',
-            'x-langfuse-sdk-version': langfuse_version,
-            'x-langfuse-public-key': public_key,
+            "Authorization": f"Basic {token}",
+            "x-langfuse-sdk-name": "python",
+            "x-langfuse-sdk-version": langfuse_version,
+            "x-langfuse-public-key": public_key,
         },
         timeout=LANGFUSE_CLIENT_TIMEOUT_S,
     )
     # ``_export`` passes ``verify=self._certificate_file`` to session.post(), so
     # patching the attribute is the only reliable way to disable SSL verification.
-    exporter._certificate_file = False  # type: ignore[assignment]
+    exporter._certificate_file = False  # type: ignore[assignment]  # pylint: disable=protected-access
     return exporter
 
 
@@ -104,4 +104,4 @@ def ensure_langfuse_tracing_client(settings: Settings) -> None:
             span_exporter=span_exporter,
         )
         initialized_public_keys.add(public_key)
-        logger.info('cliente Langfuse registrado para trazas')
+        logger.info("cliente Langfuse registrado para trazas")

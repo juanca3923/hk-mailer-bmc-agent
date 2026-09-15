@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -20,6 +21,9 @@ from agent.llm import build_llm
 from agent.mcp_tools import open_mcp_tools_streamable_http
 from agent.prompts import load_system_prompt_for_settings
 from agent.tool_error_policy import configure_tool_error_handling
+from bmc.config.settings import BmcSettings
+from bmc.exceptions.mcp import MCPLoginError
+from bmc.libs.connection_manager import BmcConnectionManager
 from commons.langfuse_tracing import ensure_langfuse_tracing_client
 from config import Settings, get_logger
 from database.checkpointer import CheckpointerManager
@@ -54,12 +58,8 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
 
     # BMC session lifecycle — conditional on configuration
     bmc_manager = None
-    import os
-    if os.environ.get("BMC_BASE_URL"):
-        from bmc.config.settings import BmcSettings
-        from bmc.libs.connection_manager import BmcConnectionManager
-        from bmc.exceptions.mcp import MCPLoginError
 
+    if os.environ.get("BMC_BASE_URL"):
         bmc_manager = BmcConnectionManager.instance(BmcSettings())
         try:
             await bmc_manager.start()
