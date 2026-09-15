@@ -16,8 +16,6 @@ from bmc.libs.constants import (
     AR_FIELD_CATEGORIZATION_TIER_2,
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
-    AR_FIELD_STATUS,
-    AR_FIELD_SUBMITTER,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_NOTE,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_1,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_2,
@@ -38,6 +36,7 @@ from bmc.libs.helpers.ticket_guards import (
     TicketState,
     require_not_closed,
     require_submitter,
+    resolve_ticket_state_from_search,
 )
 from bmc.libs.toon_encoder import ToonResponseEncoder
 from bmc.type_defs.ar_api import BmcEntryListResponse
@@ -96,30 +95,11 @@ class IncidentOperations:
         tuple[TicketState | None, BaseOutput | None]
             ``(state, None)`` on success; ``(None, error_output)`` on failure.
         """
-        state: TicketState | None = None
-        error: BaseOutput | None = None
-        try:
-            search = await self._handler.client.search_incident(incident_number)
-            first = search.first_values()
-            if first is None:
-                message = USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND.format(incident_number=incident_number)
-                error = BaseOutput(success=False, message=message)
-            else:
-                resolved = first.get_str(AR_FIELD_REQUEST_ID)
-                if resolved:
-                    state = TicketState(
-                        request_id=resolved,
-                        status=first.get_str(AR_FIELD_STATUS),
-                        submitter=first.get_str(AR_FIELD_SUBMITTER),
-                    )
-                else:
-                    error = BaseOutput(
-                        success=False,
-                        message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING,
-                    )
-        except MCPClientError as exc:
-            error = BaseOutput(success=False, message=exc.message)
-        return state, error
+        return await resolve_ticket_state_from_search(
+            self._handler.client.search_incident(incident_number),
+            not_found_message=USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND.format(incident_number=incident_number),
+            request_id_missing_message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING,
+        )
 
     async def create(self, data: CreateIncidentInput) -> BaseOutput:
         """Create an incident, then patch the operational category if BMC left it empty.

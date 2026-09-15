@@ -7,9 +7,6 @@ from bmc.config.settings import BmcSettings
 from bmc.exceptions.mcp import MCPClientError
 from bmc.libs.api_client import BmcClient
 from bmc.libs.constants import (
-    AR_FIELD_REQUEST_ID,
-    AR_FIELD_STATUS,
-    AR_FIELD_SUBMITTER,
     DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
@@ -24,6 +21,7 @@ from bmc.libs.helpers.ticket_guards import (
     TicketState,
     require_not_closed,
     require_submitter,
+    resolve_ticket_state_from_search,
 )
 from bmc.type_defs.ar_values import (
     CloseWorkOrderValues,
@@ -78,30 +76,11 @@ class WorkOrderOperations:
         tuple[TicketState | None, BaseOutput | None]
             ``(state, None)`` on success; ``(None, error_output)`` on failure.
         """
-        state: TicketState | None = None
-        error: BaseOutput | None = None
-        try:
-            search = await self._handler.client.search_work_order(work_order_id)
-            first = search.first_values()
-            if first is None:
-                message = USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND.format(work_order_id=work_order_id)
-                error = BaseOutput(success=False, message=message)
-            else:
-                resolved = first.get_str(AR_FIELD_REQUEST_ID)
-                if resolved:
-                    state = TicketState(
-                        request_id=resolved,
-                        status=first.get_str(AR_FIELD_STATUS),
-                        submitter=first.get_str(AR_FIELD_SUBMITTER),
-                    )
-                else:
-                    error = BaseOutput(
-                        success=False,
-                        message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
-                    )
-        except MCPClientError as exc:
-            error = BaseOutput(success=False, message=exc.message)
-        return state, error
+        return await resolve_ticket_state_from_search(
+            self._handler.client.search_work_order(work_order_id),
+            not_found_message=USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND.format(work_order_id=work_order_id),
+            request_id_missing_message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
+        )
 
     async def add_note(self, data: AddWorkOrderNoteInput) -> BaseOutput:
         """Post a work log note without attachment, after guard checks.

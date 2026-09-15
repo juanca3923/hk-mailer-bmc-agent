@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import os
 import ssl
 from collections.abc import Callable
@@ -25,9 +26,8 @@ from config import Settings
 # Anthropic prompt caching (system prompt, tools, long prefixes).
 ANTHROPIC_CACHE_CONTROL: dict[str, str] = {"type": "ephemeral"}
 
-_legacy_tls_configured = False
 
-
+@functools.cache
 def _configure_huggingface_legacy_tls() -> None:
     """Relax OpenSSL's security level for huggingface_hub's HTTP client (idempotent).
 
@@ -37,11 +37,11 @@ def _configure_huggingface_legacy_tls() -> None:
     certificate verification on (uses ``SSL_CERT_FILE`` if set, else certifi) but stops
     rejecting on algorithm/key-size grounds. Never enable this in production; the correct
     fix is reissuing the corporate CA with a modern key.
-    """
-    global _legacy_tls_configured  # noqa: PLW0603
-    if _legacy_tls_configured:
-        return
 
+    Idempotency is provided by ``functools.cache`` (a niladic function, so it runs its
+    body only on the first call and returns the cached ``None`` on every call after),
+    instead of a module-level flag.
+    """
     cafile = os.environ.get("SSL_CERT_FILE") or certifi.where()
 
     def _build_ssl_context() -> ssl.SSLContext:
@@ -65,7 +65,6 @@ def _configure_huggingface_legacy_tls() -> None:
             timeout=None,
         )
     )
-    _legacy_tls_configured = True
 
 
 def openai_prompt_cache_key(settings: Settings) -> str:

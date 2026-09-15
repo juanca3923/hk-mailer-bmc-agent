@@ -128,14 +128,14 @@ class FakeHandler:
 
 
 @pytest.fixture(autouse=True)
-def _reset_handler_singleton(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ensure each test starts from a clean module-level ``_handler`` singleton."""
-    monkeypatch.setattr(bmc_tools, '_handler', None)
+def _reset_handler_singleton() -> None:
+    """Ensure each test starts from a clean cached ``_get_handler`` singleton."""
+    bmc_tools._get_handler.cache_clear()
 
 
 async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Closed', submitter='svc_mosaico')
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_close_work_order.ainvoke({'work_order_id': 'WO1'})
 
@@ -146,7 +146,7 @@ async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.M
 
 async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='In Progress', submitter='otro_usuario')
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_close_incident.ainvoke({'incident_number': 'INC1', 'description': 'cierre'})
 
@@ -158,7 +158,7 @@ async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.Mon
 
 async def test_bmc_add_incident_note_uses_work_log_not_work_info(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_add_incident_note.ainvoke({'incident_number': 'INC1', 'note_text': 'hola'})
 
@@ -199,7 +199,7 @@ def test_bmc_create_work_order_has_no_support_company_organization_params_but_ha
 
 async def test_bmc_create_work_order_sends_support_company_and_organization(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
@@ -227,7 +227,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
 
 async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(person_entries=[])
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
@@ -248,7 +248,7 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
 
 async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_incident.ainvoke({
         'description': 'D',
@@ -270,7 +270,7 @@ async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch:
 
 async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(person_entries=[])
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_incident.ainvoke({
         'description': 'D',
