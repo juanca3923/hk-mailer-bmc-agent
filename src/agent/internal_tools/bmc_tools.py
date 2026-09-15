@@ -29,6 +29,7 @@ from bmc.libs.constants import (
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
+    DEFAULT_WORK_LOG_TYPE,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
@@ -140,9 +141,7 @@ async def bmc_health_check() -> str:
     if is_healthy:
         logger.info("bmc_health_check successful")
         return BaseOutput(success=True, message="BMC session is healthy.").model_dump_json()
-    return BaseOutput(
-        success=False, message="Error: BMC health check returned unexpected state."
-    ).model_dump_json()
+    return BaseOutput(success=False, message="Error: BMC health check returned unexpected state.").model_dump_json()
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +317,7 @@ async def bmc_get_work_order(work_order_id: str) -> str:
 async def bmc_add_work_order_note(
     work_order_id: str,
     note_text: str,
-    work_log_type: str = "General Information",
+    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
@@ -362,7 +361,7 @@ async def bmc_add_work_order_attachment(
     work_order_id: str,
     note_text: str,
     file_path: str,
-    work_log_type: str = "General Information",
+    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
@@ -627,7 +626,7 @@ async def bmc_get_incident(incident_number: str) -> str:
 async def bmc_add_incident_note(
     incident_number: str,
     note_text: str,
-    work_log_type: str = "General Information",
+    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
@@ -671,7 +670,7 @@ async def bmc_add_incident_attachment(
     incident_number: str,
     note_text: str,
     file_path: str,
-    work_log_type: str = "General Information",
+    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
     view_access: str = "Public",
     secure_work_log: str = "No",
 ) -> str:
@@ -794,6 +793,6 @@ def get_bmc_tools() -> list[BaseTool]:
     if not os.environ.get("BMC_BASE_URL"):
         logger.info("BMC_BASE_URL not set — BMC tools disabled")
         return []
-    _get_handler()  # eager initialization to fail fast on bad config
+    _get_handler()
     logger.info("BMC tools loaded: %d", len(_ALL_BMC_TOOLS))
     return list(_ALL_BMC_TOOLS)
