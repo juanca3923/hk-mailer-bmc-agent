@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import ssl
+from collections.abc import Callable
 
 import certifi
 import httpx
@@ -150,6 +151,29 @@ def get_huggingface_llm(settings: Settings, temperature: float = 0.6, stream: bo
     return ChatHuggingFace(llm=endpoint)
 
 
+def get_anthropic_llm(settings: Settings, temperature: float = 0.6, stream: bool = False) -> BaseChatModel:
+    """Get an Anthropic LLM for the given settings, with prompt caching enabled."""
+    llm = ChatAnthropic(
+        model=settings.anthropic_model,
+        api_key=settings.anthropic_api_key.strip(),
+        temperature=temperature,
+        streaming=stream,
+    )
+    return llm.bind(cache_control=ANTHROPIC_CACHE_CONTROL)
+
+
+def get_ollama_llm(settings: Settings, temperature: float = 0.6, stream: bool = False) -> BaseChatModel:
+    """Get an Ollama LLM for the given settings."""
+    return ChatOllama(
+        model=settings.ollama_model,
+        base_url=settings.ollama_base_url,
+        temperature=temperature,
+        num_ctx=100000,
+        streaming=stream,
+        reasoning=True,
+    )
+
+
 def build_llm(settings: Settings) -> BaseChatModel:
     """Build the chat model for ``settings.llm_provider``.
 
@@ -167,29 +191,10 @@ def build_llm(settings: Settings) -> BaseChatModel:
     BaseChatModel
         Configured chat model.
     """
-    temperature = settings.llm_temperature
-    stream = settings.stream
-
-    if settings.llm_provider == "openai":
-        return get_openai_llm(settings, temperature, stream)
-
-    if settings.llm_provider == "anthropic":
-        llm = ChatAnthropic(
-            model=settings.anthropic_model,
-            api_key=settings.anthropic_api_key.strip(),
-            temperature=temperature,
-            streaming=stream,
-        )
-        return llm.bind(cache_control=ANTHROPIC_CACHE_CONTROL)
-
-    if settings.llm_provider == "huggingface":
-        return get_huggingface_llm(settings, temperature, stream)
-
-    return ChatOllama(
-        model=settings.ollama_model,
-        base_url=settings.ollama_base_url,
-        temperature=temperature,
-        num_ctx=100000,
-        streaming=stream,
-        reasoning=True,
-    )
+    llm_factories: dict[str, Callable[[Settings, float, bool], BaseChatModel]] = {
+        "openai": get_openai_llm,
+        "anthropic": get_anthropic_llm,
+        "huggingface": get_huggingface_llm,
+    }
+    factory = llm_factories.get(settings.llm_provider, get_ollama_llm)
+    return factory(settings, settings.llm_temperature, settings.stream)
