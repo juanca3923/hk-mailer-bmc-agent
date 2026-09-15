@@ -26,6 +26,7 @@ dependencies = [
   "httpx==0.28.1",
   "toon-formatter==1.0.1",
   "certifi==2026.6.17",
+  "tzdata==2026.2",
 ]
 
 [project.scripts]

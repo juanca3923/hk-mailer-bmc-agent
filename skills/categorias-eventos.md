@@ -1,6 +1,6 @@
 ---
 name: categorias-eventos
-description: Catálogo de categorización BMC Helix ARUS del dominio "eventos" (disponibilidad y capacidad de servicios de infraestructura/plataforma GTI). Cubre Incidente (eventos de disponibilidad) y Work Order (eventos de capacidad) — la subtabla decide cuál. Consúltalo antes que las skills genéricas cuando el caso encaje en este dominio.
+description: Catálogo de categorización BMC Helix ARUS del dominio "eventos" (disponibilidad y capacidad de servicios de infraestructura/plataforma GTI). Cubre Incidente (eventos de disponibilidad) y Work Order (eventos de capacidad) — la subtabla decide cuál. Consúltalo cuando el caso encaje en este dominio.
 ---
 
 # Categorías BMC Helix — dominio "eventos"
@@ -25,8 +25,8 @@ incluso cuando el servicio afectado no aparezca literalmente en las filas:
   se atiende. Ejemplo: aumentar la capacidad de disco de un servidor es **capacidad**,
   porque es una modificación planeada, no una falla.
 
-Esta distinción tiene prioridad sobre el heurístico genérico de `guia-creacion-tickets`
-para cualquier caso de este dominio (ver esa skill, sección 1).
+Esta distinción decide el tipo de ticket para cualquier caso de este dominio (ver
+`guia-creacion-tickets`, sección 1).
 
 ## Eventos de disponibilidad (Incidente)
 

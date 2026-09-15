@@ -20,9 +20,7 @@ from bmc.libs.business_defaults import (
     DEFAULT_CUSTOMER_COMPANY,
     DEFAULT_CUSTOMER_FIRST_NAME,
     DEFAULT_CUSTOMER_LAST_NAME,
-    DEFAULT_FIRST_NAME,
     DEFAULT_INCIDENT_ASSIGNED_GROUP,
-    DEFAULT_LAST_NAME,
     DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
     DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
@@ -33,11 +31,13 @@ from bmc.libs.constants import (
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
+    INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     WORK_ORDER_STATUSES,
 )
 from bmc.libs.helpers.entry_values_mapper import EntryValuesMapper
 from bmc.libs.helpers.incident_operations import IncidentOperations
+from bmc.libs.helpers.person_lookup import resolve_reporter_identity
 from bmc.libs.helpers.work_order_operations import WorkOrderOperations
 from bmc.libs.tool_handler import BaseToolHandler
 from bmc.type_defs.ar_api import ArScalarValue
@@ -154,6 +154,7 @@ async def bmc_health_check() -> str:
 async def bmc_create_work_order(
     summary: str,
     detailed_description: str,
+    reporter_email: str,
     categorization_tier_1: str,
     categorization_tier_2: str,
     product_cat_tier_1: str,
@@ -168,37 +169,56 @@ async def bmc_create_work_order(
 ) -> str:
     """Create a Work Order in BMC Helix ARUS (WOI:WorkOrderInterface_Create).
 
-    Take the category tiers, priority and ``assigned_group`` from a single row of the
-    ``categorias-requerimientos`` skill: creation will still succeed for combinations
-    outside that catalog (there is no backend validation), but the ticket may end up
-    inconsistently categorized. Company, submitter, customer identity and the
-    Support Company/Organization (BMC only honors the caller's ``Support Group Name``
-    when these two travel together in the same payload) are fixed per environment
-    configuration and must not be provided by the caller.
+    Take the category tiers and priority from a single row of a matching
+    ``categorias-<dominio>`` skill (e.g. ``categorias-eventos``,
+    ``categorias-usuario``) when one applies to this request: creation will still
+    succeed for combinations outside that catalog (there is no backend validation),
+    but the ticket may end up inconsistently categorized. When NO domain skill
+    applies, use the fixed catch-all combination documented in
+    ``guia-creacion-tickets`` (section 1) instead — read that skill for the exact
+    values, never guess a different combination or leave these blank. Company,
+    customer identity and the Support Company/Organization (BMC only honors the
+    caller's ``Support Group Name`` when these two travel together in the same
+    payload) are fixed per environment configuration and must not be provided by the
+    caller. The submitter's First/Last Name are resolved from ``reporter_email``
+    against BMC's ``CTM:People`` — this call fails with no Work Order created if
+    that person cannot be found.
 
     Parameters
     ----------
     summary : str
-        Short summary of the work order.
+        Short, specific subject line: what is requested and for whom or which
+        system (e.g. "New network user - Juan Perez, Bogota site"), never a
+        generic label like "User request".
     detailed_description : str
-        Detailed description text.
+        Full request detail: who needs it, exactly what must be done, and any
+        data required to execute it (access, equipment, location, dates) —
+        enough for the service desk to act without asking the user again.
+    reporter_email : str
+        Email of the person requesting this Work Order. Required: looked up in
+        ``CTM:People`` to fill the submitter's First/Last Name with the real
+        requester (never the fixed Customer identity). Never invent or guess
+        this value — ask the user for it, or take it from the incoming
+        structured message in A2A mode.
     categorization_tier_1 : str
-        Operational categorization tier 1, from the ``categorias-requerimientos`` skill.
+        Operational categorization tier 1: from the matching
+        ``categorias-<dominio>`` skill row when one applies, otherwise the
+        catch-all value from ``guia-creacion-tickets`` (section 1).
     categorization_tier_2 : str
-        Operational categorization tier 2, same catalog row.
+        Operational categorization tier 2, same row/catch-all as tier 1.
     product_cat_tier_1 : str
-        Product categorization tier 1, same catalog row.
+        Product categorization tier 1, same row/catch-all as tier 1.
     product_cat_tier_2 : str
-        Product categorization tier 2, same catalog row.
+        Product categorization tier 2, same row/catch-all as tier 1.
     product_cat_tier_3 : str
-        Product categorization tier 3, same catalog row.
+        Product categorization tier 3, same row/catch-all as tier 1.
     status : str, optional
         Work order status label, by default ``'Assigned'``.
     priority : str, optional
         Priority, taken from the same catalog row, by default ``'Medium'``.
     assigned_group : str, optional
         Support group, taken from the same catalog row; keep the default only when
-        the catalog row does not specify one.
+        no domain skill applies.
 
     Returns
     -------
@@ -212,6 +232,7 @@ async def bmc_create_work_order(
     data = CreateWorkOrderInput(
         summary=summary,
         detailed_description=detailed_description,
+        reporter_email=reporter_email,
         categorization_tier_1=categorization_tier_1,
         categorization_tier_2=categorization_tier_2,
         product_cat_tier_1=product_cat_tier_1,
@@ -221,10 +242,13 @@ async def bmc_create_work_order(
         priority=priority,
         assigned_group=assigned_group,
     )
+    identity = await resolve_reporter_identity(h.client, data.reporter_email)
+    if isinstance(identity, BaseOutput):
+        return identity.model_dump_json()
     values = CreateWorkOrderValues(
         company=DEFAULT_COMPANY,
-        first_name=DEFAULT_FIRST_NAME,
-        last_name=DEFAULT_LAST_NAME,
+        first_name=identity.first_name,
+        last_name=identity.last_name,
         summary=data.summary,
         detailed_description=data.detailed_description,
         status=data.status,
@@ -241,9 +265,8 @@ async def bmc_create_work_order(
         support_organization=DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
         assigned_group=data.assigned_group,
     )
-    body = EntryValuesMapper.wrap_entry_body(values)
     try:
-        created = await h.client.create_work_order_entry(body)
+        created = await h.client.create_work_order_entry(EntryValuesMapper.wrap_entry_body(values))
     except MCPClientError as exc:
         logger.info("bmc_create_work_order failed")
         return BaseToolHandler.failure(exc).model_dump_json()
@@ -462,8 +485,22 @@ async def bmc_close_work_order(
 
 @tool
 async def bmc_create_incident(
-    description: str,
+    description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
+            description=(
+                "Short, specific subject line (hard limit: 100 characters — BMC rejects "
+                "the whole request above that): which service/system is affected and the "
+                'concrete symptom (e.g. "Payroll app down for all users at Medellin '
+                'site"), never a generic label like "System not working". Put extra '
+                "detail in `detailed_decription` instead of exceeding this limit."
+            ),
+        ),
+    ],
     detailed_decription: str,
+    reporter_email: str,
     product_categorization_tier_1: str,
     product_categorization_tier_2: str,
     product_categorization_tier_3: str,
@@ -479,20 +516,38 @@ async def bmc_create_incident(
 ) -> str:
     """Create an Incident in BMC Helix ARUS (HPD:IncidentInterface_Create).
 
-    Take the category tiers and ``assigned_group`` from a single row of the
-    ``categorias-incidentes`` skill. Company, submitter, Impact and Urgency are fixed
-    per environment configuration and must not be provided by the caller: every
-    incident created here keeps a fixed Impact/Urgency (Critical/Extensive), matching
-    the current bmc-mcp behavior.
+    Take the category tiers and ``assigned_group`` from a single row of a matching
+    ``categorias-<dominio>`` skill (e.g. ``categorias-eventos``, ``categorias-usuario``)
+    whose ``Tipo Servicio`` column says ``Incidente`` for this case — there is no
+    generic incident catalog: a request outside every known domain is always filed as
+    a Work Order instead (see ``bmc_create_work_order``), never guessed as an
+    incident. Company, Impact and Urgency are fixed per environment configuration and
+    must not be provided by the caller: every incident created here keeps a fixed
+    Impact/Urgency (Critical/Extensive), matching the current bmc-mcp behavior. The
+    submitter's First/Last Name are resolved from ``reporter_email`` against BMC's
+    ``CTM:People`` — this call fails with no Incident created if that person cannot
+    be found.
 
     Parameters
     ----------
     description : str
-        Short incident description.
+        Short, specific subject line (hard limit: 100 characters — BMC rejects
+        the whole request above that): which service/system is affected and the
+        concrete symptom (e.g. "Payroll app down for all users at Medellin
+        site"), never a generic label like "System not working". Put extra
+        detail in ``detailed_decription`` instead of exceeding this limit.
     detailed_decription : str
-        Detailed description (preserves AR field spelling).
+        Full incident detail (preserves AR field spelling): who reported it,
+        when it started, the exact symptom observed, the affected
+        system/application, and scope (how many users or which site) —
+        enough to diagnose without asking the user again.
+    reporter_email : str
+        Email of the person reporting this incident. Required: looked up in
+        ``CTM:People`` to fill the submitter's First/Last Name with the real
+        reporter. Never invent or guess this value — ask the user for it, or
+        take it from the incoming structured message in A2A mode.
     product_categorization_tier_1 : str
-        Product categorization tier 1, from the ``categorias-incidentes`` skill.
+        Product categorization tier 1, from the matching ``categorias-<dominio>`` skill row.
     product_categorization_tier_2 : str
         Product categorization tier 2, same catalog row.
     product_categorization_tier_3 : str
@@ -520,6 +575,7 @@ async def bmc_create_incident(
     data = CreateIncidentInput(
         description=description,
         detailed_decription=detailed_decription,
+        reporter_email=reporter_email,
         categorization_tier_1=categorization_tier_1,
         categorization_tier_2=categorization_tier_2,
         product_categorization_tier_1=product_categorization_tier_1,
@@ -660,7 +716,19 @@ async def bmc_add_incident_attachment(
 @tool
 async def bmc_close_incident(
     incident_number: str,
-    description: str,
+    description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=INCIDENT_DESCRIPTION_MAX_LENGTH,
+            description=(
+                "Short closing summary (hard limit: 100 characters — BMC rejects the "
+                "whole request above that). Summarize, do not narrate the full "
+                "resolution here; put the full explanation in `resolution` or as a "
+                "separate note via `bmc_add_incident_note` before closing."
+            ),
+        ),
+    ],
     resolution: str = "Solución no especificada",
 ) -> str:
     """Close an Incident, taking ownership of it and moving it to Resolved.
@@ -673,7 +741,10 @@ async def bmc_close_incident(
     incident_number : str
         Incident Number to close.
     description : str
-        Short summary of the closure, recorded on the incident.
+        Short closing summary (hard limit: 100 characters — BMC rejects the
+        whole request above that). Summarize, do not narrate the full
+        resolution here; put the full explanation in ``resolution`` or as a
+        separate note via ``bmc_add_incident_note`` before closing.
     resolution : str, optional
         How the incident was actually solved; replace the placeholder default.
 

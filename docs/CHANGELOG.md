@@ -4,6 +4,142 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-14 — feat: elimina catálogos genéricos ficticios, agrega catch-all real de WO
+
+- **Problema**: `categorias-incidentes.md`/`categorias-requerimientos.md` eran una
+  muestra pequeña e ilustrativa del ambiente de pruebas (`CCTI_ARUS.xlsx`), no el
+  catálogo real — cualquier caso fuera de los dominios `eventos`/`usuario` se
+  categorizaba con datos ficticios.
+- **Cambio de diseño confirmado con la mesa de servicio (2026-09-14)**: un caso fuera
+  de todo dominio conocido se crea **siempre como Work Order** (nunca como Incidente,
+  sin importar si "suena" a algo roto) con esta categorización catch-all fija:
+  `Categoria Operacional 1/2 = Gestion de tickets / Acompañamiento`,
+  `Categoria de Producto 1/2/3 = Gestion de casos / Control / Casos`. No existe
+  catch-all de Incidente.
+- **Implementación — el catch-all vive en el skill, no en código/env vars**: se
+  descartó a propósito el patrón de `assigned_group` (constante en
+  `business_defaults.py` + default de tool parameter). Los `categorization_tier_1/2`/
+  `product_cat_tier_1/2/3` de `bmc_create_work_order` siguen siendo **obligatorios**
+  (`src/bmc/type_defs/inputs.py`, `src/agent/internal_tools/bmc_tools.py`); el LLM los
+  pasa explícitamente leyendo los valores exactos de `guia-creacion-tickets` (sección
+  1). Motivo: `skill_get_guide` lee el archivo en vivo en cada llamada, mientras que
+  env vars y `system.promt.md` solo se cargan una vez al iniciar el proceso — un
+  constante en código habría obligado a reconstruir y reiniciar el agente cada vez que
+  la mesa de servicio quiera cambiar esta combinación, cuando basta con editar el
+  `.md`. Como `guia-creacion-tickets` ya se lee siempre en todo flujo de creación, no
+  cuesta ninguna llamada extra frente a la alternativa de un skill dedicado de 1 fila.
+- **Eliminados**: `skills/categorias-incidentes.md`, `skills/categorias-requerimientos.md`.
+- **Prompt**: `system.promt.md` y `guia-creacion-tickets/SKILL.md` reescriben el
+  protocolo de creación — ya no hay heurístico genérico Incidente-vs-WO ni catálogo
+  genérico que consultar; sin dominio conocido, se llama `bmc_create_work_order`
+  pasando los valores catch-all documentados en `guia-creacion-tickets`.
+- **Test**: `test_bmc_create_work_order_requires_categorization_params_explicitly`
+  confirma que esos 5 campos siguen siendo obligatorios en el schema (sin default).
+
+---
+
+## 2026-09-14 — fix: `description` de incidente rechazado por BMC al pasar 100 caracteres
+
+- **Problema confirmado contra BMC real**: `Value does not fall within the limits
+  specified for the field(Field ID and Name - HPD:IncidentInterface
+  <1000000000 : Description>, Maximum length -100)`. BMC rechaza toda la petición
+  (no trunca) cuando `description` supera 100 caracteres — mismo campo AR en
+  `bmc_create_incident` (asunto) y `bmc_close_incident` (resumen de cierre).
+- **Fix**: nueva constante `INCIDENT_DESCRIPTION_MAX_LENGTH = 100`
+  (`src/bmc/libs/constants.py`). `CreateIncidentInput.description` y
+  `CloseIncidentInput.description` (`src/bmc/type_defs/inputs.py`) ganan
+  `max_length`. Los parámetros `description` de `bmc_create_incident` y
+  `bmc_close_incident` (`src/agent/internal_tools/bmc_tools.py`) pasan de `str`
+  plano a `Annotated[str, Field(max_length=...)]` — necesario para que el límite
+  llegue al schema que ve el LLM (`Field` sin `Annotated` en la firma de la tool no
+  sobrevive la reconstrucción del schema de LangChain, mismo hallazgo que el de
+  `status`/`Literal` documentado el 2026-07-30).
+- **Guía**: `skills/guia-creacion-tickets/SKILL.md` documenta el límite (secciones
+  5, 6 y 8) e instruye a resumir en `description` y mover el detalle a
+  `detailed_decription` (creación) o `resolution`/una nota (cierre).
+- **Sin cambios en `resolution`**: el error de BMC solo mencionó el campo
+  `Description`; no se confirmó un límite para `Resolution`, así que no se tocó.
+
+---
+
+## 2026-09-14 — feat: identidad real del solicitante vía CTM:People (`reporter_email`)
+
+- **Problema**: `bmc_create_work_order`/`bmc_create_incident` siempre creaban el ticket a
+  nombre de una identidad fija (`BMC_DEFAULT_FIRST_NAME`/`BMC_DEFAULT_LAST_NAME` = "Agentes
+  IA"), sin forma de atribuirlo a la persona real que reportó el incidente o solicitó el
+  Work Order.
+- **Cambio**: nuevo parámetro **obligatorio** `reporter_email` en ambas tools. Antes de
+  crear el ticket, se busca ese correo en BMC (`CTM:People`, nuevo
+  `BmcClient.search_person_by_email` en `src/bmc/libs/api_client.py`, form
+  `BmcSettings.form_people_query` default `CTM:People`) y se usa el `First Name`/`Last
+  Name` real encontrado — nunca el fijo. Si no se encuentra a esa persona (o el registro
+  tiene el nombre incompleto), **no se crea ningún ticket** y se retorna
+  `success: false` con el correo en el mensaje.
+- **Desambiguación (`Internet E-mail` no es único en BMC)**: nuevo
+  `src/bmc/libs/helpers/person_lookup.py`. Cuando el correo devuelve más de una persona
+  (caso real observado: el propio bot de este agente comparte un correo alterno con una
+  persona real), se prefiere la coincidencia cuyo `Remedy Login ID` tiene forma de correo
+  (contiene `@`) sobre un id tipo bot (`AgentesIA`). Si 0 o 2+ candidatas califican, se usa
+  la primera que devuelve BMC (orden no garantizado por la API) y se registra un WARNING —
+  la identidad asignada en ese caso puede ser incorrecta; queda documentado explícitamente
+  porque puede ser confuso de depurar.
+- **`Customer First/Last Name` (Work Order) sin cambios**: siguen fijos por
+  `business_defaults.py` — el correo solo resuelve la identidad del *submitter*, no la del
+  cliente.
+- **Limpieza**: `BMC_DEFAULT_FIRST_NAME`/`BMC_DEFAULT_LAST_NAME` quedaron sin uso (ya nada
+  las lee) y se eliminaron de `business_defaults.py`, `.env.example` y `CLAUDE.md`.
+- **Riesgo conocido, sin resolver en este cambio**: el `Company` del submitter sigue fijo
+  en `ARUS`; si la persona encontrada no pertenece a esa compañía en BMC, el combo
+  First+Last+Company podría no calzar con su registro real en `CTM:People` (comportamiento
+  de BMC ante eso no ha sido probado).
+- **Impacto en el protocolo A2A**: `system.promt.md` ahora exige que el mensaje entrante
+  traiga el correo del solicitante; si no lo trae, el agente debe detenerse y reportar el
+  error en el resumen estructurado en vez de inventar un correo o crear el ticket con la
+  identidad del bot.
+
+---
+
+## 2026-09-14 — feat: nueva tool `get_current_date`
+
+- **Problema**: el agente no tenía forma de saber la fecha/hora real; cualquier razonamiento
+  sobre fechas relativas ("hoy", "mañana", "hace dos días") o timestamps escritos en un ticket
+  dependía de su conocimiento de entrenamiento, no del reloj real.
+- **Cambio**: nueva tool `get_current_date` (`src/agent/internal_tools/datetime_tools.py`),
+  registrada en el grafo junto a las demás internal tools (`src/agent/agent.py`,
+  `src/agent/internal_tools/__init__.py`). Lee el reloj de sistema del contenedor y lo
+  convierte a la zona horaria configurada en `AGENT_TIMEZONE` (nueva variable en
+  `src/config/settings.py`, default `America/Bogota`); nombres de día/mes en español via
+  tablas fijas, sin depender del locale del SO. Devuelve JSON con fecha corta
+  (`DD/MM/YYYY`), día/mes/año/hora por separado, y dos strings combinados listos para citar
+  (`short`: "07/10/2026, lunes, octubre"; `long`: "lunes 07 de octubre de 2026").
+- **Zona horaria por contenedor**: se agregó `ENV TZ=America/Bogota` a `Dockerfile` y
+  `Dockerfile.dev` (reloj del SO), independiente de `AGENT_TIMEZONE` (que controla solo esta
+  tool). Se agregó la dependencia `tzdata` (`pyproject.toml`) porque `python:3.12-slim` no
+  garantiza tener el paquete de zonas horarias del sistema operativo.
+- **Prompt**: `system.promt.md` instruye al agente a usar siempre esta tool para fechas,
+  nunca inferirlas de la conversación.
+
+---
+
+## 2026-09-14 — mejora: refuerza la calidad del asunto y la descripción de tickets
+
+- **Problema detectado**: el protocolo de creación de tickets (`system.promt.md`,
+  `guia-creacion-tickets`) y el schema de las tools (`inputs.py`, `bmc_tools.py`)
+  reforzaban con detalle la categorización (Cat Op/Prod, priority, assigned_group),
+  pero el asunto (`summary`/`description`) y la descripción detallada
+  (`detailed_description`/`detailed_decription`) solo tenían validación de no-vacío
+  (`min_length=1`), sin ninguna guía de contenido — quedaban a criterio libre del LLM.
+- **Cambio**: se agregó una sección de criterios de calidad (con ejemplo bueno/malo) a
+  `skills/guia-creacion-tickets/SKILL.md` y un ítem al checklist final; se enriquecieron
+  los `Field(description=...)` de `CreateWorkOrderInput`/`CreateIncidentInput` en
+  `src/bmc/type_defs/inputs.py` y los docstrings NumPy correspondientes en
+  `src/agent/internal_tools/bmc_tools.py`, para que el LLM reciba la guía directamente
+  en el schema de la tool, no solo en el prompt.
+- **Sin cambios de contrato**: mismos nombres, tipos y valores por defecto de los
+  parámetros existentes.
+
+---
+
 ## 2026-09-11 — fix: corrige grupo inválido de Backup en el catálogo de capacidad
 
 - **`skills/categorias-eventos.md`**: la fila de Backup en la subtabla "Eventos de

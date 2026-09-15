@@ -32,6 +32,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "sqlalchemy" },
     { name = "toon-formatter" },
+    { name = "tzdata" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -67,6 +68,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = "==1.2.2" },
     { name = "sqlalchemy", specifier = "==2.0.49" },
     { name = "toon-formatter", specifier = "==1.0.1" },
+    { name = "tzdata", specifier = "==2026.2" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.44.0" },
 ]
 

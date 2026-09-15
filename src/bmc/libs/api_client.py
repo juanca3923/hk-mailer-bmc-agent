@@ -13,6 +13,10 @@ from bmc.libs.connection_manager import BmcConnectionManager
 from bmc.libs.constants import (
     API_PATH_ARSYS_ENTRY_PREFIX,
     AR_FIELD_INCIDENT_NUMBER,
+    AR_FIELD_PEOPLE_EMAIL,
+    AR_FIELD_PEOPLE_FIRST_NAME,
+    AR_FIELD_PEOPLE_LAST_NAME,
+    AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
@@ -434,6 +438,34 @@ class BmcClient:
         q = ArQueryBuilder.equals(AR_FIELD_INCIDENT_NUMBER, incident_number)
         path = self._entry_path(self._settings.form_incident_query)
         payload = await self.get_json(path, params={'q': q})
+        return parse_entry_list(payload)
+
+    async def search_person_by_email(self, email: str) -> BmcEntryListResponse:
+        """Search ``CTM:People`` by ``Internet E-mail``.
+
+        Parameters
+        ----------
+        email : str
+            ``Internet E-mail`` qualification value.
+
+        Returns
+        -------
+        BmcEntryListResponse
+            Parsed list/search response. May contain 0, 1, or more entries —
+            ``Internet E-mail`` is not a unique key in BMC's People table.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP or parse errors.
+        """
+        q = ArQueryBuilder.equals(AR_FIELD_PEOPLE_EMAIL, email)
+        path = self._entry_path(self._settings.form_people_query)
+        fields = (
+            f'values({AR_FIELD_PEOPLE_LOGIN_ID},{AR_FIELD_PEOPLE_FIRST_NAME},'
+            f'{AR_FIELD_PEOPLE_LAST_NAME},{AR_FIELD_PEOPLE_EMAIL})'
+        )
+        payload = await self.get_json(path, params={'q': q, 'fields': fields})
         return parse_entry_list(payload)
 
     async def create_work_order_entry(
