@@ -34,14 +34,35 @@ class Settings(BaseSettings):
     ollama_base_url: str = Field(default="", alias="OLLAMA_BASE_URL")
     ollama_model: str = Field(default="", alias="OLLAMA_MODEL")
 
-    llm_provider: Literal["ollama", "openai", "anthropic"] = Field(
+    llm_provider: Literal["ollama", "openai", "anthropic", "huggingface"] = Field(
         alias="LLM_PROVIDER",
     )
+    # Temperatura de muestreo compartida por los 4 proveedores. Antes era 0.6 fijo en
+    # `build_llm`; se expone como opcional con ese mismo valor por defecto.
+    llm_temperature: float = Field(default=0.6, alias="LLM_TEMPERATURE")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="", alias="OPENAI_MODEL")
     openai_base_url: str = Field(default="", alias="OPENAI_BASE_URL")
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="", alias="ANTHROPIC_MODEL")
+    huggingface_api_key: str = Field(default="", alias="HUGGINGFACE_API_KEY")
+    huggingface_model: str = Field(default="", alias="HUGGINGFACE_MODEL")
+    # Proveedor de inferencia detrás del router de HF Inference Providers (p.ej. "together",
+    # "novita", "cerebras"). Vacío -> "auto" (HF elige el primero disponible para el modelo).
+    huggingface_provider: str = Field(default="", alias="HUGGINGFACE_PROVIDER")
+    # Nombre de la organización de HF a la que facturar el consumo de inferencia
+    # (equivalente a InferenceClient(bill_to=...)). Vacío -> se factura a la cuenta del token.
+    huggingface_bill_to: str = Field(default="", alias="HUGGINGFACE_BILL_TO")
+    # Límite de tokens de salida para el endpoint HF. Antes era 2048 fijo en
+    # `get_huggingface_llm`; se expone como opcional con ese mismo valor por defecto.
+    huggingface_max_new_tokens: int = Field(default=2048, alias="HUGGINGFACE_MAX_NEW_TOKENS")
+    # SOLO para redes corporativas con inspección TLS cuyo CA raíz usa una clave RSA débil
+    # (<2048 bits) o firma SHA-1: relaja el nivel de seguridad de OpenSSL (SECLEVEL=1) para
+    # el cliente HTTP de huggingface_hub. La verificación del certificado sigue activa (no
+    # equivale a verify=False); solo se acepta un algoritmo/tamaño de clave ya obsoleto.
+    # Requiere además `SSL_CERT_FILE` apuntando a un bundle que incluya ese CA corporativo.
+    # NUNCA activar en producción: el arreglo correcto es que el CA se reemita con clave >= 2048.
+    huggingface_allow_legacy_tls: bool = Field(default=False, alias="HUGGINGFACE_ALLOW_LEGACY_TLS")
 
     langfuse_public_key: str = Field(default="", alias="LANGFUSE_PUBLIC_KEY")
     langfuse_secret_key: str = Field(default="", alias="LANGFUSE_SECRET_KEY")
@@ -86,12 +107,16 @@ class Settings(BaseSettings):
     database_url: str = Field(alias="DATABASE_URL")
     db_echo: bool = Field(default=False, alias="DB_ECHO")
 
+    # Zona horaria IANA usada por la tool `get_current_date` (nombre de ``zoneinfo``,
+    # ej. "America/Bogota"). Por defecto Colombia; independiente del TZ del SO del contenedor.
+    agent_timezone: str = Field(default="America/Bogota", alias="AGENT_TIMEZONE")
+
     @field_validator("llm_provider", mode="before")
     @classmethod
     def normalize_llm_provider(cls, value: object) -> str:
         raw = (str(value).strip().lower() if value is not None else "") or "ollama"
-        if raw not in ("ollama", "openai", "anthropic"):
-            msg = "LLM_PROVIDER debe ser uno de: ollama, openai, anthropic"
+        if raw not in ("ollama", "openai", "anthropic", "huggingface"):
+            msg = "LLM_PROVIDER debe ser uno de: ollama, openai, anthropic, huggingface"
             raise ValueError(msg)
         return raw
 
@@ -109,19 +134,36 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_provider_keys_and_langfuse(self) -> Self:
-        if self.llm_provider == "ollama" and not (self.ollama_model or "").strip():
-            msg = "OLLAMA_MODEL es obligatorio cuando LLM_PROVIDER=ollama"
-            raise ValueError(msg)
-        if self.llm_provider == "openai" and not (self.openai_api_key or "").strip():
-            msg = "OPENAI_API_KEY es obligatorio cuando LLM_PROVIDER=openai"
-            raise ValueError(msg)
-        if self.llm_provider == "anthropic" and not (self.anthropic_api_key or "").strip():
-            msg = "ANTHROPIC_API_KEY es obligatorio cuando LLM_PROVIDER=anthropic"
-            raise ValueError(msg)
-
+        self._validate_provider_required_keys()
         self._validate_langfuse_prompt_required_keys()
-
         return self
+
+    def _required_fields_for_provider(self) -> list[tuple[str, str]]:
+        """Campos obligatorios (valor, nombre de variable de entorno) para ``llm_provider``.
+
+        Returns
+        -------
+        list[tuple[str, str]]
+            Pares ``(valor, ENV_VAR)`` en el orden en que deben validarse; vacío si el
+            proveedor activo no tiene campos adicionales que validar aquí.
+        """
+        by_provider: dict[str, list[tuple[str, str]]] = {
+            "ollama": [(self.ollama_model, "OLLAMA_MODEL")],
+            "openai": [(self.openai_api_key, "OPENAI_API_KEY")],
+            "anthropic": [(self.anthropic_api_key, "ANTHROPIC_API_KEY")],
+            "huggingface": [
+                (self.huggingface_api_key, "HUGGINGFACE_API_KEY"),
+                (self.huggingface_model, "HUGGINGFACE_MODEL"),
+            ],
+        }
+        return by_provider.get(self.llm_provider, [])
+
+    def _validate_provider_required_keys(self) -> None:
+        """Lanza ``ValueError`` si falta algún campo obligatorio del ``llm_provider`` activo."""
+        for value, env_name in self._required_fields_for_provider():
+            if not (value or "").strip():
+                msg = f"{env_name} es obligatorio cuando LLM_PROVIDER={self.llm_provider}"
+                raise ValueError(msg)
 
     @staticmethod
     def repo_root() -> Path:

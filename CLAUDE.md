@@ -57,6 +57,7 @@ agent-bmc/
 │   │       ├── bmc_tools.py          # 12 BMC LangChain @tool functions + get_bmc_tools()
 │   │       ├── memory_tools.py       # memory_* tools (chat/run history)
 │   │       ├── skill_tools.py        # skill_get_guide
+│   │       ├── datetime_tools.py     # get_current_date (system clock, AGENT_TIMEZONE)
 │   │       └── a2a_tools.py          # a2a_list_remote_agents, a2a_send_to_remote
 │   ├── bmc/                          # BMC Helix client layer
 │   │   ├── config/settings.py        # BmcSettings (BMC_BASE_URL, BMC_USERNAME, …)
@@ -72,7 +73,8 @@ agent-bmc/
 │   │   │       ├── entry_values_mapper.py
 │   │   │       ├── multipart_builder.py
 │   │   │       ├── work_order_operations.py
-│   │   │       └── incident_operations.py
+│   │   │       ├── incident_operations.py
+│   │   │       └── person_lookup.py       # CTM:People reporter identity resolution
 │   │   └── type_defs/                # Pydantic models for BMC inputs/outputs
 │   │       ├── inputs.py             # CreateWorkOrderInput, CreateIncidentInput, …
 │   │       ├── outputs.py            # BaseOutput, WorkOrderCreatedData, …
@@ -111,6 +113,7 @@ User (CLI / HTTP)
         ├─ Internal tools
         │   ├─ memory_*         (chat/run history)
         │   ├─ skill_get_guide  (Markdown guides)
+        │   ├─ get_current_date (system clock, AGENT_TIMEZONE)
         │   ├─ BMC tools        (12 tools → BmcClient → BMC Helix REST)
         │   └─ a2a_*            (remote agents, optional)
         └─ MCP tools (optional, from MCP_URLS)
@@ -208,27 +211,38 @@ Copy `.env.example` to `.env` and fill in the required values.
 ### Business defaults — BMC tickets
 
 Fixed values injected by `src/bmc/libs/business_defaults.py` into every `bmc_create_work_order`
-and `bmc_create_incident` call. The LLM never sees these as tool parameters.
+and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
+`First Name`/`Last Name` are **not** in this table — they are resolved per-call from
+`reporter_email` (see "Reporter identity resolution" above), not a fixed default.
 
 | Variable | Fallback | Used in |
 |----------|----------|---------|
 | `BMC_DEFAULT_COMPANY` | `ARUS` | WO + incident `Company` |
-| `BMC_DEFAULT_FIRST_NAME` | `Mosaico` | WO + incident `First_Name` |
-| `BMC_DEFAULT_LAST_NAME` | `WebServices` | WO + incident `Last_Name` |
 | `BMC_DEFAULT_CUSTOMER_FIRST_NAME` | `Mosaico` | WO `Customer First Name` |
 | `BMC_DEFAULT_CUSTOMER_LAST_NAME` | `WebServices` | WO `Customer Last Name` |
 | `BMC_DEFAULT_CUSTOMER_COMPANY` | `ARUS` | WO `Customer Company` |
-| `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_incident` (not a fixed injection — the LLM should override it with the value from the `categorias-incidentes` skill row) |
-| `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` (not a fixed injection — the LLM should override it with the value from the `categorias-requerimientos` skill row) |
+| `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_incident` (not a fixed injection — the LLM should override it with the value from a matching `categorias-<dominio>` skill row, e.g. `categorias-eventos`/`categorias-usuario`) |
+| `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` | `ARUS` | Fixed incident `Assigned Support Company`, required alongside `Assigned Support Organization` for BMC to honor the `Assigned Group` sent by the caller (otherwise BMC silently reassigns the incident per its own ITSM configuration) |
+| `BMC_DEFAULT_INCIDENT_SUPPORT_ORGANIZATION` | `MAYA` | Fixed incident `Assigned Support Organization` — see `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` |
+| `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` — the LLM should override it with the value from a matching `categorias-<dominio>` skill row when one applies; otherwise (no known domain) this default is the correct, confirmed value, not a placeholder |
+| `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` | `ARUS` | Fixed work order `Support Company`, required alongside `Support Organization` for BMC to honor the `Support Group Name` sent by the caller (otherwise BMC silently reassigns the work order per its own ITSM configuration) |
+| `BMC_DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION` | `MAYA` | Fixed work order `Support Organization` — see `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` |
 
 ### Required — LLM
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | `ollama` | `ollama` \| `openai` \| `anthropic` |
+| `LLM_PROVIDER` | `ollama` | `ollama` \| `openai` \| `anthropic` \| `huggingface` |
+| `LLM_TEMPERATURE` | `0.6` | Sampling temperature shared by all 4 providers |
 | `OLLAMA_MODEL` | `qwen3.5:9b` | Model name when using Ollama |
 | `OPENAI_API_KEY` | — | Required when `LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | — | Required when `LLM_PROVIDER=anthropic` |
+| `HUGGINGFACE_API_KEY` | — | Required when `LLM_PROVIDER=huggingface` |
+| `HUGGINGFACE_MODEL` | — | Required when `LLM_PROVIDER=huggingface`; repo id routed through HF Inference Providers (e.g. `meta-llama/Llama-3.3-70B-Instruct`). Must support tool calling — not guaranteed for every model |
+| `HUGGINGFACE_PROVIDER` | `auto` | Optional underlying inference provider behind the HF router (e.g. `together`, `novita`, `cerebras`) |
+| `HUGGINGFACE_BILL_TO` | — | Optional HF organization to bill inference to (`InferenceClient(bill_to=...)`); empty bills the token's own account |
+| `HUGGINGFACE_MAX_NEW_TOKENS` | `2048` | Output token limit for the HF endpoint |
+| `HUGGINGFACE_ALLOW_LEGACY_TLS` | `false` | **Dev-only.** Relaxes OpenSSL's security level (`SECLEVEL=1`) for `huggingface_hub`'s HTTP client, to accept a corporate TLS-inspection root CA with a weak key (<2048-bit RSA) or SHA-1 signature. Certificate verification stays on; requires `SSL_CERT_FILE` pointing to a bundle that trusts that CA. Never enable in production — fix is reissuing the CA with a modern key |
 
 ### Required — Database
 
@@ -241,6 +255,7 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AGENT_SLUG` | `agent_bmc` | Unique identifier (pattern `^[a-z][a-z0-9_]*$`) |
+| `AGENT_TIMEZONE` | `America/Bogota` | IANA timezone (`zoneinfo` name) used by the `get_current_date` tool; independent of the container OS's `TZ` |
 
 ### System prompt precedence
 
@@ -259,13 +274,13 @@ All 12 tools live in `src/agent/internal_tools/bmc_tools.py` and share a lazy-in
 | Tool | Operation | AR Form |
 |------|-----------|---------|
 | `bmc_health_check` | Verify JWT session | GET ping |
-| `bmc_create_work_order` | Create WO | `WOI:WorkOrderInterface_Create` |
+| `bmc_create_work_order` | Create WO; `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
 | `bmc_get_work_order` | Search WO by ID | `WOI:WorkOrderInterface` |
 | `bmc_add_work_order_note` | Add note without attachment (rejects if `Closed`) | `WOI:WorkInfo` |
 | `bmc_add_work_order_attachment` | Add note with file attachment (rejects if `Closed`) | `WOI:WorkInfo` multipart |
 | `bmc_update_work_order_status` | PUT intermediate status (rejects if `Closed`) | `WOI:WorkOrderInterface` |
 | `bmc_close_work_order` | Ownership PUT (`ASCHG`) → Completed PUT+note → Closed PUT+note (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
-| `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter) | `HPD:IncidentInterface_Create` |
+| `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter); `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no incident created if not found) | `HPD:IncidentInterface_Create` |
 | `bmc_get_incident` | Search incident by number | `HPD:IncidentInterface` |
 | `bmc_add_incident_note` | Add note without attachment (rejects if `Closed`) | `HPD:WorkLog` |
 | `bmc_add_incident_attachment` | Add note with file attachment (rejects if `Closed`) | `HPD:WorkLog` multipart |
@@ -278,6 +293,21 @@ Business-rule guards (`src/bmc/libs/helpers/ticket_guards.py`) run before any wr
 rejects writes on tickets already `Closed`; `require_submitter` (close only) rejects closing a ticket
 whose `Submitter` does not match `BMC_USERNAME` — adding notes/attachments to such a ticket is still
 allowed.
+
+### Reporter identity resolution (`bmc_create_work_order` / `bmc_create_incident`)
+
+BMC's create forms have no "create from just an email" field — `First Name`/`Last Name`
+(submitter identity, distinct from the fixed `Customer` identity) must be sent as free text.
+`src/bmc/libs/helpers/person_lookup.py` resolves them from the required `reporter_email`
+parameter by querying `CTM:People` (`BmcClient.search_person_by_email`, form
+`BmcSettings.form_people_query`, default `CTM:People`) instead of a fixed persona. If no
+person is found (or the matched record has an incomplete name), the call fails with no
+ticket created — it never falls back to a fixed identity. `Internet E-mail` is **not** a
+unique key in BMC: when more than one person shares the email, the entry whose `Remedy
+Login ID` looks like a real email (contains `@`) wins over a bot-style id (observed in
+practice: this agent's own bot identity can share an email with a real person); if zero or
+several candidates qualify, the first entry BMC returns is used and a WARNING is logged,
+since BMC's result order for a non-unique match is not guaranteed.
 
 ---
 
@@ -340,6 +370,13 @@ uv run alembic upgrade head
 ### Skills
 Local Markdown guides under `skills/`. The agent discovers them and injects a `<skills>` catalog
 into the system prompt. Guides are read on demand via `skill_get_guide`. See `docs/skills-implementation.md`.
+
+### Date/time
+`get_current_date` (`src/agent/internal_tools/datetime_tools.py`) returns the real current
+date/time from the container's system clock, converted to `AGENT_TIMEZONE` (default
+`America/Bogota`). Weekday/month names are Spanish, computed from fixed tables (no OS locale
+dependency). The agent must call it instead of guessing "today" from the conversation or from
+training data — see `system.promt.md` § "Fecha y hora".
 
 ---
 

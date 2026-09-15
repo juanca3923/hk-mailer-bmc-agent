@@ -9,7 +9,13 @@ from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
 
 from agent.a2a_peers import A2APeerRegistry, bind_a2a_registry_to_graph
-from agent.internal_tools import get_a2a_peer_tools, get_bmc_tools, get_memory_tools, get_skill_tools
+from agent.internal_tools import (
+    get_a2a_peer_tools,
+    get_bmc_tools,
+    get_datetime_tools,
+    get_memory_tools,
+    get_skill_tools,
+)
 from agent.llm import build_llm
 from agent.mcp_tools import open_mcp_tools_streamable_http
 from agent.prompts import load_system_prompt_for_settings
@@ -31,7 +37,7 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
     1. Optionally start ``BmcConnectionManager`` when ``BMC_BASE_URL`` is set (fail-fast).
     2. Open asyncpg pool and configure ``AsyncPostgresSaver`` (checkpointer).
     3. Create ``AgentPostgresStore`` (cross-thread persistent store).
-    4. Load internal tools: memory, skills, BMC (if configured), A2A peers (if configured).
+    4. Load internal tools: memory, skills, datetime, BMC (if configured), A2A peers (if configured).
     5. Open MCP sessions (Streamable HTTP) for any extra ``MCP_URLS``.
     6. Compile the LangGraph with checkpointer + store.
     7. On exit: stop BMC connection manager and close pool / MCP sessions.
@@ -64,7 +70,7 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
 
     try:
         bmc_tools = get_bmc_tools()
-        internal_tools = get_memory_tools() + get_skill_tools() + bmc_tools
+        internal_tools = get_memory_tools() + get_skill_tools() + get_datetime_tools() + bmc_tools
         logger.info("tools internas cargadas: %d (bmc: %d)", len(internal_tools), len(bmc_tools))
 
         # W0135 false positive: @asynccontextmanager + async-with anidados; el cierre se hace al salir del generador.

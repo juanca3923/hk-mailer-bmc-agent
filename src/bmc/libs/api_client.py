@@ -13,6 +13,10 @@ from bmc.libs.connection_manager import BmcConnectionManager
 from bmc.libs.constants import (
     API_PATH_ARSYS_ENTRY_PREFIX,
     AR_FIELD_INCIDENT_NUMBER,
+    AR_FIELD_PEOPLE_EMAIL,
+    AR_FIELD_PEOPLE_FIRST_NAME,
+    AR_FIELD_PEOPLE_LAST_NAME,
+    AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
@@ -62,7 +66,7 @@ class BmcClient:
         """
         return USER_ERROR_MESSAGES.get(
             code,
-            f'Error: La API de BMC respondió con estado {code}.',
+            f"Error: La API de BMC respondió con estado {code}.",
         )
 
     @staticmethod
@@ -115,7 +119,8 @@ class BmcClient:
         self._settings = settings or BmcSettings()
         self._manager = connection_manager or BmcConnectionManager.instance(self._settings)
 
-    def _entry_path(self, form_name: str, request_id: str | None = None) -> str:
+    @staticmethod
+    def entry_path(form_name: str, request_id: str | None = None) -> str:
         """Build a URL-encoded AR entry path for a form and optional entry id.
 
         Parameters
@@ -130,9 +135,10 @@ class BmcClient:
         str
             Relative path under ``API_PATH_ARSYS_ENTRY_PREFIX``.
         """
-        base = f'{API_PATH_ARSYS_ENTRY_PREFIX}/{quote(form_name, safe="")}'
+
+        base = f"{API_PATH_ARSYS_ENTRY_PREFIX}/{quote(form_name, safe='')}"
         if request_id is not None:
-            return f'{base}/{quote(request_id, safe="")}'
+            return f"{base}/{quote(request_id, safe='')}"
         return base
 
     async def _request_with_retry(
@@ -178,7 +184,7 @@ class BmcClient:
             headers = {
                 header_name: header_value
                 for header_name, header_value in headers.items()
-                if header_name.lower() != 'content-type'
+                if header_name.lower() != "content-type"
             }
 
         async def _do_request() -> httpx.Response:
@@ -196,12 +202,12 @@ class BmcClient:
         if response.status_code == HTTPStatus.UNAUTHORIZED:
             await self._manager.invalidate_and_refresh()
             response = await _do_request()
-        logger.debug('BMC response status %s for %s %s', response.status_code, method, path)
+        logger.debug("BMC response status %s for %s %s", response.status_code, method, path)
         if logger.isEnabledFor(logging.DEBUG) and response.content:
             body_text = self.format_http_response_body(response)
             if body_text:
                 snippet = body_text[:512]
-                logger.debug('BMC response body (truncated): %s', snippet)
+                logger.debug("BMC response body (truncated): %s", snippet)
         response.raise_for_status()
         return response
 
@@ -224,7 +230,7 @@ class BmcClient:
         """
         if isinstance(exc, httpx.HTTPStatusError):
             code = exc.response.status_code
-            logger.debug('BMC HTTP error %s %s -> %s', method, path, code)
+            logger.debug("BMC HTTP error %s %s -> %s", method, path, code)
             raise MCPClientError(
                 self.message_for_http_error(exc.response),
                 status_code=code,
@@ -235,7 +241,7 @@ class BmcClient:
             raise MCPClientError(USER_ERROR_MESSAGE_NETWORK, status_code=None) from exc
         if isinstance(exc, json.JSONDecodeError):
             raise MCPClientError(USER_ERROR_MESSAGE_INVALID_JSON, status_code=None) from exc
-        logger.exception('Unexpected BMC API error %s %s', method, path)
+        logger.exception("Unexpected BMC API error %s %s", method, path)
         raise MCPClientError(USER_ERROR_MESSAGE_UNEXPECTED, status_code=None) from exc
 
     async def get_json(self, path: str, *, params: dict[str, str] | None = None) -> JsonValue:
@@ -258,15 +264,15 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug('BMC GET %s', path)
+        logger.debug("BMC GET %s", path)
         try:
-            response = await self._request_with_retry('GET', path, params=params)
+            response = await self._request_with_retry("GET", path, params=params)
             return response.json()
         except MCPClientError:
             raise
-        except BaseException as exc:
-            self._raise_from_httpx(exc, method='GET', path=path)
-            raise AssertionError('unreachable') from exc
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            self._raise_from_httpx(exc, method="GET", path=path)
+            raise AssertionError("unreachable") from exc
 
     async def post_json(
         self,
@@ -296,26 +302,26 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug('BMC POST %s', path)
+        logger.debug("BMC POST %s", path)
         try:
             response = await self._request_with_retry(
-                'POST',
+                "POST",
                 path,
                 params=params,
                 json_body=json_body,
             )
-            location = response.headers.get('Location', '')
+            location = response.headers.get("Location", "")
             try:
                 body: JsonValue = response.json()
             except json.JSONDecodeError as exc:
-                self._raise_from_httpx(exc, method='POST', path=path)
-                raise AssertionError('unreachable') from exc
+                self._raise_from_httpx(exc, method="POST", path=path)
+                raise AssertionError("unreachable") from exc
             return body, location
         except MCPClientError:
             raise
-        except BaseException as exc:
-            self._raise_from_httpx(exc, method='POST', path=path)
-            raise AssertionError('unreachable') from exc
+        except httpx.HTTPError as exc:
+            self._raise_from_httpx(exc, method="POST", path=path)
+            raise AssertionError("unreachable") from exc
 
     async def put_json(self, path: str, *, json_body: dict[str, JsonValue]) -> JsonValue:
         """Perform HTTP PUT with a JSON body.
@@ -337,17 +343,17 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug('BMC PUT %s', path)
+        logger.debug("BMC PUT %s", path)
         try:
-            response = await self._request_with_retry('PUT', path, json_body=json_body)
+            response = await self._request_with_retry("PUT", path, json_body=json_body)
             if not response.content:
                 return {}
             return response.json()
         except MCPClientError:
             raise
-        except BaseException as exc:
-            self._raise_from_httpx(exc, method='PUT', path=path)
-            raise AssertionError('unreachable') from exc
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            self._raise_from_httpx(exc, method="PUT", path=path)
+            raise AssertionError("unreachable") from exc
 
     async def post_multipart(
         self,
@@ -374,10 +380,10 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug('BMC POST multipart %s', path)
+        logger.debug("BMC POST multipart %s", path)
         try:
             response = await self._request_with_retry(
-                'POST',
+                "POST",
                 path,
                 files=body.as_httpx_files(),
             )
@@ -386,9 +392,9 @@ class BmcClient:
             return response.json()
         except MCPClientError:
             raise
-        except BaseException as exc:
-            self._raise_from_httpx(exc, method='POST', path=path)
-            raise AssertionError('unreachable') from exc
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            self._raise_from_httpx(exc, method="POST", path=path)
+            raise AssertionError("unreachable") from exc
 
     async def search_work_order(self, work_order_id: str) -> BmcEntryListResponse:
         """Search work orders by Work Order ID.
@@ -409,8 +415,8 @@ class BmcClient:
             On HTTP or parse errors.
         """
         q = ArQueryBuilder.equals(AR_FIELD_WORK_ORDER_ID, work_order_id)
-        path = self._entry_path(self._settings.form_wo_query)
-        payload = await self.get_json(path, params={'q': q})
+        path = self.entry_path(self._settings.form_wo_query)
+        payload = await self.get_json(path, params={"q": q})
         return parse_entry_list(payload)
 
     async def search_incident(self, incident_number: str) -> BmcEntryListResponse:
@@ -432,8 +438,36 @@ class BmcClient:
             On HTTP or parse errors.
         """
         q = ArQueryBuilder.equals(AR_FIELD_INCIDENT_NUMBER, incident_number)
-        path = self._entry_path(self._settings.form_incident_query)
-        payload = await self.get_json(path, params={'q': q})
+        path = self.entry_path(self._settings.form_incident_query)
+        payload = await self.get_json(path, params={"q": q})
+        return parse_entry_list(payload)
+
+    async def search_person_by_email(self, email: str) -> BmcEntryListResponse:
+        """Search ``CTM:People`` by ``Internet E-mail``.
+
+        Parameters
+        ----------
+        email : str
+            ``Internet E-mail`` qualification value.
+
+        Returns
+        -------
+        BmcEntryListResponse
+            Parsed list/search response. May contain 0, 1, or more entries —
+            ``Internet E-mail`` is not a unique key in BMC's People table.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP or parse errors.
+        """
+        q = ArQueryBuilder.equals(AR_FIELD_PEOPLE_EMAIL, email)
+        path = self.entry_path(self._settings.form_people_query)
+        fields = (
+            f"values({AR_FIELD_PEOPLE_LOGIN_ID},{AR_FIELD_PEOPLE_FIRST_NAME},"
+            f"{AR_FIELD_PEOPLE_LAST_NAME},{AR_FIELD_PEOPLE_EMAIL})"
+        )
+        payload = await self.get_json(path, params={"q": q, "fields": fields})
         return parse_entry_list(payload)
 
     async def create_work_order_entry(
@@ -457,8 +491,8 @@ class BmcClient:
         MCPClientError
             On HTTP or parse errors.
         """
-        path = self._entry_path(self._settings.form_wo_create)
-        params = {'fields': f'values({AR_FIELD_WORK_ORDER_ID_RESPONSE},{AR_FIELD_REQUEST_ID})'}
+        path = self.entry_path(self._settings.form_wo_create)
+        params = {"fields": f"values({AR_FIELD_WORK_ORDER_ID_RESPONSE},{AR_FIELD_REQUEST_ID})"}
         body, location = await self.post_json(path, json_body=json_body, params=params)
         return parse_create_response(body, location)
 
@@ -483,8 +517,8 @@ class BmcClient:
         MCPClientError
             On HTTP or parse errors.
         """
-        path = self._entry_path(self._settings.form_incident_create)
-        params = {'fields': f'values({AR_FIELD_INCIDENT_NUMBER},Description)'}
+        path = self.entry_path(self._settings.form_incident_create)
+        params = {"fields": f"values({AR_FIELD_INCIDENT_NUMBER},Description)"}
         body, location = await self.post_json(path, json_body=json_body, params=params)
         return parse_create_response(body, location)
 
@@ -512,8 +546,8 @@ class BmcClient:
         MCPClientError
             On HTTP errors.
         """
-        path = self._entry_path(self._settings.form_wo_update, request_id)
-        logger.info('json_body: %s', json_body)
+        path = self.entry_path(self._settings.form_wo_update, request_id)
+        logger.info("json_body: %s", json_body)
         return await self.put_json(path, json_body=json_body)
 
     async def update_incident(
@@ -540,7 +574,7 @@ class BmcClient:
         MCPClientError
             On HTTP errors.
         """
-        path = self._entry_path(self._settings.form_incident_query, request_id)
+        path = self.entry_path(self._settings.form_incident_query, request_id)
         return await self.put_json(path, json_body=json_body)
 
     async def post_work_info(self, body: WorkInfoMultipartBody) -> JsonValue:
@@ -561,7 +595,7 @@ class BmcClient:
         MCPClientError
             On HTTP errors.
         """
-        path = self._entry_path(self._settings.form_work_info)
+        path = self.entry_path(self._settings.form_work_info)
         return await self.post_multipart(path, body=body)
 
     async def post_incident_work_log(self, body: WorkInfoMultipartBody) -> JsonValue:
@@ -582,10 +616,10 @@ class BmcClient:
         MCPClientError
             On HTTP errors.
         """
-        path = self._entry_path(self._settings.form_incident_work_log)
+        path = self.entry_path(self._settings.form_incident_work_log)
         return await self.post_multipart(path, body=body)
 
-    async def health_ping(self) -> bool:
+    async def health_ping(self) -> None:
         """Run a lightweight authenticated request to verify session health.
 
         Returns
@@ -599,9 +633,9 @@ class BmcClient:
             On auth or unexpected HTTP errors.
         """
         try:
-            await self.search_work_order('WO0000000000000')
-            return True
+            await self.search_work_order("WO0000000000000")
+            return
         except MCPClientError as exc:
             if exc.status_code == HTTPStatus.NOT_FOUND:
-                return True
+                return
             raise

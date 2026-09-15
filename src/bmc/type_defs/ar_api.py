@@ -13,7 +13,7 @@ class BmcEntryValues(BaseModel):
 
     data: dict[str, ArScalarValue] = Field(default_factory=dict[str, ArScalarValue])
 
-    def get_str(self, key: str, default: str = '') -> str:
+    def get_str(self, key: str, default: str = "") -> str:
         """Return a string field or *default* if missing or not a string.
 
         Parameters
@@ -66,7 +66,61 @@ class BmcCreateEntryResponse(BaseModel):
     """POST create response with values and optional Location-derived ids."""
 
     values: BmcEntryValues = Field(default_factory=BmcEntryValues)
-    location: str = Field(default='')
+    location: str = Field(default="")
+
+
+def _coerce_scalar(val: JsonValue) -> ArScalarValue:
+    """Coerce a raw JSON value to an AR scalar, stringifying anything else.
+
+    Parameters
+    ----------
+    val : JsonValue
+        Raw value from a BMC ``values`` map.
+
+    Returns
+    -------
+    ArScalarValue
+        ``val`` unchanged when it is already a scalar (or ``None``); otherwise ``str(val)``.
+    """
+    if isinstance(val, (str, int, float, bool)) or val is None:
+        return val
+    return str(val)
+
+
+def _parse_values_dict(raw_values: JsonValue) -> dict[str, ArScalarValue]:
+    """Parse a raw ``values`` JSON object into a flat scalar dict.
+
+    Parameters
+    ----------
+    raw_values : JsonValue
+        Raw ``values`` field from an AR entry or create response.
+
+    Returns
+    -------
+    dict[str, ArScalarValue]
+        Empty when ``raw_values`` is not a JSON object.
+    """
+    if not isinstance(raw_values, dict):
+        return {}
+    return {str(key): _coerce_scalar(val) for key, val in raw_values.items()}
+
+
+def _parse_entry(item: JsonValue) -> BmcEntry | None:
+    """Parse one raw ``entries`` element into a ``BmcEntry``.
+
+    Parameters
+    ----------
+    item : JsonValue
+        Raw entry from the ``entries`` list.
+
+    Returns
+    -------
+    BmcEntry | None
+        Parsed entry, or ``None`` when ``item`` is not a JSON object.
+    """
+    if not isinstance(item, dict):
+        return None
+    return BmcEntry(values=BmcEntryValues(data=_parse_values_dict(item.get("values"))))
 
 
 def parse_entry_list(payload: JsonValue) -> BmcEntryListResponse:
@@ -84,26 +138,14 @@ def parse_entry_list(payload: JsonValue) -> BmcEntryListResponse:
     """
     if not isinstance(payload, dict):
         return BmcEntryListResponse()
-    raw_entries = payload.get('entries')
+    raw_entries = payload.get("entries")
     if not isinstance(raw_entries, list):
         return BmcEntryListResponse()
-    entries: list[BmcEntry] = []
-    for item in raw_entries:
-        if not isinstance(item, dict):
-            continue
-        raw_values = item.get('values')
-        values_dict: dict[str, ArScalarValue] = {}
-        if isinstance(raw_values, dict):
-            for key, val in raw_values.items():
-                if isinstance(val, (str, int, float, bool)) or val is None:
-                    values_dict[str(key)] = val
-                else:
-                    values_dict[str(key)] = str(val)
-        entries.append(BmcEntry(values=BmcEntryValues(data=values_dict)))
+    entries = [entry for entry in (_parse_entry(item) for item in raw_entries) if entry is not None]
     return BmcEntryListResponse(entries=entries)
 
 
-def parse_create_response(payload: JsonValue, location: str = '') -> BmcCreateEntryResponse:
+def parse_create_response(payload: JsonValue, location: str = "") -> BmcCreateEntryResponse:
     """Parse a BMC create JSON body into ``BmcCreateEntryResponse``.
 
     Parameters
@@ -118,16 +160,8 @@ def parse_create_response(payload: JsonValue, location: str = '') -> BmcCreateEn
     BmcCreateEntryResponse
         Parsed values map and location string.
     """
-    values_dict: dict[str, ArScalarValue] = {}
-    if isinstance(payload, dict):
-        raw_values = payload.get('values')
-        if isinstance(raw_values, dict):
-            for key, val in raw_values.items():
-                if isinstance(val, (str, int, float, bool)) or val is None:
-                    values_dict[str(key)] = val
-                else:
-                    values_dict[str(key)] = str(val)
+    raw_values = payload.get("values") if isinstance(payload, dict) else None
     return BmcCreateEntryResponse(
-        values=BmcEntryValues(data=values_dict),
+        values=BmcEntryValues(data=_parse_values_dict(raw_values)),
         location=location,
     )

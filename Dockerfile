@@ -24,6 +24,9 @@ RUN rm -rf ./skills/example \
 ENV PATH="/app/.venv/bin:$PATH"
 ENV HTTP_HOST=0.0.0.0
 ENV HTTP_PORT=8000
+# Zona horaria del contenedor (reloj de sistema) y de la tool `get_current_date`
+# (AGENT_TIMEZONE en Settings usa el mismo valor por defecto).
+ENV TZ=America/Bogota
 
 USER appuser
 EXPOSE 8000

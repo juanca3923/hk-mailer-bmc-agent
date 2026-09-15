@@ -135,6 +135,7 @@ class BmcSettings(BaseSettings):
     form_wo_update: str = Field(default='WOI:WorkOrderInterface')
     form_work_info: str = Field(default='WOI:WorkInfo')
     form_incident_work_log: str = Field(default='HPD:WorkLog')
+    form_people_query: str = Field(default='CTM:People')
 
     default_first_name: str = Field(
         default='Mosaico',
