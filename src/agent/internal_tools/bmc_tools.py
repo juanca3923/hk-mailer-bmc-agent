@@ -99,6 +99,35 @@ def _wo_detail_from_search(
     )
 
 
+async def _create_work_order_entry(h: BaseToolHandler, values: CreateWorkOrderValues) -> BaseOutput:
+    """Create the Work Order entry in BMC and build the resulting tool output.
+
+    Parameters
+    ----------
+    h : BaseToolHandler
+        Initialized BMC tool handler.
+    values : CreateWorkOrderValues
+        Mapped AR field values for ``WOI:WorkOrderInterface_Create``.
+
+    Returns
+    -------
+    BaseOutput
+        Success with TOON-encoded created ids, or failure output on error.
+    """
+    try:
+        created = await h.client.create_work_order_entry(EntryValuesMapper.wrap_entry_body(values))
+    except MCPClientError as exc:
+        logger.info("bmc_create_work_order failed")
+        return BaseToolHandler.failure(exc)
+    wo_id = created.values.get_str(AR_FIELD_WORK_ORDER_ID_RESPONSE) or created.values.get_str(AR_FIELD_WORK_ORDER_ID)
+    out = WorkOrderCreatedData(
+        work_order_id=wo_id,
+        request_id=created.values.get_str(AR_FIELD_REQUEST_ID),
+    )
+    logger.info("bmc_create_work_order ok work_order_id=%s", out.work_order_id)
+    return BaseToolHandler.success_toon(out)
+
+
 def _incident_detail_from_search(
     incident_number: str,
     values_data: dict[str, ArScalarValue],
@@ -264,20 +293,8 @@ async def bmc_create_work_order(
         support_organization=DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
         assigned_group=data.assigned_group,
     )
-    try:
-        created = await h.client.create_work_order_entry(EntryValuesMapper.wrap_entry_body(values))
-    except MCPClientError as exc:
-        logger.info("bmc_create_work_order failed")
-        return BaseToolHandler.failure(exc).model_dump_json()
-    wo_id = created.values.get_str(AR_FIELD_WORK_ORDER_ID_RESPONSE)
-    if not wo_id:
-        wo_id = created.values.get_str(AR_FIELD_WORK_ORDER_ID)
-    out = WorkOrderCreatedData(
-        work_order_id=wo_id,
-        request_id=created.values.get_str(AR_FIELD_REQUEST_ID),
-    )
-    logger.info("bmc_create_work_order ok work_order_id=%s", out.work_order_id)
-    return BaseToolHandler.success_toon(out).model_dump_json()
+    output = await _create_work_order_entry(h, values)
+    return output.model_dump_json()
 
 
 @tool

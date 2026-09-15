@@ -67,6 +67,34 @@ def _pick_entry(candidates: list[BmcEntryValues], email: str) -> BmcEntryValues:
     return candidates[0]
 
 
+async def _find_person_entry(client: BmcClient, email: str) -> BmcEntryValues | BaseOutput:
+    """Search ``CTM:People`` by email and disambiguate to a single matching entry.
+
+    Parameters
+    ----------
+    client : BmcClient
+        BMC HTTP client.
+    email : str
+        Normalized reporter email, matched against ``Internet E-mail``.
+
+    Returns
+    -------
+    BmcEntryValues | BaseOutput
+        The chosen entry's values; a ``success=False`` ``BaseOutput`` when the
+        lookup itself fails or no person is found.
+    """
+    try:
+        search = await client.search_person_by_email(email)
+    except MCPClientError as exc:
+        return BaseOutput(success=False, message=exc.message)
+    if not search.entries:
+        return BaseOutput(
+            success=False,
+            message=USER_ERROR_MESSAGE_PERSON_NOT_FOUND.format(email=email),
+        )
+    return _pick_entry([entry.values for entry in search.entries], email)
+
+
 async def resolve_reporter_identity(client: BmcClient, email: str) -> ReporterIdentity | BaseOutput:
     """Look up First/Last Name in ``CTM:People`` for the person creating a ticket.
 
@@ -86,16 +114,9 @@ async def resolve_reporter_identity(client: BmcClient, email: str) -> ReporterId
         not proceed to create the ticket.
     """
     normalized_email = email.strip()
-    try:
-        search = await client.search_person_by_email(normalized_email)
-    except MCPClientError as exc:
-        return BaseOutput(success=False, message=exc.message)
-    if not search.entries:
-        return BaseOutput(
-            success=False,
-            message=USER_ERROR_MESSAGE_PERSON_NOT_FOUND.format(email=normalized_email),
-        )
-    chosen = _pick_entry([entry.values for entry in search.entries], normalized_email)
+    chosen = await _find_person_entry(client, normalized_email)
+    if isinstance(chosen, BaseOutput):
+        return chosen
     first_name = chosen.get_str(AR_FIELD_PEOPLE_FIRST_NAME)
     last_name = chosen.get_str(AR_FIELD_PEOPLE_LAST_NAME)
     if not first_name or not last_name:
