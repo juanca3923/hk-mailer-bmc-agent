@@ -11,7 +11,6 @@ from commons.runner import get_agent_runner
 from config import get_logger
 from http_api.agent_turn_guard import (
     http_turn_claim_and_restore_after_task,
-    raise_if_agent_busy_http,
     restore_agent_up_after_turn,
 )
 from http_api.state import agent_state
@@ -26,8 +25,8 @@ class ChatHandler:
 
     @staticmethod
     async def run_registered_turn(fast_app: FastAPI, body: ChatRequest, graph: object) -> ChatResponse:
-        """POST /chat: reserva turno, ejecuta en tarea registrada y restaura UP al terminar."""
-        async with http_turn_claim_and_restore_after_task(fast_app):
+        """POST /chat: reserva turno, ejecuta en tarea registrada y restaura estado al terminar."""
+        async with http_turn_claim_and_restore_after_task():
             chat_tasks: set[asyncio.Task[object]] = getattr(fast_app.state, "chat_tasks", set())
             task: asyncio.Task[ChatResponse] = asyncio.create_task(ChatHandler.execute(body, graph))
             chat_tasks.add(task)
@@ -49,11 +48,6 @@ class ChatHandler:
         """Lanza HTTPException 503 si el agente está en proceso de parada."""
         if agent_state.shutdown_requested:
             raise HTTPException(status_code=503, detail="Servicio en proceso de parada")
-
-    @staticmethod
-    def check_not_busy_or_raise() -> None:
-        """Lanza HTTPException 409 si el agente ya está ejecutando una tarea."""
-        raise_if_agent_busy_http()
 
     @staticmethod
     async def execute(

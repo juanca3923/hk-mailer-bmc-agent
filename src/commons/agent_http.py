@@ -31,6 +31,7 @@ async def start_agent(
     graph = await stack.enter_async_context(build_agent(settings))
     fast_app.state.agent_stack = stack
     fast_app.state.graph = graph
+    agent_state.set_allow_concurrent_turns(settings.http_allow_concurrent_turns)
     agent_state.clear_shutdown_requested()
     agent_state.set_status("UP")
 

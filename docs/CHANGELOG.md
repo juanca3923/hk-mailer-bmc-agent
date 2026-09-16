@@ -4,6 +4,34 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-16 — feat: turnos concurrentes en HTTP/A2A, configurables por variable de entorno
+
+- **Cambio**: nueva variable `HTTP_ALLOW_CONCURRENT_TURNS` (`Settings`, por defecto
+  `True`). En `True` (default) `POST /chat`, `POST /chat/stream` y A2A JSON-RPC
+  (`POST /a2a/{assistant_id}`) aceptan turnos concurrentes — antes siempre respondían
+  `409` mientras hubiera uno en curso, sin forma de configurarlo. En `False` se
+  recupera ese comportamiento original (un run por turno).
+- **Por qué es seguro por defecto**: cada turno ya está aislado por su propio
+  `chat_id`/`thread_id` en el checkpointer de Postgres, así que correr varios en
+  paralelo no mezcla estado entre conversaciones distintas.
+- **Implementación**: `AgentState` (`src/http_api/state.py`) pasa de un flag booleano a
+  un contador de turnos en curso (`try_begin_task`/`end_task`) con política
+  configurable (`allow_concurrent_turns`, fijada en `agent_state` al llamar
+  `start_agent`); `GET /status` sigue mostrando `DOING_TASK` mientras haya al menos un
+  turno activo y solo vuelve a `UP` cuando termina el último — correcto incluso con
+  varios turnos solapados. El chequeo es atómico sin necesidad de `asyncio.Lock`
+  porque no hay ningún `await` entre la comprobación y el incremento del contador.
+- **Se eliminó** por quedar sin uso: `app.state.agent_lock` (el `asyncio.Lock` que
+  antes serializaba la reserva de turno) y `ChatHandler.check_not_busy_or_raise`
+  (código muerto, sin ningún llamador).
+- **Archivos**: `src/config/settings.py`, `.env.example`, `src/http_api/state.py`,
+  `src/http_api/agent_turn_guard.py`, `src/http_api/chat_handler.py`,
+  `src/http_api/app.py`, `src/http_api/a2a.py`, `src/http_api/routers/rest_routes.py`,
+  `src/commons/agent_http.py`, `test/test_a2a_inbound.py`,
+  `test/test_agent_turn_guard.py` (nuevo).
+
+---
+
 ## 2026-09-14 — feat: elimina catálogos genéricos ficticios, agrega catch-all real de WO
 
 - **Problema**: `categorias-incidentes.md`/`categorias-requerimientos.md` eran una

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 from http import HTTPStatus
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,8 +17,11 @@ from type_defs.dicts.agent_turn import AgentTurnResult
 
 @pytest.fixture(autouse=True)
 def _agent_state_up() -> None:
+    """Línea base determinística para cada test; no representa el default de producción
+    (``HTTP_ALLOW_CONCURRENT_TURNS=1``) — cada test deja explícita la política que necesita."""
     agent_state.clear_shutdown_requested()
     agent_state.set_status("UP")
+    agent_state.set_allow_concurrent_turns(False)
 
 
 @pytest.fixture(autouse=True)
@@ -37,7 +39,6 @@ def _a2a_tests_match_urls(monkeypatch: pytest.MonkeyPatch) -> None:
 def a2a_only_app() -> FastAPI:
     """App mínima con solo el router A2A (sin lifespan de producción)."""
     app = FastAPI()
-    app.state.agent_lock = asyncio.Lock()
     app.state.graph = object()
     app.include_router(a2a_router)
     return app
@@ -93,8 +94,9 @@ def test_message_send_unknown_method(a2a_only_app: FastAPI) -> None:
     assert "error" in r.json()
 
 
-def test_message_send_busy(a2a_only_app: FastAPI) -> None:
-    agent_state.set_status("DOING_TASK")
+def test_message_send_busy_when_concurrent_turns_disabled(a2a_only_app: FastAPI) -> None:
+    """Con HTTP_ALLOW_CONCURRENT_TURNS=0 (default del fixture): un run por turno."""
+    agent_state.try_begin_task()  # simula un turno ya en curso
     try:
         with patch("http_api.a2a.get_agent_runner", return_value=MagicMock()):
             with patch("http_api.a2a.get_agent_events_service", return_value=MagicMock()):
@@ -114,7 +116,40 @@ def test_message_send_busy(a2a_only_app: FastAPI) -> None:
                 r = client.post("/a2a/agent_forge", json=body)
         assert r.status_code == HTTPStatus.CONFLICT
     finally:
-        agent_state.set_status("UP")
+        agent_state.end_task()
+
+
+def test_message_send_allowed_while_busy_when_concurrent_turns_enabled(a2a_only_app: FastAPI) -> None:
+    """Con HTTP_ALLOW_CONCURRENT_TURNS=1: un turno nuevo no se rechaza aunque el agente ya
+    esté DOING_TASK por otro turno en curso (solo se registra el conteo)."""
+    agent_state.set_allow_concurrent_turns(True)
+    agent_state.try_begin_task()  # simula un turno concurrente ya en curso
+    try:
+        cid = uuid.uuid4()
+        rid = uuid.uuid4()
+        runner = _runner_mock(cid, rid)
+        with patch("http_api.a2a.get_agent_runner", return_value=runner):
+            with patch("http_api.a2a.get_agent_events_service", return_value=MagicMock()):
+                client = TestClient(a2a_only_app)
+                body = {
+                    "jsonrpc": "2.0",
+                    "id": "x",
+                    "method": "message/send",
+                    "params": {
+                        "message": {
+                            "role": "user",
+                            "parts": [{"kind": "text", "text": "hola"}],
+                            "messageId": str(uuid.uuid4()),
+                        },
+                    },
+                }
+                r = client.post("/a2a/agent_forge", json=body)
+        assert r.status_code == HTTPStatus.OK
+        assert r.json().get("result")
+        # El turno simulado al inicio sigue "en curso": el estado no debe volver a UP todavía.
+        assert agent_state.status == "DOING_TASK"
+    finally:
+        agent_state.end_task()
 
 
 def test_no_graph_503(a2a_only_app: FastAPI) -> None:

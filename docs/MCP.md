@@ -60,7 +60,7 @@ Patrones de memoria y checkpointer: [`docs/MEMORIA.md`](MEMORIA.md).
 |-----------|--------|
 | Endpoint `POST /mcp/config` (recarga sin tocar env) | No implementado |
 | Auth por servidor (Bearer, `X-Api-Key`, OAuth en `httpx`) | No implementado |
-| Recarga MCP con turno en curso sin `stop` | No soportado; usar misma política que `/chat` (`agent_lock`, `DOING_TASK`) |
+| Recarga MCP con turno en curso sin `stop` | No soportado; con `HTTP_ALLOW_CONCURRENT_TURNS=1` (por defecto) `GET /status = UP` no garantiza que no haya turno en curso — poner `=0` para esa garantía, o usar `POST /stop` para recargar con seguridad |
 | Varias credenciales por tenant/usuario en el mismo despliegue | No implementado |
 
 Para extender el código con autorización MCP, la especificación HTTP está en [MCP Authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization); cualquier cambio deberá documentarse aquí y en [`docs/ARCHITECTURE.md`](ARCHITECTURE.md).
