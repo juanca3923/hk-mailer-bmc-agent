@@ -4,6 +4,45 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-16 — deuda técnica: confirmación real (graph-level) antes de cerrar un ticket
+
+- **Problema confirmado en pruebas**: el guardarraíl de prompt que exige "pide confirmación
+  antes de cerrar un ticket cuyo ID salió de una búsqueda en memoria" (ver entrada de
+  "guardarraíl contra memoria cruzada" más abajo) **no se puede garantizar solo con texto**.
+  Reproducido en vivo: el agente llamó `memory_get_chat_messages` → `memory_list_recent_runs`
+  → `bmc_close_incident` **en el mismo turno**, sin pausar a preguntar — el modelo puede
+  encadenar tool calls libremente dentro de un turno (patrón ReAct) y nada lo obliga a
+  detenerse, sin importar qué tan explícita sea la instrucción del prompt.
+- **Solución evaluada y confirmada viable, pendiente de implementar**:
+  `langchain.agents.middleware.human_in_the_loop.HumanInTheLoopMiddleware` (ya disponible en
+  `langchain==1.2.15`, instalado en este proyecto) usa el `interrupt()` nativo de LangGraph
+  — un corte real de ejecución del grafo, persistido en el checkpointer (ya usamos
+  `AsyncPostgresSaver`, sin infraestructura nueva). Se pasaría como
+  `create_agent(..., middleware=[HumanInTheLoopMiddleware(interrupt_on={"bmc_close_work_order": True, "bmc_close_incident": True})])`
+  en `src/agent/agent.py`.
+- **Por qué queda pendiente (costo de integración real, no trivial)**:
+  - `src/commons/runner.py` (`run_agent_turn`/`stream_agent_turn`) asume hoy que `ainvoke`/
+    `astream` siempre terminan en una respuesta final; con `interrupt()` el grafo queda
+    pausado a mitad de camino y hay que detectarlo, convertir el `HITLRequest` en una
+    pregunta legible para el usuario, y **no** marcar el run como terminado.
+  - El siguiente mensaje del usuario en ese chat deja de ser texto libre: hay que
+    interpretarlo como una decisión (`approve`/`reject`) y resumir el grafo con
+    `Command(resume=...)`, no volver a invocarlo normal.
+  - `AgentTurnResult`/`ChatResponse` necesitan un estado nuevo (algo como
+    `awaiting_confirmation`) para que HTTP y A2A sepan que el turno quedó a la espera.
+  - **Conflicto de diseño con A2A**: `system.promt.md` dice explícitamente que el modo A2A
+    "nunca pide confirmación" (autonomía total en un solo turno). Este middleware pausaría
+    también las llamadas A2A salvo que se desactive específicamente para ese modo — requiere
+    decidir si A2A sigue sin confirmar nunca (aceptando el riesgo residual solo ahí) o si
+    también cambia esa política, y probablemente dos grafos compilados (uno con el
+    middleware para HTTP interactivo, otro sin él para A2A) o contexto por invocación.
+- **Mitigación actual, mientras tanto**: guardarraíles de prompt (`system.promt.md`,
+  `base.prompt.md`, descripciones de `memory_tools.py`) que reducen la frecuencia del
+  problema pero no lo eliminan con garantía — ver la entrada de "guardarraíl contra memoria
+  cruzada" más abajo.
+
+---
+
 ## 2026-09-16 — feat: turnos concurrentes en HTTP/A2A, configurables por variable de entorno
 
 - **Cambio**: nueva variable `HTTP_ALLOW_CONCURRENT_TURNS` (`Settings`, por defecto
