@@ -48,3 +48,39 @@ class IncidentDetailData(BaseModel):
     status: str = Field(default='')
     description: str = Field(default='')
     values: dict[str, ArScalarValue] = Field(default_factory=dict[str, ArScalarValue])
+
+
+class WorkOrderByEmailRow(BaseModel):
+    """One row of a work-order-by-requester-email search result."""
+
+    work_order_id: str = Field(default='')
+    status: str = Field(default='')
+    summary: str = Field(default='')
+
+
+class WorkOrdersByEmailData(BaseModel):
+    """Result of searching work orders by requester email."""
+
+    email: str = Field(default='')
+    total_found: int = Field(default=0, description='Total matches in BMC before capping.')
+    returned: int = Field(default=0, description='Number of rows actually returned below.')
+    truncated: bool = Field(default=False, description='True when total_found exceeds returned.')
+    work_orders: list[WorkOrderByEmailRow] = Field(default_factory=list)
+
+
+class IncidentByEmailRow(BaseModel):
+    """One row of an incident-by-requester-email search result."""
+
+    incident_number: str = Field(default='')
+    status: str = Field(default='')
+    description: str = Field(default='')
+
+
+class IncidentsByEmailData(BaseModel):
+    """Result of searching incidents by requester email."""
+
+    email: str = Field(default='')
+    total_found: int = Field(default=0, description='Total matches in BMC before capping.')
+    returned: int = Field(default=0, description='Number of rows actually returned below.')
+    truncated: bool = Field(default=False, description='True when total_found exceeds returned.')
+    incidents: list[IncidentByEmailRow] = Field(default_factory=list)

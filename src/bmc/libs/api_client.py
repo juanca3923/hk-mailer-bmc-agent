@@ -13,11 +13,13 @@ from bmc.libs.connection_manager import BmcConnectionManager
 from bmc.libs.constants import (
     API_PATH_ARSYS_ENTRY_PREFIX,
     AR_FIELD_INCIDENT_NUMBER,
+    AR_FIELD_INCIDENT_REPORTER_EMAIL,
     AR_FIELD_PEOPLE_EMAIL,
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_REQUEST_ID,
+    AR_FIELD_WO_CUSTOMER_EMAIL,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     USER_ERROR_MESSAGE_INVALID_JSON,
@@ -430,6 +432,52 @@ class BmcClient:
             On HTTP or parse errors.
         """
         q = ArQueryBuilder.equals(AR_FIELD_INCIDENT_NUMBER, incident_number)
+        path = self.entry_path(self._settings.form_incident_query)
+        payload = await self.get_json(path, params={"q": q})
+        return parse_entry_list(payload)
+
+    async def search_work_orders_by_email(self, email: str) -> BmcEntryListResponse:
+        """Search work orders by requester email (``Customer Internet E-mail``).
+
+        Parameters
+        ----------
+        email : str
+            Requester email, as originally passed to ``reporter_email`` at creation.
+
+        Returns
+        -------
+        BmcEntryListResponse
+            Parsed list/search response; may contain any number of entries.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP or parse errors.
+        """
+        q = ArQueryBuilder.equals(AR_FIELD_WO_CUSTOMER_EMAIL, email)
+        path = self.entry_path(self._settings.form_wo_query)
+        payload = await self.get_json(path, params={"q": q})
+        return parse_entry_list(payload)
+
+    async def search_incidents_by_email(self, email: str) -> BmcEntryListResponse:
+        """Search incidents by requester email (``Internet E-mail``).
+
+        Parameters
+        ----------
+        email : str
+            Requester email, as originally passed to ``reporter_email`` at creation.
+
+        Returns
+        -------
+        BmcEntryListResponse
+            Parsed list/search response; may contain any number of entries.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP or parse errors.
+        """
+        q = ArQueryBuilder.equals(AR_FIELD_INCIDENT_REPORTER_EMAIL, email)
         path = self.entry_path(self._settings.form_incident_query)
         payload = await self.get_json(path, params={"q": q})
         return parse_entry_list(payload)

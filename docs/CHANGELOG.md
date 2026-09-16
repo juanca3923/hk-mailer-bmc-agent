@@ -4,6 +4,41 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-16 — feat: nuevas tools para listar tickets por correo del solicitante
+
+- **Problema**: no existía forma de consultar los tickets de una persona — `bmc_get_work_order`/
+  `bmc_get_incident` solo buscan por ID exacto, y no había ningún método que filtrara por
+  solicitante.
+- **Verificado contra BMC antes de implementar** (no se adivinó el campo): probando con un
+  correo real, `WOI:WorkOrderInterface` acepta filtrar por `'Customer Internet E-mail'`
+  (guarda el `reporter_email` crudo pasado al crear, no el login resuelto en `CTM:People`) y
+  `HPD:IncidentInterface` acepta filtrar por `'Internet E-mail'` (mismo comportamiento: correo
+  crudo, no login resuelto).
+- **Cambio**: dos tools nuevas, `bmc_list_work_orders_by_email` y
+  `bmc_list_incidents_by_email`. Devuelven una fila corta por ticket (id, status,
+  resumen/descripción) — no el detalle completo que da `bmc_get_work_order`/`bmc_get_incident`
+  para un ticket puntual — capadas en `MAX_TICKETS_BY_EMAIL_RESULTS` (30) vía un parámetro
+  `limit` opcional, con `total_found`/`truncated` en la respuesta para que el agente sepa si
+  hay más resultados de los mostrados.
+- **Archivos**: `src/bmc/libs/constants.py` (`AR_FIELD_WO_CUSTOMER_EMAIL`,
+  `AR_FIELD_INCIDENT_REPORTER_EMAIL`, `MAX_TICKETS_BY_EMAIL_RESULTS`),
+  `src/bmc/libs/api_client.py` (`search_work_orders_by_email`, `search_incidents_by_email`),
+  `src/bmc/type_defs/inputs.py` (`TicketsByEmailInput`), `src/bmc/type_defs/outputs.py`
+  (`WorkOrdersByEmailData`/`IncidentsByEmailData` y sus filas), `src/agent/internal_tools/bmc_tools.py`
+  (las dos tools nuevas, registradas en `_ALL_BMC_TOOLS`), `test/test_bmc_tools.py`,
+  `CLAUDE.md`, `system.promt.md`.
+- **Ahora son 14 tools BMC** (antes 12).
+- **Bug preexistente encontrado y corregido de paso**: `bmc_get_work_order` (y la nueva
+  `bmc_list_work_orders_by_email`) leían el asunto de una Work Order desde la clave
+  `"Summary"`, que no existe con contenido en `WOI:WorkOrderInterface` (`z1D_Summary` existe
+  en el formulario pero siempre viene vacío) — el campo real es `"Description"` (el mismo al
+  que mapea el parámetro `summary` de `bmc_create_work_order`). Confirmado contra BMC real:
+  `bmc_get_work_order` siempre había devuelto el resumen vacío en producción. Corregido en
+  `_wo_detail_from_search` (`src/agent/internal_tools/bmc_tools.py`); agregado test de
+  regresión (`test_bmc_get_work_order_summary_comes_from_description_field`).
+
+---
+
 ## 2026-09-16 — deuda técnica: confirmación real (graph-level) antes de cerrar un ticket
 
 - **Problema confirmado en pruebas**: el guardarraíl de prompt que exige "pide confirmación

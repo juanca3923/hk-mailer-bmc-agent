@@ -3,6 +3,7 @@
 from typing import Final
 
 READ_TIMEOUT_SECONDS: Final[float] = 30.0
+MAX_TICKETS_BY_EMAIL_RESULTS: Final[int] = 30
 IN_PROGRESS_STATUS: Final[str] = "In Progress"
 DETAIL_DESCRIPTION_FIELD: Final[str] = "Detailed Description"
 CATEGORIZATION_TIER_1_FIELD: Final[str] = "Categorization Tier 1"
@@ -38,6 +39,13 @@ AR_FIELD_PEOPLE_LOGIN_ID: Final[str] = "Remedy Login ID"
 AR_FIELD_PEOPLE_FIRST_NAME: Final[str] = "First Name"
 AR_FIELD_PEOPLE_LAST_NAME: Final[str] = "Last Name"
 AR_FIELD_PEOPLE_EMAIL: Final[str] = "Internet E-mail"
+
+# Requester-email fields used to list tickets by requester (verified empirically
+# against BMC: each form stores the raw reporter_email in a different field — WO
+# keeps it on the fixed "Customer" identity's email field, INC keeps it on its own
+# "Internet E-mail"; neither is the CTM:People-resolved login id).
+AR_FIELD_WO_CUSTOMER_EMAIL: Final[str] = "Customer Internet E-mail"
+AR_FIELD_INCIDENT_REPORTER_EMAIL: Final[str] = "Internet E-mail"
 
 AR_ACTION_CREATE: Final[str] = "CREATE"
 AR_Z1D_ACTION_CREATE: Final[str] = "CREATE"

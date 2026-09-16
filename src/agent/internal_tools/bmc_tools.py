@@ -51,6 +51,7 @@ from bmc.libs.business_defaults import (
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
 )
 from bmc.libs.constants import (
+    AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
@@ -59,6 +60,7 @@ from bmc.libs.constants import (
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
+    MAX_TICKETS_BY_EMAIL_RESULTS,
     WORK_ORDER_STATUSES,
 )
 from bmc.libs.helpers.entry_values_mapper import EntryValuesMapper
@@ -78,14 +80,19 @@ from bmc.type_defs.inputs import (
     CreateIncidentInput,
     CreateWorkOrderInput,
     IncidentNumberInput,
+    TicketsByEmailInput,
     UpdateWorkOrderStatusInput,
     WorkOrderIdInput,
 )
 from bmc.type_defs.outputs import (
     BaseOutput,
+    IncidentByEmailRow,
     IncidentDetailData,
+    IncidentsByEmailData,
+    WorkOrderByEmailRow,
     WorkOrderCreatedData,
     WorkOrderDetailData,
+    WorkOrdersByEmailData,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,7 +120,9 @@ def _wo_detail_from_search(
 ) -> WorkOrderDetailData:
     """Build a ``WorkOrderDetailData`` from a raw AR values dict."""
     status = values_data.get("Status", "")
-    summary = values_data.get("Summary", "")
+    # AR field is "Description" (same one bmc_create_work_order's summary maps to);
+    # "Summary" doesn't hold the subject on this form ("z1D_Summary" exists but is unused).
+    summary = values_data.get("Description", "")
     request_id = values_data.get(AR_FIELD_REQUEST_ID, "")
     return WorkOrderDetailData(
         work_order_id=work_order_id,
@@ -384,6 +393,59 @@ async def bmc_get_work_order(
         ).model_dump_json()
     detail = _wo_detail_from_search(data.work_order_id, first.data)
     return BaseToolHandler.success_toon(detail).model_dump_json()
+
+
+@tool
+async def bmc_list_work_orders_by_email(
+    email: Annotated[
+        str,
+        Field(min_length=1, description="Requester email, as given to reporter_email at creation."),
+    ],
+    limit: Annotated[
+        int,
+        Field(
+            ge=1,
+            le=MAX_TICKETS_BY_EMAIL_RESULTS,
+            description="Maximum number of rows to return; silently capped at this tool's own maximum.",
+        ),
+    ] = MAX_TICKETS_BY_EMAIL_RESULTS,
+) -> str:
+    """List work orders requested by one person, searched by their email.
+
+    Matches on the same ``reporter_email`` value passed at creation time — never the
+    BMC-resolved login id. Returns a short summary per row (id, status, summary), not
+    the full detail ``bmc_get_work_order`` returns for one ticket; call that tool with
+    a specific id from these results if you need the full detail.
+
+    Returns
+    -------
+    str
+        JSON with ``success`` and ``message`` (TOON-encoded rows on success).
+    """
+    h = _get_handler()
+    data = TicketsByEmailInput(email=email, limit=limit)
+    try:
+        result = await h.client.search_work_orders_by_email(data.email)
+    except MCPClientError as exc:
+        return BaseToolHandler.failure(exc).model_dump_json()
+    total = len(result.entries)
+    rows = [
+        WorkOrderByEmailRow(
+            work_order_id=str(e.values.data.get(AR_FIELD_WORK_ORDER_ID, "")),
+            status=str(e.values.data.get("Status", "")),
+            summary=str(e.values.data.get("Description", "")),
+        )
+        for e in result.entries[: data.limit]
+    ]
+    out = WorkOrdersByEmailData(
+        email=data.email,
+        total_found=total,
+        returned=len(rows),
+        truncated=total > len(rows),
+        work_orders=rows,
+    )
+    logger.info("bmc_list_work_orders_by_email ok email=%s total_found=%d", data.email, total)
+    return BaseToolHandler.success_toon(out).model_dump_json()
 
 
 @tool
@@ -705,6 +767,60 @@ async def bmc_get_incident(
 
 
 @tool
+async def bmc_list_incidents_by_email(
+    email: Annotated[
+        str,
+        Field(min_length=1, description="Requester email, as given to reporter_email at creation."),
+    ],
+    limit: Annotated[
+        int,
+        Field(
+            ge=1,
+            le=MAX_TICKETS_BY_EMAIL_RESULTS,
+            description="Maximum number of rows to return; silently capped at this tool's own maximum.",
+        ),
+    ] = MAX_TICKETS_BY_EMAIL_RESULTS,
+) -> str:
+    """List incidents reported by one person, searched by their email.
+
+    Matches on the same ``reporter_email`` value passed at creation time — never the
+    BMC-resolved login id. Returns a short summary per row (number, status,
+    description), not the full detail ``bmc_get_incident`` returns for one ticket;
+    call that tool with a specific number from these results if you need the full
+    detail.
+
+    Returns
+    -------
+    str
+        JSON with ``success`` and ``message`` (TOON-encoded rows on success).
+    """
+    h = _get_handler()
+    data = TicketsByEmailInput(email=email, limit=limit)
+    try:
+        result = await h.client.search_incidents_by_email(data.email)
+    except MCPClientError as exc:
+        return BaseToolHandler.failure(exc).model_dump_json()
+    total = len(result.entries)
+    rows = [
+        IncidentByEmailRow(
+            incident_number=str(e.values.data.get(AR_FIELD_INCIDENT_NUMBER, "")),
+            status=str(e.values.data.get("Status", "")),
+            description=str(e.values.data.get("Description", "")),
+        )
+        for e in result.entries[: data.limit]
+    ]
+    out = IncidentsByEmailData(
+        email=data.email,
+        total_found=total,
+        returned=len(rows),
+        truncated=total > len(rows),
+        incidents=rows,
+    )
+    logger.info("bmc_list_incidents_by_email ok email=%s total_found=%d", data.email, total)
+    return BaseToolHandler.success_toon(out).model_dump_json()
+
+
+@tool
 async def bmc_add_incident_note(
     incident_number: Annotated[str, Field(min_length=1, description="Target Incident Number.")],
     note_text: Annotated[
@@ -843,12 +959,14 @@ _ALL_BMC_TOOLS: list[BaseTool] = [
     bmc_health_check,
     bmc_create_work_order,
     bmc_get_work_order,
+    bmc_list_work_orders_by_email,
     bmc_add_work_order_note,
     bmc_add_work_order_attachment,
     bmc_update_work_order_status,
     bmc_close_work_order,
     bmc_create_incident,
     bmc_get_incident,
+    bmc_list_incidents_by_email,
     bmc_add_incident_note,
     bmc_add_incident_attachment,
     bmc_close_incident,
@@ -861,7 +979,7 @@ def get_bmc_tools() -> list[BaseTool]:
     Returns
     -------
     list[BaseTool]
-        All 12 BMC LangChain tools, or ``[]`` when BMC is not configured.
+        All 14 BMC LangChain tools, or ``[]`` when BMC is not configured.
     """
     if not os.environ.get("BMC_BASE_URL"):
         logger.info("BMC_BASE_URL not set — BMC tools disabled")

@@ -152,16 +152,20 @@ protocol without deviation:
   it** from the conversation or your training knowledge.
 
 ### Work Orders (WO)
-- `bmc_create_work_order`, `bmc_get_work_order`, `bmc_add_work_order_note`,
-  `bmc_add_work_order_attachment`, `bmc_update_work_order_status`,
-  `bmc_close_work_order` — see each tool's own parameter descriptions for exact
-  requirements and failure modes; the guardrails below cover the cross-cutting rules
-  (categorization, reporter identity, closing).
+- `bmc_create_work_order`, `bmc_get_work_order`, `bmc_list_work_orders_by_email`,
+  `bmc_add_work_order_note`, `bmc_add_work_order_attachment`,
+  `bmc_update_work_order_status`, `bmc_close_work_order` — see each tool's own
+  parameter descriptions for exact requirements and failure modes; the guardrails
+  below cover the cross-cutting rules (categorization, reporter identity, closing).
+  `bmc_list_work_orders_by_email` returns a short summary per row (id, status,
+  summary), not the full detail — use `bmc_get_work_order` on a specific id from
+  those results if you need more.
 
 ### Incidents (INC)
-- `bmc_create_incident`, `bmc_get_incident`, `bmc_add_incident_note`,
-  `bmc_add_incident_attachment`, `bmc_close_incident` — same note as above; Impact and
-  Urgency are always fixed and are never parameters of `bmc_create_incident`.
+- `bmc_create_incident`, `bmc_get_incident`, `bmc_list_incidents_by_email`,
+  `bmc_add_incident_note`, `bmc_add_incident_attachment`, `bmc_close_incident` — same
+  note as above; Impact and Urgency are always fixed and are never parameters of
+  `bmc_create_incident`.
 
 ## Guardrails (non-negotiable)
 

@@ -11,6 +11,7 @@ from bmc.libs.constants import (
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
+    MAX_TICKETS_BY_EMAIL_RESULTS,
     WORK_ORDER_STATUSES,
 )
 from bmc.type_defs.ticket_status import (
@@ -36,6 +37,18 @@ class IncidentNumberInput(BaseModel):
     """Input requiring an incident number."""
 
     incident_number: str = Field(..., min_length=1, description="Incident Number (e.g. INC000000002106).")
+
+
+class TicketsByEmailInput(BaseModel):
+    """Input for listing tickets (work orders or incidents) by requester email."""
+
+    email: str = Field(..., min_length=1, description="Requester email, as given to reporter_email at creation.")
+    limit: int = Field(
+        default=MAX_TICKETS_BY_EMAIL_RESULTS,
+        ge=1,
+        le=MAX_TICKETS_BY_EMAIL_RESULTS,
+        description="Maximum number of rows to return; silently capped at this tool's own maximum.",
+    )
 
 
 class CreateWorkOrderInput(BaseModel):
