@@ -13,7 +13,14 @@ from config.skill_catalog import read_skill_guide_json_str
 logger = get_logger()
 
 
-@tool
+@tool(
+    description=(
+        "Read the full content of a skill guide (a Markdown file under skills/) by its "
+        "logical name from the <skills> catalog in the system prompt. Use it when the "
+        "user's task matches a listed skill and you need its detailed procedure — "
+        "never for a stem that isn't in that catalog."
+    )
+)
 async def skill_get_guide(
     skill_name: Annotated[
         str,

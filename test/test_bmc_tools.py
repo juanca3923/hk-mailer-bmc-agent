@@ -8,6 +8,7 @@ import pydantic
 import pytest
 
 from agent.internal_tools import bmc_tools
+from bmc.libs import tool_handler
 from bmc.libs.business_defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from bmc.libs.constants import (
     AR_FIELD_INCIDENT_ASSIGNED_GROUP,
@@ -145,13 +146,13 @@ class FakeHandler:
 
 @pytest.fixture(autouse=True)
 def _reset_handler_singleton() -> None:
-    """Ensure each test starts from a clean cached ``_get_handler`` singleton."""
-    bmc_tools._get_handler.cache_clear()
+    """Ensure each test starts from a clean cached ``get_shared_handler`` singleton."""
+    tool_handler.get_shared_handler.cache_clear()
 
 
 async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Closed', submitter='svc_mosaico')
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_close_work_order.ainvoke({'work_order_id': 'WO1'})
 
@@ -162,7 +163,7 @@ async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.M
 
 async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='In Progress', submitter='otro_usuario')
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_close_incident.ainvoke({'incident_number': 'INC1', 'description': 'cierre'})
 
@@ -174,7 +175,7 @@ async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.Mon
 
 async def test_bmc_add_incident_note_uses_work_log_not_work_info(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_add_incident_note.ainvoke({'incident_number': 'INC1', 'note_text': 'hola'})
 
@@ -215,7 +216,7 @@ def test_bmc_create_work_order_has_no_support_company_organization_params_but_ha
 
 async def test_bmc_create_work_order_sends_support_company_and_organization(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
@@ -243,7 +244,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
 
 async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(person_entries=[])
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
@@ -264,7 +265,7 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
 
 async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_incident.ainvoke({
         'description': 'D',
@@ -286,7 +287,7 @@ async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch:
 
 async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(person_entries=[])
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_incident.ainvoke({
         'description': 'D',
@@ -384,7 +385,7 @@ async def test_bmc_list_work_orders_by_email_returns_rows_and_flags_truncation(
     ]
     client = FakeClient()
     client.email_search_result = BmcEntryListResponse(entries=entries)
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_list_work_orders_by_email.ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
 
@@ -400,7 +401,7 @@ async def test_bmc_list_work_orders_by_email_returns_rows_and_flags_truncation(
 
 async def test_bmc_list_work_orders_by_email_empty_result(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_list_work_orders_by_email.ainvoke({'email': REPORTER_EMAIL})
 
@@ -426,7 +427,7 @@ async def test_bmc_list_incidents_by_email_returns_rows_and_flags_truncation(
     ]
     client = FakeClient()
     client.email_search_result = BmcEntryListResponse(entries=entries)
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_list_incidents_by_email.ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
 
@@ -443,7 +444,7 @@ async def test_bmc_get_work_order_summary_comes_from_description_field(
     """Regression: the raw AR field for a WO's subject is "Description", not "Summary"
     ("z1D_Summary" exists on the form but is unused) — verified empirically against BMC."""
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_get_work_order.ainvoke({'work_order_id': 'WO1'})
 
@@ -460,7 +461,7 @@ async def test_bmc_get_incident_returns_description_and_assigned_group(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_get_incident.ainvoke({'incident_number': 'INC1'})
 

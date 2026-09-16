@@ -46,7 +46,13 @@ def _resolve_timezone() -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
-@tool
+@tool(
+    description=(
+        "Return the current date and time in the agent's configured timezone. Call "
+        "this whenever 'today', 'now', a relative date, or a ticket timestamp matters "
+        "— never assume or infer the date from the conversation or training data."
+    )
+)
 def get_current_date() -> str:
     """Return the current date and time in the agent's configured timezone.
 

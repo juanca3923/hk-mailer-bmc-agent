@@ -97,6 +97,44 @@ def get_user(data: dict[str, str]) -> list[User]:
   - Máx. 7 atributos por clase.
   - Máx. 5 expresiones booleanas en un mismo `if`.
 
+## Docstring de humanos vs. descripción de tool para el LLM
+
+En una función `@tool` (o expuesta al LLM por otro medio, p. ej. `StructuredTool.from_function`),
+el **docstring NumPy** y la **descripción que recibe el LLM** son dos textos con audiencias
+distintas — se parecen, pero no son lo mismo, y tratarlos como uno solo genera ruido en ambos
+lados:
+
+- **Docstring (NumPy, para quien lee el código)**: sigue el estándar de la sección
+  "Docstrings" de arriba. La sección `Parameters` puede **omitirse o resumirse en una sola
+  línea** cuando cada parámetro ya está documentado en su propio `Field(description=...)`
+  dentro de `Annotated[...]` — ese `Field` es la fuente de verdad del parámetro; no lo
+  dupliques a mano en dos lugares. No dejes un placeholder vago tipo *"ver la tool"*; si se
+  omite, dilo explícitamente en una línea (p. ej. `Parameters: cada uno documentado en su
+  propio Annotated/Field — ver el schema de la tool.`).
+- **Descripción del LLM**: se pasa **de forma explícita** con `@tool(description=...)` (o el
+  parámetro `description=` de `StructuredTool.from_function`) — **nunca** se deja que
+  LangChain la infiera del docstring completo por defecto. Debe ser concisa, en inglés, y
+  centrada en **cuándo y por qué usar la tool** (comportamiento, efectos secundarios,
+  restricciones) — no repitas el shape de retorno (`JSON con success/message`) si es igual en
+  todas las tools del módulo, ni uses marcado RST (dobles backticks, subrayados
+  `----------`) pensado para renderizar con Sphinx.
+
+## Orden de miembros en una clase
+
+Ni PEP 8 ni la guía de estilo de Google prescriben un orden de miembros dentro de una clase —
+queda a criterio de cada equipo. Convención de este repo (público primero, principio
+"step-down": el lector encuentra primero la interfaz de la clase, y solo después el detalle de
+implementación):
+
+1. Docstring de la clase y constantes de clase (`UPPER_CASE`).
+2. `__init__` y otros métodos dunder (`__repr__`, `__eq__`, etc.).
+3. `@property` (getters y setters).
+4. Métodos públicos, en el orden en que naturalmente se invocarían entre sí.
+5. Métodos privados (`_prefijo`) y `@staticmethod`/`@classmethod` de apoyo — cada uno se
+   ubica junto al método público que lo usa (antes o después, según se lea mejor), nunca
+   agrupados aparte al final del archivo. Un helper compartido por varios métodos públicos
+   va junto al primero que lo necesita.
+
 ## Pylint y herramientas
 
 - Python objetivo: 3.11. Ignorar directorios como `.venv` (y CVS) al analizar.

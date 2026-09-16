@@ -21,7 +21,12 @@ from services.chat_service import get_chat_service
 logger = get_logger()
 
 
-@tool
+@tool(
+    description=(
+        "Check whether the agent currently has an active task in progress. Use this "
+        "to answer 'what are you doing right now?' or 'are you busy?'."
+    )
+)
 async def memory_get_current_task() -> str:
     """Check whether the agent currently has an active task in progress.
 
@@ -44,7 +49,15 @@ async def memory_get_current_task() -> str:
     )
 
 
-@tool
+@tool(
+    description=(
+        "Search the chat history for messages containing the given text — for finding "
+        "a past conversation the user vaguely references (e.g. 'remember when we "
+        "talked about X'). Never use this to silently source a business identifier "
+        "(ticket, order, record) a write tool needs and the user did not give in the "
+        "current conversation — only after they confirm they mean a previous one."
+    )
+)
 async def memory_search_chats(
     query: Annotated[
         str,
@@ -80,7 +93,13 @@ async def memory_search_chats(
     )
 
 
-@tool
+@tool(
+    description=(
+        "Retrieve the full message history of one chat, in chronological order. Never "
+        "use this to silently source a business identifier (ticket, order, record) for "
+        "a write tool the user did not explicitly ask you to look up in a past chat."
+    )
+)
 async def memory_get_chat_messages(
     chat_id: Annotated[
         str,
@@ -113,7 +132,15 @@ async def memory_get_chat_messages(
     )
 
 
-@tool
+@tool(
+    description=(
+        "List the agent's most recent runs with a short summary of each (capped at "
+        "50). Never use this to guess which ticket/resource a write tool should act on "
+        "when the current conversation has none — only to answer the user's own "
+        "question about recent activity, or after they confirm they mean a previous "
+        "conversation."
+    )
+)
 async def memory_list_recent_runs(
     limit: Annotated[
         int,
@@ -150,7 +177,13 @@ async def memory_list_recent_runs(
     )
 
 
-@tool
+@tool(
+    description=(
+        "Retrieve the detailed step-by-step trace of one run (every LLM call and tool "
+        "call, in order). Use it when the user wants to know exactly what happened "
+        "during a specific execution."
+    )
+)
 async def memory_get_run_events(
     run_id: Annotated[
         str,

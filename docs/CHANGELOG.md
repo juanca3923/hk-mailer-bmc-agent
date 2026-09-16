@@ -4,6 +4,39 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-16 — refactor: separa la descripción de tool para el LLM del docstring de humanos
+
+- **Problema**: con `@tool` sin argumentos, LangChain usa el docstring completo de la
+  función como descripción de la tool para el LLM — mezclando documentación NumPy
+  pensada para desarrolladores (secciones `Returns`, marcado RST) con lo que el modelo
+  necesita para decidir cuándo/cómo usar la tool. Esto generaba ruido repetido en el
+  prompt (el mismo bloque `Returns` casi idéntico en las 21 tools) y, en dos casos
+  (`bmc_create_work_order`/`bmc_create_incident`), un placeholder en `Parameters` que
+  incumplía el propio estándar NumPy del repo.
+- **Cambio**: las 21 tools internas (`bmc_tools`/`bmc_work_order_tools`/
+  `bmc_incident_tools`, `a2a_tools`, `memory_tools`, `skill_tools`, `datetime_tools`)
+  ahora pasan un `@tool(description=...)` (o `StructuredTool.from_function(description=...)`
+  en `a2a_tools`) explícito y conciso para el LLM, separado del docstring NumPy que
+  queda solo para humanos. Documentado como convención nueva en
+  `.claude/rules/estandar-python.md` (+ espejo `.cursor/rules/estandar-python.mdc`):
+  sección `Parameters` puede omitirse/resumirse en una línea cuando el parámetro ya
+  está documentado en su propio `Field(description=...)`.
+- **Efecto colateral — `bmc_tools.py` superó las 1000 líneas** al agregar las 14
+  descripciones: se dividió en `bmc_tools.py` (agregador: `bmc_health_check` +
+  registro), `bmc_work_order_tools.py` (7 tools) y `bmc_incident_tools.py` (6 tools).
+- **Import cíclico encontrado y corregido** al dividir: los tres archivos necesitaban el
+  mismo `BaseToolHandler` cacheado; pylint marcó `R0401 cyclic-import` entre el
+  agregador y los dos módulos de tools. Se movió el singleton compartido
+  (`get_shared_handler`, antes `_get_handler`) a `bmc/libs/tool_handler.py` — que no
+  depende de `agent.internal_tools` — rompiendo el ciclo de raíz. Actualiza
+  `test/test_bmc_tools.py` (12 `monkeypatch.setattr` + el fixture de cache) para
+  apuntar al nuevo módulo compartido.
+- **Sin cambios de comportamiento para el usuario final**: incidentes/work orders y
+  respuestas de las tools son idénticos; solo cambió qué texto ve el modelo como
+  descripción de cada tool y cómo está organizado el código fuente.
+
+---
+
 ## 2026-09-16 — fix: recorta la información de tickets a título/estado/grupo asignado (privacidad)
 
 - **Problema**: `bmc_get_work_order`/`bmc_get_incident` devolvían el diccionario **crudo
