@@ -47,6 +47,16 @@ AR_FIELD_PEOPLE_EMAIL: Final[str] = "Internet E-mail"
 AR_FIELD_WO_CUSTOMER_EMAIL: Final[str] = "Customer Internet E-mail"
 AR_FIELD_INCIDENT_REPORTER_EMAIL: Final[str] = "Internet E-mail"
 
+# Assigned-group fields for reading back a ticket's current group (not the same field
+# used to *set* it at creation). For incidents, "Assigned Group" round-trips correctly —
+# same alias as CreateIncidentValues.assigned_group. For work orders, the create-time
+# alias ("Support Group Name", CreateWorkOrderValues.assigned_group) does NOT round-trip:
+# verified empirically against BMC that reading it back always shows the fixed desk
+# default ("SOPORTE MESA DE SERVICIO") regardless of what was requested at creation,
+# while "ASGRP" (BMC's internal assignment-engine field) does reflect the real group.
+AR_FIELD_WORK_ORDER_ASGRP: Final[str] = "ASGRP"
+AR_FIELD_INCIDENT_ASSIGNED_GROUP: Final[str] = "Assigned Group"
+
 AR_ACTION_CREATE: Final[str] = "CREATE"
 AR_Z1D_ACTION_CREATE: Final[str] = "CREATE"
 AR_Z1D_ACTION_FIELD_WO: Final[str] = "z1D_Action"

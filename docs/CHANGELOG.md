@@ -4,6 +4,34 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-16 — fix: recorta la información de tickets a título/estado/grupo asignado (privacidad)
+
+- **Problema**: `bmc_get_work_order`/`bmc_get_incident` devolvían el diccionario **crudo
+  completo** de BMC (`values: dict[str, ArScalarValue]`, ~150 campos), incluyendo descripción
+  detallada, notas y otros datos potencialmente sensibles (contacto, teléfonos). Las tools
+  `bmc_list_work_orders_by_email`/`bmc_list_incidents_by_email` (agregadas en el cambio
+  anterior) ya eran livianas pero les faltaba el grupo asignado.
+- **Cambio**: las 4 tools de consulta de tickets ahora devuelven **únicamente** título, estado y
+  grupo asignado — nunca descripción detallada, notas, ni el resto de campos crudos. Se quitó
+  `request_id`/`values` de `WorkOrderDetailData`/`IncidentDetailData`
+  (`src/bmc/type_defs/outputs.py`) y se agregó `assigned_group` a los 4 modelos de salida.
+- **Hallazgo al verificar el campo de grupo asignado en Work Orders** (confirmado contra BMC
+  real, no asumido): el alias de creación de `assigned_group` (`"Support Group Name"`,
+  `CreateWorkOrderValues`) **no** refleja el grupo real al leerlo de vuelta — siempre muestra el
+  valor fijo de mesa ("SOPORTE MESA DE SERVICIO") sin importar qué grupo se haya pedido al
+  crear. El campo que sí refleja el grupo real es `"ASGRP"` (motor de asignación interno de
+  BMC) — confirmado con 3 Work Orders reales de esta sesión con distintos grupos
+  (`GTI.REDES`, `GTI.CIBERSEGURIDAD SOC`, `SOPORTE MESA DE SERVICIO`). Para incidentes,
+  `"Assigned Group"` sí refleja el grupo real sin sorpresas.
+- **Archivos**: `src/bmc/libs/constants.py` (`AR_FIELD_WORK_ORDER_ASGRP`,
+  `AR_FIELD_INCIDENT_ASSIGNED_GROUP`), `src/bmc/type_defs/outputs.py`,
+  `src/agent/internal_tools/bmc_tools.py` (`_wo_detail_from_search`,
+  `_incident_detail_from_search`, y las 2 tools `*_by_email`), `test/test_bmc_tools.py`
+  (incluye un test de regresión que verifica que ninguno de los 4 modelos de salida expone
+  `values`/`request_id`), `CLAUDE.md`, `system.promt.md`.
+
+---
+
 ## 2026-09-16 — feat: nuevas tools para listar tickets por correo del solicitante
 
 - **Problema**: no existía forma de consultar los tickets de una persona — `bmc_get_work_order`/

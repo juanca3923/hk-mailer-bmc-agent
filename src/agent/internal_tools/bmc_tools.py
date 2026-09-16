@@ -51,8 +51,10 @@ from bmc.libs.business_defaults import (
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
 )
 from bmc.libs.constants import (
+    AR_FIELD_INCIDENT_ASSIGNED_GROUP,
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
+    AR_FIELD_WORK_ORDER_ASGRP,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     DEFAULT_WORK_LOG_TYPE,
@@ -118,18 +120,19 @@ def _wo_detail_from_search(
     work_order_id: str,
     values_data: dict[str, ArScalarValue],
 ) -> WorkOrderDetailData:
-    """Build a ``WorkOrderDetailData`` from a raw AR values dict."""
+    """Build a lean ``WorkOrderDetailData`` (title/status/assigned group only) from a raw AR values dict."""
     status = values_data.get("Status", "")
     # AR field is "Description" (same one bmc_create_work_order's summary maps to);
     # "Summary" doesn't hold the subject on this form ("z1D_Summary" exists but is unused).
     summary = values_data.get("Description", "")
-    request_id = values_data.get(AR_FIELD_REQUEST_ID, "")
+    # "ASGRP" reflects the real assigned group; the create-time alias ("Support Group
+    # Name") always reads back as the fixed desk default — verified against BMC.
+    assigned_group = values_data.get(AR_FIELD_WORK_ORDER_ASGRP, "")
     return WorkOrderDetailData(
         work_order_id=work_order_id,
-        request_id=str(request_id) if request_id is not None else "",
         status=str(status) if status is not None else "",
         summary=str(summary) if summary is not None else "",
-        values=dict(values_data),
+        assigned_group=str(assigned_group) if assigned_group is not None else "",
     )
 
 
@@ -166,16 +169,15 @@ def _incident_detail_from_search(
     incident_number: str,
     values_data: dict[str, ArScalarValue],
 ) -> IncidentDetailData:
-    """Build an ``IncidentDetailData`` from a raw AR values dict."""
+    """Build a lean ``IncidentDetailData`` (title/status/assigned group only) from a raw AR values dict."""
     status = values_data.get("Status", "")
     description = values_data.get("Description", "")
-    request_id = values_data.get(AR_FIELD_REQUEST_ID, "")
+    assigned_group = values_data.get(AR_FIELD_INCIDENT_ASSIGNED_GROUP, "")
     return IncidentDetailData(
         incident_number=incident_number,
-        request_id=str(request_id) if request_id is not None else "",
         status=str(status) if status is not None else "",
         description=str(description) if description is not None else "",
-        values=dict(values_data),
+        assigned_group=str(assigned_group) if assigned_group is not None else "",
     )
 
 
@@ -369,10 +371,11 @@ async def bmc_get_work_order(
         Field(min_length=1, description="Work Order ID to look up (e.g. WO0000000000228)."),
     ],
 ) -> str:
-    """Read one Work Order by its ID: current status, summary and remaining fields.
+    """Read one Work Order by its ID: title, current status and assigned group.
 
     Use it to check a ticket before writing to it, or to confirm the result of a
-    previous write.
+    previous write. Intentionally does not return the detailed description, notes or
+    any other raw BMC field — those can carry sensitive data.
 
     Returns
     -------
@@ -413,9 +416,9 @@ async def bmc_list_work_orders_by_email(
     """List work orders requested by one person, searched by their email.
 
     Matches on the same ``reporter_email`` value passed at creation time — never the
-    BMC-resolved login id. Returns a short summary per row (id, status, summary), not
-    the full detail ``bmc_get_work_order`` returns for one ticket; call that tool with
-    a specific id from these results if you need the full detail.
+    BMC-resolved login id. Returns one row per ticket with only title, status and
+    assigned group — never the detailed description, notes or other raw BMC fields,
+    since those can carry sensitive data.
 
     Returns
     -------
@@ -434,6 +437,7 @@ async def bmc_list_work_orders_by_email(
             work_order_id=str(e.values.data.get(AR_FIELD_WORK_ORDER_ID, "")),
             status=str(e.values.data.get("Status", "")),
             summary=str(e.values.data.get("Description", "")),
+            assigned_group=str(e.values.data.get(AR_FIELD_WORK_ORDER_ASGRP, "")),
         )
         for e in result.entries[: data.limit]
     ]
@@ -740,10 +744,11 @@ async def bmc_get_incident(
         Field(min_length=1, description="Incident Number to look up (e.g. INC000000002106)."),
     ],
 ) -> str:
-    """Read one Incident by its number: current status, description and remaining fields.
+    """Read one Incident by its number: title, current status and assigned group.
 
     Use it to check a ticket before writing to it, or to confirm the result of a
-    previous write.
+    previous write. Intentionally does not return the detailed description, notes or
+    any other raw BMC field — those can carry sensitive data.
 
     Returns
     -------
@@ -784,10 +789,9 @@ async def bmc_list_incidents_by_email(
     """List incidents reported by one person, searched by their email.
 
     Matches on the same ``reporter_email`` value passed at creation time — never the
-    BMC-resolved login id. Returns a short summary per row (number, status,
-    description), not the full detail ``bmc_get_incident`` returns for one ticket;
-    call that tool with a specific number from these results if you need the full
-    detail.
+    BMC-resolved login id. Returns one row per ticket with only title, status and
+    assigned group — never the detailed description, notes or other raw BMC fields,
+    since those can carry sensitive data.
 
     Returns
     -------
@@ -806,6 +810,7 @@ async def bmc_list_incidents_by_email(
             incident_number=str(e.values.data.get(AR_FIELD_INCIDENT_NUMBER, "")),
             status=str(e.values.data.get("Status", "")),
             description=str(e.values.data.get("Description", "")),
+            assigned_group=str(e.values.data.get(AR_FIELD_INCIDENT_ASSIGNED_GROUP, "")),
         )
         for e in result.entries[: data.limit]
     ]

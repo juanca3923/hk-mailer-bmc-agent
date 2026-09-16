@@ -10,6 +10,7 @@ import pytest
 from agent.internal_tools import bmc_tools
 from bmc.libs.business_defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from bmc.libs.constants import (
+    AR_FIELD_INCIDENT_ASSIGNED_GROUP,
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
@@ -17,6 +18,7 @@ from bmc.libs.constants import (
     AR_FIELD_REQUEST_ID,
     AR_FIELD_STATUS,
     AR_FIELD_SUBMITTER,
+    AR_FIELD_WORK_ORDER_ASGRP,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
@@ -26,6 +28,7 @@ from bmc.libs.constants import (
 )
 from bmc.type_defs.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
 from bmc.type_defs.inputs import CloseIncidentInput, CreateIncidentInput
+from bmc.type_defs.outputs import IncidentByEmailRow, IncidentDetailData, WorkOrderByEmailRow, WorkOrderDetailData
 
 REPORTER_EMAIL = 'ana.reportante@arus.com.co'
 
@@ -107,6 +110,8 @@ class FakeClient:
                 AR_FIELD_STATUS: self._status,
                 AR_FIELD_SUBMITTER: self._submitter,
                 'Description': 'Fake ticket description',
+                AR_FIELD_WORK_ORDER_ASGRP: 'GTI.FAKE_GROUP',
+                AR_FIELD_INCIDENT_ASSIGNED_GROUP: 'GTI.FAKE_GROUP',
             },
         )
         return BmcEntryListResponse(entries=[BmcEntry(values=values)])
@@ -367,7 +372,12 @@ async def test_bmc_list_work_orders_by_email_returns_rows_and_flags_truncation(
     entries = [
         BmcEntry(
             values=BmcEntryValues(
-                data={AR_FIELD_WORK_ORDER_ID: f'WO{i}', 'Status': 'Assigned', 'Description': f'S{i}'}
+                data={
+                    AR_FIELD_WORK_ORDER_ID: f'WO{i}',
+                    'Status': 'Assigned',
+                    'Description': f'S{i}',
+                    AR_FIELD_WORK_ORDER_ASGRP: f'GTI.GROUP{i}',
+                }
             )
         )
         for i in range(3)
@@ -382,6 +392,7 @@ async def test_bmc_list_work_orders_by_email_returns_rows_and_flags_truncation(
     assert payload['success'] is True
     assert 'WO0' in payload['message'] and 'WO1' in payload['message']
     assert 'WO2' not in payload['message']
+    assert 'GTI.GROUP0' in payload['message'] and 'GTI.GROUP1' in payload['message']
     # Regression: the raw AR field for a WO's subject is "Description", not "Summary"
     # ("z1D_Summary" exists on the form but is unused) — verified empirically against BMC.
     assert 'S0' in payload['message'] and 'S1' in payload['message']
@@ -403,7 +414,12 @@ async def test_bmc_list_incidents_by_email_returns_rows_and_flags_truncation(
     entries = [
         BmcEntry(
             values=BmcEntryValues(
-                data={AR_FIELD_INCIDENT_NUMBER: f'INC{i}', 'Status': 'Resolved', 'Description': f'D{i}'}
+                data={
+                    AR_FIELD_INCIDENT_NUMBER: f'INC{i}',
+                    'Status': 'Resolved',
+                    'Description': f'D{i}',
+                    AR_FIELD_INCIDENT_ASSIGNED_GROUP: f'GTI.GROUP{i}',
+                }
             )
         )
         for i in range(3)
@@ -418,6 +434,7 @@ async def test_bmc_list_incidents_by_email_returns_rows_and_flags_truncation(
     assert payload['success'] is True
     assert 'INC0' in payload['message'] and 'INC1' in payload['message']
     assert 'INC2' not in payload['message']
+    assert 'GTI.GROUP0' in payload['message'] and 'GTI.GROUP1' in payload['message']
 
 
 async def test_bmc_get_work_order_summary_comes_from_description_field(
@@ -433,6 +450,34 @@ async def test_bmc_get_work_order_summary_comes_from_description_field(
     payload = json.loads(raw)
     assert payload['success'] is True
     assert 'Fake ticket description' in payload['message']
+    # "ASGRP" is the field that reflects the real assigned group on a WO — not the
+    # create-time alias "Support Group Name", which always reads back as the fixed
+    # desk default regardless of what was requested (verified against BMC).
+    assert 'GTI.FAKE_GROUP' in payload['message']
+
+
+async def test_bmc_get_incident_returns_description_and_assigned_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeClient()
+    monkeypatch.setattr(bmc_tools, '_get_handler', lambda: FakeHandler(client))
+
+    raw = await bmc_tools.bmc_get_incident.ainvoke({'incident_number': 'INC1'})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert 'Fake ticket description' in payload['message']
+    assert 'GTI.FAKE_GROUP' in payload['message']
+
+
+def test_ticket_info_tools_never_expose_raw_values_or_request_id() -> None:
+    """Privacy guardrail: bmc_get_*/bmc_list_*_by_email must only ever expose
+    id/title/status/assigned_group — never the raw BMC values dict or request_id,
+    which can carry sensitive data (contact details, free-text descriptions, etc.)."""
+    for model in (WorkOrderDetailData, IncidentDetailData, WorkOrderByEmailRow, IncidentByEmailRow):
+        fields = set(model.model_fields)
+        assert 'values' not in fields
+        assert 'request_id' not in fields
 
 
 def test_tickets_by_email_limit_is_capped_at_the_schema_level() -> None:

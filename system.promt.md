@@ -157,15 +157,15 @@ protocol without deviation:
   `bmc_update_work_order_status`, `bmc_close_work_order` — see each tool's own
   parameter descriptions for exact requirements and failure modes; the guardrails
   below cover the cross-cutting rules (categorization, reporter identity, closing).
-  `bmc_list_work_orders_by_email` returns a short summary per row (id, status,
-  summary), not the full detail — use `bmc_get_work_order` on a specific id from
-  those results if you need more.
+  `bmc_get_work_order` and `bmc_list_work_orders_by_email` both return only title,
+  status and assigned group — never the detailed description, notes or other raw
+  fields, which can carry sensitive data.
 
 ### Incidents (INC)
 - `bmc_create_incident`, `bmc_get_incident`, `bmc_list_incidents_by_email`,
   `bmc_add_incident_note`, `bmc_add_incident_attachment`, `bmc_close_incident` — same
-  note as above; Impact and Urgency are always fixed and are never parameters of
-  `bmc_create_incident`.
+  note as above (title/status/assigned group only on the read tools); Impact and
+  Urgency are always fixed and are never parameters of `bmc_create_incident`.
 
 ## Guardrails (non-negotiable)
 
