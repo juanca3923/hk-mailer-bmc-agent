@@ -133,6 +133,27 @@ detalle de implementación):
 - Comentarios de nota permitidos: `FIXME`, `XXX`, `TODO`.
 - Evitar duplicación por copiar/pegar; refactorizar bloques repetidos.
 
+### Excepciones anchas justificadas
+
+Un `except Exception` (con `# pylint: disable-next=broad-exception-caught` +
+`# noqa: BLE001`) solo es aceptable cuando se cumplen **ambas** condiciones — nunca como
+atajo para no pensar en los tipos reales:
+
+1. Es el límite con código que **no tiene un tipo de excepción cerrado y estable que
+   capturar** — un SDK/librería externa cuya propia documentación admite que propaga
+   excepciones arbitrarias (ej. `Langfuse.get_prompt()`: *"Raises: Exception: Propagates
+   any exceptions..."*), o un punto final de la aplicación después de agotar los tipos
+   específicos conocidos (ver `commons/runner.py`: primero `asyncio.CancelledError`,
+   luego `AgentError`, y solo al final el catch-all).
+2. La **recuperación es idéntica sin importar el tipo de fallo** (loguear + degradar
+   con gracia — devolver un fallback, cadena vacía, etc.) — no hay rama de manejo
+   distinta por tipo de excepción que se esté evitando escribir.
+
+Si aplica, el comentario junto al `except` debe explicar el **motivo** (por qué no hay un
+tipo más específico y cuál es la recuperación), no solo repetir qué hace el código.
+Ejemplos ya en el repo: `agent/prompts.py` (`fetch_prompt_from_langfuse`) y
+`commons/runner.py` (los dos catch-all de `run_agent_turn`).
+
 ## Seguridad
 
 - No registrar datos sensibles (contraseñas, tokens, secretos).

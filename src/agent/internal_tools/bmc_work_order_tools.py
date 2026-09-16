@@ -141,8 +141,8 @@ async def _create_work_order_entry(handler: BaseToolHandler, values: CreateWorkO
         "row of a matching categorias-<domain> skill, or the fixed catch-all from "
         "guia-creacion-tickets when no domain applies — never invented. Company, "
         "customer identity and Support Company/Organization are fixed and must not be "
-        "passed. Fails with no Work Order created if reporter_email is not found in "
-        "CTM:People."
+        "passed. Fails with no Work Order created if reporter_email does not match a "
+        "real, already-registered person."
     )
 )
 async def bmc_create_work_order(
@@ -173,10 +173,10 @@ async def bmc_create_work_order(
         Field(
             min_length=1,
             description=(
-                "Email of the person requesting this Work Order. Required: looked up in "
-                "CTM:People to fill the submitter's First/Last Name with the real requester "
-                "(never the fixed Customer identity). Never invent or guess this value — ask "
-                "the user for it, or take it from the incoming structured message in A2A mode."
+                "Email of the person this Work Order is filed on behalf of — the real "
+                "requester, never the fixed Customer identity. Always required, regardless "
+                "of how it was obtained. Must match a real, already-registered person; "
+                "never a fabricated or guessed address."
             ),
         ),
     ],
@@ -209,7 +209,7 @@ async def bmc_create_work_order(
     ],
     status: Annotated[
         Literal[WORK_ORDER_STATUSES],
-        Field(description="Work order status label."),
+        Field(description="Work order status at creation; keep the default unless told otherwise."),
     ] = DEFAULT_WORK_ORDER_STATUS,
     priority: Annotated[
         str,

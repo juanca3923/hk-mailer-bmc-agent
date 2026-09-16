@@ -92,7 +92,10 @@ def fetch_prompt_from_langfuse(settings: "Settings", prompt_name: str) -> str:
             return compiled
         return str(compiled)
     # pylint: disable-next=broad-exception-caught
-    except Exception as exc:  # noqa: BLE001 — fallback a archivo local
+    except Exception as exc:  # noqa: BLE001 — Langfuse SDK: get_prompt() documenta que propaga
+        # cualquier excepción (sin tipo cerrado); la recuperación (log + "" -> fallback a
+        # archivo local) es la misma sin importar el tipo de fallo. Ver "Excepciones anchas
+        # justificadas" en .claude/rules/estandar-python.md.
         logger.warning(
             "No se pudo cargar el prompt desde Langfuse (name=%r): %s",
             prompt_name,

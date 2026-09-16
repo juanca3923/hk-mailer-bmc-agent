@@ -73,8 +73,8 @@ def _incident_detail_from_search(
         "categorias-<domain> skill row says Tipo Servicio = Incidente — there is no "
         "generic incident catch-all; anything outside a known domain is always a Work "
         "Order instead, never an incident. Company, Impact and Urgency are fixed and "
-        "must not be passed. Fails with no Incident created if reporter_email is not "
-        "found in CTM:People."
+        "must not be passed. Fails with no Incident created if reporter_email does not "
+        "match a real, already-registered person."
     )
 )
 async def bmc_create_incident(
@@ -109,10 +109,9 @@ async def bmc_create_incident(
         Field(
             min_length=1,
             description=(
-                "Email of the person reporting this incident. Required: looked up in "
-                "CTM:People to fill the submitter's First/Last Name with the real reporter. "
-                "Never invent or guess this value — ask the user for it, or take it from the "
-                "incoming structured message in A2A mode."
+                "Email of the person this incident is filed on behalf of — the real "
+                "reporter. Always required, regardless of how it was obtained. Must match "
+                "a real, already-registered person; never a fabricated or guessed address."
             ),
         ),
     ],
@@ -150,10 +149,16 @@ async def bmc_create_incident(
     ] = DEFAULT_INCIDENT_ASSIGNED_GROUP,
     status: Annotated[
         Literal[INCIDENT_STATUSES],
-        Field(description="Incident status."),
+        Field(description="Incident status at creation; keep the default unless told otherwise."),
     ] = "Assigned",
-    reported_source: Annotated[str, Field(description="Reported source.")] = "Direct Input",
-    service_type: Annotated[str, Field(description="Service type.")] = "User Service Restoration",
+    reported_source: Annotated[
+        str,
+        Field(description="How the incident was reported; keep the default unless told otherwise."),
+    ] = "Direct Input",
+    service_type: Annotated[
+        str,
+        Field(description="BMC service type classification; keep the default unless told otherwise."),
+    ] = "User Service Restoration",
 ) -> str:
     """Create an Incident in BMC Helix ARUS (HPD:IncidentInterface_Create).
 

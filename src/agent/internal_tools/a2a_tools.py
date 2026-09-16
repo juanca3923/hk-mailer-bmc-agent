@@ -40,9 +40,9 @@ class A2APeerTools:
         "this first to find a valid peer_index for a2a_send_to_remote."
     )
     SEND_TO_REMOTE_DESCRIPTION = (
-        "Send a user message to a remote agent via A2A JSON-RPC message/send. Requires "
-        "a valid peer_index from a2a_list_remote_agents. Pass context_id to continue an "
-        "existing remote thread, or leave it empty to start a new one."
+        "Send a user message to a remote agent over A2A. Requires a valid peer_index "
+        "from a2a_list_remote_agents. Pass context_id to continue an existing remote "
+        "thread, or leave it empty to start a new one."
     )
 
     __slots__ = ("_registry",)

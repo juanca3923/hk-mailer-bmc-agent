@@ -28,7 +28,7 @@ from type_defs.dicts.json_types import JsonDict
 
 logger = get_logger()
 
-_GRAPH_ATTR_A2A_REGISTRY = "_agent_forge_a2a_registry"
+GRAPH_ATTR_A2A_REGISTRY = "_agent_forge_a2a_registry"
 
 
 class A2APeerRegistry:
@@ -79,13 +79,13 @@ class A2APeerRegistry:
 
 def get_a2a_registry_from_graph(graph: object) -> A2APeerRegistry | None:
     """Obtiene el registro A2A enlazado al grafo por ``build_agent``, si existe."""
-    reg = getattr(graph, _GRAPH_ATTR_A2A_REGISTRY, None)
+    reg = getattr(graph, GRAPH_ATTR_A2A_REGISTRY, None)
     return reg if isinstance(reg, A2APeerRegistry) else None
 
 
 def bind_a2a_registry_to_graph(graph: object, registry: A2APeerRegistry) -> None:
     """Asocia el registro al objeto grafo (usado solo en ``build_agent``)."""
-    setattr(graph, _GRAPH_ATTR_A2A_REGISTRY, registry)
+    setattr(graph, GRAPH_ATTR_A2A_REGISTRY, registry)
 
 
 async def fetch_agent_card(client: httpx.AsyncClient, base_url: str, assistant_id: str) -> JsonDict:

@@ -31,10 +31,15 @@ class WorkInfoMultipartBody:
         Internal part map passed to httpx at transport layer.
     """
 
-    __slots__ = ('parts',)
+    __slots__ = ("parts",)
 
     def __init__(self, parts: HttpxMultipartParts) -> None:
         self.parts = parts
+
+    @property
+    def has_binary_attachment(self) -> bool:
+        """Whether a binary attach part is present in addition to ``entry``."""
+        return len(self.parts) > 1
 
     def as_httpx_files(self) -> HttpxMultipartParts:
         """Return the part map for httpx ``files=`` (HTTP transport only).
@@ -45,11 +50,6 @@ class WorkInfoMultipartBody:
             Part name to (filename, content, content_type) tuples.
         """
         return self.parts
-
-    @property
-    def has_binary_attachment(self) -> bool:
-        """Whether a binary attach part is present in addition to ``entry``."""
-        return len(self.parts) > 1
 
 
 class AttachmentPart:
@@ -65,13 +65,13 @@ class AttachmentPart:
         MIME type for the attachment part.
     """
 
-    def __init__(self, filename: str, content: bytes, content_type: str = 'application/octet-stream') -> None:
+    def __init__(self, filename: str, content: bytes, content_type: str = "application/octet-stream") -> None:
         self.filename = filename
         self.content = content
         self.content_type = content_type
 
     @classmethod
-    def from_path(cls, path: Path) -> 'AttachmentPart':
+    def from_path(cls, path: Path) -> "AttachmentPart":
         """Load attachment bytes from a local file path.
 
         Parameters
@@ -123,12 +123,12 @@ class MultipartBuilder:
         parts: HttpxMultipartParts = {
             MULTIPART_PART_ENTRY: (
                 None,
-                entry_json.encode('utf-8'),
+                entry_json.encode("utf-8"),
                 MULTIPART_ENTRY_CONTENT_TYPE,
             ),
         }
         if attachment is not None:
-            part_name = f'{MULTIPART_ATTACH_PREFIX}{WORK_LOG_ATTACHMENT_FIELD}'
+            part_name = f"{MULTIPART_ATTACH_PREFIX}{WORK_LOG_ATTACHMENT_FIELD}"
             parts[part_name] = (
                 attachment.filename,
                 attachment.content,
