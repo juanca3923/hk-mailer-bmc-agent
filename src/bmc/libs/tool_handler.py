@@ -1,5 +1,6 @@
 """Base helpers for MCP tool handlers."""
 
+import functools
 import logging
 from pathlib import Path
 
@@ -136,3 +137,22 @@ class BaseToolHandler:
         if size > self._settings.max_attachment_bytes:
             raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE, status_code=None)
         return AttachmentPart.from_path(path)
+
+
+@functools.cache
+def get_shared_handler() -> BaseToolHandler:
+    """Return the process-wide handler, initializing it on first access.
+
+    Shared by every ``agent.internal_tools.bmc_*`` module (split across several files
+    to stay under the repo's line-count limit) so they all validate settings and hold
+    one BMC session, instead of one per module. Idempotency is provided by
+    ``functools.cache`` (a niladic function, so it runs its body only on the first
+    call and returns the cached instance on every call after), instead of a
+    module-level flag.
+
+    Returns
+    -------
+    BaseToolHandler
+        Singleton handler backed by ``BmcSettings`` from environment.
+    """
+    return BaseToolHandler()

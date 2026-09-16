@@ -76,6 +76,41 @@ def get_user(data: dict[str, str]) -> list[User]:
 - Constantes: `UPPER_CASE`
 - Módulos/paquetes: `snake_case`
 
+## Docstring de humanos vs. descripción de tool para el LLM
+
+En una función `@tool` (o expuesta al LLM por otro medio, ej. `StructuredTool.from_function`),
+el **docstring NumPy** y la **descripción que ve el LLM** son dos textos con audiencias
+distintas — se parecen, pero no son lo mismo, y confundirlos genera ruido en ambos lados:
+
+- **Docstring (NumPy, para quien lee el código)**: sigue el estándar de la sección
+  "Docstrings" de arriba. La sección `Parameters` puede **omitirse o resumirse en una línea**
+  cuando cada parámetro ya está documentado en su propio `Field(description=...)` dentro de
+  `Annotated[...]` — ese `Field` es la fuente de verdad del parámetro, no lo dupliques a mano
+  en dos lugares. No uses un placeholder vago tipo *"ver la tool"*; si se omite, dilo
+  explícitamente y en una sola línea (ej. `Parameters: cada uno documentado en su propio
+  Annotated/Field — ver el schema de la tool.`).
+- **Descripción del LLM**: se pasa **explícitamente** con `@tool(description=...)` (o el
+  parámetro `description=` de `StructuredTool.from_function`) — **nunca** se deja que
+  LangChain la infiera del docstring completo. Debe ser concisa, en inglés, y centrada en
+  **cuándo y por qué usar la tool** (comportamiento, efectos secundarios, restricciones) — no
+  repitas el shape de retorno (`JSON con success/message`) si es igual en todas las tools, ni
+  uses marcado RST (dobles backticks, subrayados `----------`) pensado para Sphinx.
+
+## Orden de miembros en una clase
+
+Ni PEP 8 ni la guía de estilo de Google prescriben un orden — queda a criterio del equipo.
+Convención de este repo (público primero, "step-down": el lector ve la interfaz antes que el
+detalle de implementación):
+
+1. Docstring de la clase y constantes de clase (`UPPER_CASE`).
+2. `__init__` y otros dunders (`__repr__`, `__eq__`, etc.).
+3. `@property` (getters/setters).
+4. Métodos públicos, en el orden en que naturalmente se llamarían.
+5. Métodos privados (`_prefijo`) y `@staticmethod`/`@classmethod` de apoyo — cada uno
+   ubicado junto al método público que lo usa (antes o después, lo que se lea mejor), no
+   agrupados aparte al final. Si un helper lo usan varios métodos públicos, va junto al
+   primero que lo necesita.
+
 ## Límites de diseño (verificados con Pylint + `.pylintrc`)
 
 | Métrica | Máximo |
@@ -97,6 +132,27 @@ def get_user(data: dict[str, str]) -> list[User]:
 - `requests`: métodos con `timeout=...` explícito siempre.
 - Comentarios de nota permitidos: `FIXME`, `XXX`, `TODO`.
 - Evitar duplicación por copiar/pegar; refactorizar bloques repetidos.
+
+### Excepciones anchas justificadas
+
+Un `except Exception` (con `# pylint: disable-next=broad-exception-caught` +
+`# noqa: BLE001`) solo es aceptable cuando se cumplen **ambas** condiciones — nunca como
+atajo para no pensar en los tipos reales:
+
+1. Es el límite con código que **no tiene un tipo de excepción cerrado y estable que
+   capturar** — un SDK/librería externa cuya propia documentación admite que propaga
+   excepciones arbitrarias (ej. `Langfuse.get_prompt()`: *"Raises: Exception: Propagates
+   any exceptions..."*), o un punto final de la aplicación después de agotar los tipos
+   específicos conocidos (ver `commons/runner.py`: primero `asyncio.CancelledError`,
+   luego `AgentError`, y solo al final el catch-all).
+2. La **recuperación es idéntica sin importar el tipo de fallo** (loguear + degradar
+   con gracia — devolver un fallback, cadena vacía, etc.) — no hay rama de manejo
+   distinta por tipo de excepción que se esté evitando escribir.
+
+Si aplica, el comentario junto al `except` debe explicar el **motivo** (por qué no hay un
+tipo más específico y cuál es la recuperación), no solo repetir qué hace el código.
+Ejemplos ya en el repo: `agent/prompts.py` (`fetch_prompt_from_langfuse`) y
+`commons/runner.py` (los dos catch-all de `run_agent_turn`).
 
 ## Seguridad
 

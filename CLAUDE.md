@@ -54,7 +54,9 @@ agent-bmc/
 │   │   ├── tool_error_policy.py      # Global tool error handling
 │   │   ├── interceptors/             # LLM/tool event callbacks
 │   │   └── internal_tools/
-│   │       ├── bmc_tools.py          # 14 BMC LangChain @tool functions + get_bmc_tools()
+│   │       ├── bmc_tools.py          # bmc_health_check + registry (get_bmc_tools(), _ALL_BMC_TOOLS)
+│   │       ├── bmc_work_order_tools.py  # 7 Work Order @tool functions
+│   │       ├── bmc_incident_tools.py    # 6 Incident @tool functions
 │   │       ├── memory_tools.py       # memory_* tools (chat/run history)
 │   │       ├── skill_tools.py        # skill_get_guide
 │   │       ├── datetime_tools.py     # get_current_date (system clock, AGENT_TIMEZONE)
@@ -268,8 +270,12 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters. The
 
 ## BMC Internal Tools
 
-All 14 tools live in `src/agent/internal_tools/bmc_tools.py` and share a lazy-initialized
-`BaseToolHandler` from `src/bmc/libs/tool_handler.py`.
+The 14 tools are split across `bmc_tools.py` (`bmc_health_check` + the registry),
+`bmc_work_order_tools.py` (Work Orders) and `bmc_incident_tools.py` (Incidents) — split
+once the original single file grew past the repo's 1000-line-per-module limit. All three
+share one lazy `BaseToolHandler` singleton via `bmc.libs.tool_handler.get_shared_handler()`,
+deliberately *not* imported between the three agent-side modules, to avoid a cyclic import
+between the aggregator (`bmc_tools.py`) and the two modules it registers.
 
 | Tool | Operation | AR Form |
 |------|-----------|---------|
@@ -319,9 +325,13 @@ since BMC's result order for a non-unique match is not guaranteed.
 2. Add AR field constants to `src/bmc/libs/constants.py` if needed.
 3. Add the HTTP method to `src/bmc/libs/api_client.py`.
 4. Add a helper in `src/bmc/libs/helpers/` if the operation has multiple steps.
-5. Add the `@tool` function to `src/agent/internal_tools/bmc_tools.py` following the lazy
-   handler pattern (`h = _get_handler()`).
-6. Register it in `_ALL_BMC_TOOLS` list at the bottom of that file.
+5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`
+   (whichever ticket type it's for), following the lazy handler pattern
+   (`handler = tool_handler.get_shared_handler()`). Pass an explicit, concise
+   `@tool(description=...)` for the LLM — see "Docstring de humanos vs. descripción de
+   tool para el LLM" in `.claude/rules/estandar-python.md`; don't rely on the bare
+   `@tool` decorator falling back to the (human-facing) docstring.
+6. Register it in the `_ALL_BMC_TOOLS` list and import it, both in `bmc_tools.py`.
 7. Document it in this file and in `README.md`.
 
 ---

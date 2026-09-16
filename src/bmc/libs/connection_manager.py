@@ -75,35 +75,6 @@ class BmcConnectionManager:
         """Clear the singleton instance (for tests only)."""
         cls._instance = None
 
-    def _refresh_interval_seconds(self) -> int:
-        fixed = self._settings.jwt_refresh_interval_seconds
-        if fixed > 0:
-            return max(fixed, MIN_REFRESH_LOOP_SECONDS)
-        computed = self._settings.jwt_ttl_seconds - self._settings.jwt_refresh_margin_seconds
-        return max(computed, MIN_REFRESH_LOOP_SECONDS)
-
-    def _build_client(self) -> httpx.AsyncClient:
-        timeout = httpx.Timeout(self._settings.http_timeout_seconds)
-        return httpx.AsyncClient(
-            base_url=self._settings.base_url,
-            timeout=timeout,
-            follow_redirects=True,
-        )
-
-    def auth_headers(self) -> dict[str, str]:
-        """Build headers required on authenticated BMC requests.
-
-        Returns
-        -------
-        dict[str, str]
-            Authorization, Content-Type, and X-Requested-By headers.
-        """
-        return {
-            'Authorization': f'{HEADER_AUTHORIZATION_PREFIX} {self._token}',
-            'Content-Type': HEADER_CONTENT_TYPE_JSON,
-            'X-Requested-By': HEADER_X_REQUESTED_BY,
-        }
-
     async def start(self) -> None:
         """Log in immediately and start the background JWT refresh loop.
 
@@ -120,38 +91,13 @@ class BmcConnectionManager:
             self._refresh_task = asyncio.create_task(self._refresh_loop())
         logger.info('BMC connection manager started')
 
-    async def stop(self) -> None:
-        """Cancel the refresh task and close the HTTP client."""
-        self._stopped = True
-        if self._refresh_task is not None:
-            self._refresh_task.cancel()
-            try:
-                await self._refresh_task
-            except asyncio.CancelledError:
-                pass
-            self._refresh_task = None
-        if self._client is not None:
-            await self._client.aclose()
-            self._client = None
-        logger.info('BMC connection manager stopped')
-
-    async def get_client(self) -> httpx.AsyncClient:
-        """Return the shared HTTP client.
-
-        Returns
-        -------
-        httpx.AsyncClient
-            Client created during ``start``.
-
-        Raises
-        ------
-        RuntimeError
-            If ``start`` was not called.
-        """
-        if self._client is None:
-            msg = 'BmcConnectionManager is not started'
-            raise RuntimeError(msg)
-        return self._client
+    def _build_client(self) -> httpx.AsyncClient:
+        timeout = httpx.Timeout(self._settings.http_timeout_seconds)
+        return httpx.AsyncClient(
+            base_url=self._settings.base_url,
+            timeout=timeout,
+            follow_redirects=True,
+        )
 
     async def refresh_session(self) -> None:
         """Perform JWT login and store the token and cookies.
@@ -187,17 +133,6 @@ class BmcConnectionManager:
             self._token = token
             logger.info('BMC JWT session refreshed successfully')
 
-    async def invalidate_and_refresh(self) -> None:
-        """Re-login after HTTP 401 (reactive session refresh).
-
-        Raises
-        ------
-        MCPLoginError
-            When refresh login fails.
-        """
-        logger.warning('BMC session invalidated; refreshing JWT')
-        await self.refresh_session()
-
     async def _refresh_loop(self) -> None:
         interval = self._refresh_interval_seconds()
         logger.info('BMC JWT background refresh every %s seconds', interval)
@@ -213,3 +148,68 @@ class BmcConnectionManager:
                 logger.exception('Background BMC JWT refresh failed')
             except httpx.HTTPError:
                 logger.exception('Background BMC JWT refresh HTTP error')
+
+    def _refresh_interval_seconds(self) -> int:
+        fixed = self._settings.jwt_refresh_interval_seconds
+        if fixed > 0:
+            return max(fixed, MIN_REFRESH_LOOP_SECONDS)
+        computed = self._settings.jwt_ttl_seconds - self._settings.jwt_refresh_margin_seconds
+        return max(computed, MIN_REFRESH_LOOP_SECONDS)
+
+    async def stop(self) -> None:
+        """Cancel the refresh task and close the HTTP client."""
+        self._stopped = True
+        if self._refresh_task is not None:
+            self._refresh_task.cancel()
+            try:
+                await self._refresh_task
+            except asyncio.CancelledError:
+                pass
+            self._refresh_task = None
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+        logger.info('BMC connection manager stopped')
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """Return the shared HTTP client.
+
+        Returns
+        -------
+        httpx.AsyncClient
+            Client created during ``start``.
+
+        Raises
+        ------
+        RuntimeError
+            If ``start`` was not called.
+        """
+        if self._client is None:
+            msg = 'BmcConnectionManager is not started'
+            raise RuntimeError(msg)
+        return self._client
+
+    def auth_headers(self) -> dict[str, str]:
+        """Build headers required on authenticated BMC requests.
+
+        Returns
+        -------
+        dict[str, str]
+            Authorization, Content-Type, and X-Requested-By headers.
+        """
+        return {
+            'Authorization': f'{HEADER_AUTHORIZATION_PREFIX} {self._token}',
+            'Content-Type': HEADER_CONTENT_TYPE_JSON,
+            'X-Requested-By': HEADER_X_REQUESTED_BY,
+        }
+
+    async def invalidate_and_refresh(self) -> None:
+        """Re-login after HTTP 401 (reactive session refresh).
+
+        Raises
+        ------
+        MCPLoginError
+            When refresh login fails.
+        """
+        logger.warning('BMC session invalidated; refreshing JWT')
+        await self.refresh_session()

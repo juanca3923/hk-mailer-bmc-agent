@@ -19,8 +19,8 @@ from config import Settings, get_logger
 
 logger = get_logger()
 
-_WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
-_MONTHS_ES = (
+WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+MONTHS_ES = (
     "enero",
     "febrero",
     "marzo",
@@ -46,7 +46,13 @@ def _resolve_timezone() -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
-@tool
+@tool(
+    description=(
+        "Return the current date and time in the agent's configured timezone. Call "
+        "this whenever 'today', 'now', a relative date, or a ticket timestamp matters "
+        "— never assume or infer the date from the conversation or training data."
+    )
+)
 def get_current_date() -> str:
     """Return the current date and time in the agent's configured timezone.
 
@@ -65,8 +71,8 @@ def get_current_date() -> str:
         ``"lunes 07 de octubre de 2026"``).
     """
     now = datetime.now(_resolve_timezone())
-    weekday_name = _WEEKDAYS_ES[now.weekday()]
-    month_name = _MONTHS_ES[now.month - 1]
+    weekday_name = WEEKDAYS_ES[now.weekday()]
+    month_name = MONTHS_ES[now.month - 1]
     date_short = now.strftime("%d/%m/%Y")
     result = {
         "date": date_short,
