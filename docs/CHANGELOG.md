@@ -4,6 +4,108 @@ Registro de cambios **relevantes** del proyecto **agent-bmc**.
 
 ---
 
+## 2026-09-16 — fix: recorta la información de tickets a título/estado/grupo asignado (privacidad)
+
+- **Problema**: `bmc_get_work_order`/`bmc_get_incident` devolvían el diccionario **crudo
+  completo** de BMC (`values: dict[str, ArScalarValue]`, ~150 campos), incluyendo descripción
+  detallada, notas y otros datos potencialmente sensibles (contacto, teléfonos). Las tools
+  `bmc_list_work_orders_by_email`/`bmc_list_incidents_by_email` (agregadas en el cambio
+  anterior) ya eran livianas pero les faltaba el grupo asignado.
+- **Cambio**: las 4 tools de consulta de tickets ahora devuelven **únicamente** título, estado y
+  grupo asignado — nunca descripción detallada, notas, ni el resto de campos crudos. Se quitó
+  `request_id`/`values` de `WorkOrderDetailData`/`IncidentDetailData`
+  (`src/bmc/type_defs/outputs.py`) y se agregó `assigned_group` a los 4 modelos de salida.
+- **Hallazgo al verificar el campo de grupo asignado en Work Orders** (confirmado contra BMC
+  real, no asumido): el alias de creación de `assigned_group` (`"Support Group Name"`,
+  `CreateWorkOrderValues`) **no** refleja el grupo real al leerlo de vuelta — siempre muestra el
+  valor fijo de mesa ("SOPORTE MESA DE SERVICIO") sin importar qué grupo se haya pedido al
+  crear. El campo que sí refleja el grupo real es `"ASGRP"` (motor de asignación interno de
+  BMC) — confirmado con 3 Work Orders reales de esta sesión con distintos grupos
+  (`GTI.REDES`, `GTI.CIBERSEGURIDAD SOC`, `SOPORTE MESA DE SERVICIO`). Para incidentes,
+  `"Assigned Group"` sí refleja el grupo real sin sorpresas.
+- **Archivos**: `src/bmc/libs/constants.py` (`AR_FIELD_WORK_ORDER_ASGRP`,
+  `AR_FIELD_INCIDENT_ASSIGNED_GROUP`), `src/bmc/type_defs/outputs.py`,
+  `src/agent/internal_tools/bmc_tools.py` (`_wo_detail_from_search`,
+  `_incident_detail_from_search`, y las 2 tools `*_by_email`), `test/test_bmc_tools.py`
+  (incluye un test de regresión que verifica que ninguno de los 4 modelos de salida expone
+  `values`/`request_id`), `CLAUDE.md`, `system.promt.md`.
+
+---
+
+## 2026-09-16 — feat: nuevas tools para listar tickets por correo del solicitante
+
+- **Problema**: no existía forma de consultar los tickets de una persona — `bmc_get_work_order`/
+  `bmc_get_incident` solo buscan por ID exacto, y no había ningún método que filtrara por
+  solicitante.
+- **Verificado contra BMC antes de implementar** (no se adivinó el campo): probando con un
+  correo real, `WOI:WorkOrderInterface` acepta filtrar por `'Customer Internet E-mail'`
+  (guarda el `reporter_email` crudo pasado al crear, no el login resuelto en `CTM:People`) y
+  `HPD:IncidentInterface` acepta filtrar por `'Internet E-mail'` (mismo comportamiento: correo
+  crudo, no login resuelto).
+- **Cambio**: dos tools nuevas, `bmc_list_work_orders_by_email` y
+  `bmc_list_incidents_by_email`. Devuelven una fila corta por ticket (id, status,
+  resumen/descripción) — no el detalle completo que da `bmc_get_work_order`/`bmc_get_incident`
+  para un ticket puntual — capadas en `MAX_TICKETS_BY_EMAIL_RESULTS` (30) vía un parámetro
+  `limit` opcional, con `total_found`/`truncated` en la respuesta para que el agente sepa si
+  hay más resultados de los mostrados.
+- **Archivos**: `src/bmc/libs/constants.py` (`AR_FIELD_WO_CUSTOMER_EMAIL`,
+  `AR_FIELD_INCIDENT_REPORTER_EMAIL`, `MAX_TICKETS_BY_EMAIL_RESULTS`),
+  `src/bmc/libs/api_client.py` (`search_work_orders_by_email`, `search_incidents_by_email`),
+  `src/bmc/type_defs/inputs.py` (`TicketsByEmailInput`), `src/bmc/type_defs/outputs.py`
+  (`WorkOrdersByEmailData`/`IncidentsByEmailData` y sus filas), `src/agent/internal_tools/bmc_tools.py`
+  (las dos tools nuevas, registradas en `_ALL_BMC_TOOLS`), `test/test_bmc_tools.py`,
+  `CLAUDE.md`, `system.promt.md`.
+- **Ahora son 14 tools BMC** (antes 12).
+- **Bug preexistente encontrado y corregido de paso**: `bmc_get_work_order` (y la nueva
+  `bmc_list_work_orders_by_email`) leían el asunto de una Work Order desde la clave
+  `"Summary"`, que no existe con contenido en `WOI:WorkOrderInterface` (`z1D_Summary` existe
+  en el formulario pero siempre viene vacío) — el campo real es `"Description"` (el mismo al
+  que mapea el parámetro `summary` de `bmc_create_work_order`). Confirmado contra BMC real:
+  `bmc_get_work_order` siempre había devuelto el resumen vacío en producción. Corregido en
+  `_wo_detail_from_search` (`src/agent/internal_tools/bmc_tools.py`); agregado test de
+  regresión (`test_bmc_get_work_order_summary_comes_from_description_field`).
+
+---
+
+## 2026-09-16 — deuda técnica: confirmación real (graph-level) antes de cerrar un ticket
+
+- **Problema confirmado en pruebas**: el guardarraíl de prompt que exige "pide confirmación
+  antes de cerrar un ticket cuyo ID salió de una búsqueda en memoria" (ver entrada de
+  "guardarraíl contra memoria cruzada" más abajo) **no se puede garantizar solo con texto**.
+  Reproducido en vivo: el agente llamó `memory_get_chat_messages` → `memory_list_recent_runs`
+  → `bmc_close_incident` **en el mismo turno**, sin pausar a preguntar — el modelo puede
+  encadenar tool calls libremente dentro de un turno (patrón ReAct) y nada lo obliga a
+  detenerse, sin importar qué tan explícita sea la instrucción del prompt.
+- **Solución evaluada y confirmada viable, pendiente de implementar**:
+  `langchain.agents.middleware.human_in_the_loop.HumanInTheLoopMiddleware` (ya disponible en
+  `langchain==1.2.15`, instalado en este proyecto) usa el `interrupt()` nativo de LangGraph
+  — un corte real de ejecución del grafo, persistido en el checkpointer (ya usamos
+  `AsyncPostgresSaver`, sin infraestructura nueva). Se pasaría como
+  `create_agent(..., middleware=[HumanInTheLoopMiddleware(interrupt_on={"bmc_close_work_order": True, "bmc_close_incident": True})])`
+  en `src/agent/agent.py`.
+- **Por qué queda pendiente (costo de integración real, no trivial)**:
+  - `src/commons/runner.py` (`run_agent_turn`/`stream_agent_turn`) asume hoy que `ainvoke`/
+    `astream` siempre terminan en una respuesta final; con `interrupt()` el grafo queda
+    pausado a mitad de camino y hay que detectarlo, convertir el `HITLRequest` en una
+    pregunta legible para el usuario, y **no** marcar el run como terminado.
+  - El siguiente mensaje del usuario en ese chat deja de ser texto libre: hay que
+    interpretarlo como una decisión (`approve`/`reject`) y resumir el grafo con
+    `Command(resume=...)`, no volver a invocarlo normal.
+  - `AgentTurnResult`/`ChatResponse` necesitan un estado nuevo (algo como
+    `awaiting_confirmation`) para que HTTP y A2A sepan que el turno quedó a la espera.
+  - **Conflicto de diseño con A2A**: `system.promt.md` dice explícitamente que el modo A2A
+    "nunca pide confirmación" (autonomía total en un solo turno). Este middleware pausaría
+    también las llamadas A2A salvo que se desactive específicamente para ese modo — requiere
+    decidir si A2A sigue sin confirmar nunca (aceptando el riesgo residual solo ahí) o si
+    también cambia esa política, y probablemente dos grafos compilados (uno con el
+    middleware para HTTP interactivo, otro sin él para A2A) o contexto por invocación.
+- **Mitigación actual, mientras tanto**: guardarraíles de prompt (`system.promt.md`,
+  `base.prompt.md`, descripciones de `memory_tools.py`) que reducen la frecuencia del
+  problema pero no lo eliminan con garantía — ver la entrada de "guardarraíl contra memoria
+  cruzada" más abajo.
+
+---
+
 ## 2026-09-16 — feat: turnos concurrentes en HTTP/A2A, configurables por variable de entorno
 
 - **Cambio**: nueva variable `HTTP_ALLOW_CONCURRENT_TURNS` (`Settings`, por defecto
