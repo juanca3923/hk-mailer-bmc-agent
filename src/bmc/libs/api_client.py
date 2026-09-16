@@ -614,10 +614,8 @@ class BmcClient:
     async def health_ping(self) -> None:
         """Run a lightweight authenticated request to verify session health.
 
-        Returns
-        -------
-        bool
-            ``True`` when the session is valid (including 404 on empty search).
+        A 404 on this search counts as healthy (empty result, not an auth or
+        connectivity failure).
 
         Raises
         ------
@@ -626,8 +624,6 @@ class BmcClient:
         """
         try:
             await self.search_work_order("WO0000000000000")
-            return
         except MCPClientError as exc:
-            if exc.status_code == HTTPStatus.NOT_FOUND:
-                return
-            raise
+            if exc.status_code != HTTPStatus.NOT_FOUND:
+                raise

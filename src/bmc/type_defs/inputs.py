@@ -114,11 +114,22 @@ class CreateWorkOrderInput(BaseModel):
     )
     status: WorkOrderStatusField = Field(
         default=DEFAULT_WORK_ORDER_STATUS,
+        description="Work order status label.",
         json_schema_extra={"enum": list(WORK_ORDER_STATUSES)},
     )
-    priority: str = Field(default="Medium")
+    priority: str = Field(
+        default="Medium",
+        description="Priority, taken from the same catalog row as the categorization tiers.",
+    )
 
-    assigned_group: str = Field(default=DEFAULT_WORK_ORDER_ASSIGNED_GROUP, min_length=1)
+    assigned_group: str = Field(
+        default=DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
+        min_length=1,
+        description=(
+            "Support group, taken from the same catalog row; keep the default only when no "
+            "domain skill applies."
+        ),
+    )
 
 
 class CreateIncidentInput(BaseModel):
@@ -166,25 +177,51 @@ class CreateIncidentInput(BaseModel):
     )
     status: IncidentStatusField = Field(
         default=DEFAULT_INCIDENT_STATUS,
+        description="Incident status.",
         json_schema_extra={"enum": list(INCIDENT_STATUSES)},
     )
-    reported_source: str = Field(default="Direct Input")
-    service_type: str = Field(default="User Service Restoration")
-    categorization_tier_1: str = Field(default="")
-    categorization_tier_2: str = Field(default="")
-    product_categorization_tier_1: str = Field(..., min_length=1)
-    product_categorization_tier_2: str = Field(..., min_length=1)
-    product_categorization_tier_3: str = Field(..., min_length=1)
-    assigned_group: str = Field(default=DEFAULT_INCIDENT_ASSIGNED_GROUP, min_length=1)
+    reported_source: str = Field(default="Direct Input", description="Reported source.")
+    service_type: str = Field(default="User Service Restoration", description="Service type.")
+    categorization_tier_1: str = Field(default="", description="Operational categorization tier 1, same catalog row.")
+    categorization_tier_2: str = Field(default="", description="Operational categorization tier 2, same catalog row.")
+    product_categorization_tier_1: str = Field(
+        ...,
+        min_length=1,
+        description="Product categorization tier 1, from the matching categorias-<dominio> skill row.",
+    )
+    product_categorization_tier_2: str = Field(
+        ..., min_length=1, description="Product categorization tier 2, same catalog row."
+    )
+    product_categorization_tier_3: str = Field(
+        ..., min_length=1, description="Product categorization tier 3, same catalog row."
+    )
+    assigned_group: str = Field(
+        default=DEFAULT_INCIDENT_ASSIGNED_GROUP,
+        min_length=1,
+        description=(
+            "Assigned group, taken from the same catalog row; keep the default only when the "
+            "catalog row does not specify one."
+        ),
+    )
 
 
 class AddWorkOrderNoteInput(WorkOrderIdInput):
     """Add a work log note to a work order."""
 
-    note_text: str = Field(..., min_length=1)
-    work_log_type: str = Field(default="General Information")
-    view_access: str = Field(default="Public")
-    secure_work_log: str = Field(default="No")
+    note_text: str = Field(
+        ..., min_length=1, description="Text of the note, written as it should be read by whoever reviews the ticket."
+    )
+    work_log_type: str = Field(
+        default="General Information",
+        description="Category of the note in the ticket activity log; keep the default unless asked otherwise.",
+    )
+    view_access: str = Field(
+        default="Public", description="Visibility of the note in BMC; keep the default unless asked otherwise."
+    )
+    secure_work_log: str = Field(
+        default="No",
+        description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise.",
+    )
 
 
 class AddWorkOrderAttachmentInput(AddWorkOrderNoteInput):
@@ -196,10 +233,20 @@ class AddWorkOrderAttachmentInput(AddWorkOrderNoteInput):
 class AddIncidentNoteInput(IncidentNumberInput):
     """Add a work log note to an incident."""
 
-    note_text: str = Field(..., min_length=1)
-    work_log_type: str = Field(default="General Information")
-    view_access: str = Field(default="Public")
-    secure_work_log: str = Field(default="No")
+    note_text: str = Field(
+        ..., min_length=1, description="Text of the note, written as it should be read by whoever reviews the ticket."
+    )
+    work_log_type: str = Field(
+        default="General Information",
+        description="Category of the note in the ticket activity log; keep the default unless asked otherwise.",
+    )
+    view_access: str = Field(
+        default="Public", description="Visibility of the note in BMC; keep the default unless asked otherwise."
+    )
+    secure_work_log: str = Field(
+        default="No",
+        description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise.",
+    )
 
 
 class AddIncidentAttachmentInput(AddIncidentNoteInput):
@@ -211,9 +258,12 @@ class AddIncidentAttachmentInput(AddIncidentNoteInput):
 class UpdateWorkOrderStatusInput(WorkOrderIdInput):
     """Update work order status (intermediate step)."""
 
-    description: str = Field(..., min_length=1)
+    description: str = Field(
+        ..., min_length=1, description="What changed and why; BMC also uses this text as the ticket title."
+    )
     status: WorkOrderStatusField = Field(
         default=DEFAULT_WORK_ORDER_UPDATE_STATUS,
+        description="Target status.",
         json_schema_extra={"enum": list(WORK_ORDER_STATUSES)},
     )
 
@@ -228,19 +278,12 @@ class CloseWorkOrderInput(WorkOrderIdInput):
     intermediate_description: str = Field(
         default="Rest API: Resolve WO using RestAPI",
         min_length=1,
-        description=(
-            "Resumen de lo realizado, para el PUT intermedio que pasa Status=Completed "
-            "y fija ASCHG = BMC_ASSIGNEE_DISPLAY_NAME (BMC no permite la transición directa "
-            "In Progress -> Closed; requiere pasar por Completed con este campo poblado)."
-        ),
+        description="Summary of the work actually performed, recorded when moving to Completed.",
     )
     final_description: str = Field(
         default="Rest API: Resolve Work order via Mosaico",
         min_length=1,
-        description=(
-            "Documentación correcta de la solución del ticket, para el PUT final que cierra "
-            "el Work Order con Status=Closed."
-        ),
+        description="Documentation of the final solution, recorded when moving to Closed.",
     )
 
 
@@ -263,4 +306,8 @@ class CloseIncidentInput(IncidentNumberInput):
             "separate note via ``bmc_add_incident_note`` before closing."
         ),
     )
-    resolution: str = Field(default="Solución no especificada", min_length=1)
+    resolution: str = Field(
+        default="Solución no especificada",
+        min_length=1,
+        description="How the incident was actually solved; replace the placeholder default.",
+    )

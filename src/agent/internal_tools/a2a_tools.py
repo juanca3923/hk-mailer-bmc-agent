@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from typing import Annotated
 
 import httpx
 from langchain_core.tools import BaseTool, StructuredTool
+from pydantic import Field
 
 from agent.a2a_peers import A2APeerRegistry, a2a_message_send
 from commons.a2a_reply_text import extract_a2a_reply_text
@@ -127,17 +129,26 @@ class A2APeerTools:
             return res
         return self.peer_list_json(res)
 
-    async def _send_to_remote(self, peer_index: int, message: str, context_id: str = "") -> str:
+    async def _send_to_remote(
+        self,
+        peer_index: Annotated[
+            int,
+            Field(description="Peer index from a2a_list_remote_agents (0, 1, …)."),
+        ],
+        message: Annotated[str, Field(min_length=1, description="User text for the remote agent.")],
+        context_id: Annotated[
+            str,
+            Field(
+                description=(
+                    "Optional UUID string to continue the same remote thread (A2A contextId); "
+                    "leave empty to start a new thread."
+                ),
+            ),
+        ] = "",
+    ) -> str:
         """Send a user message to a remote agent via JSON-RPC ``message/send`` (A2A).
 
-        Parameters
-        ----------
-        peer_index : int
-            Peer index from ``a2a_list_remote_agents`` (0, 1, …).
-        message : str
-            User text for the remote agent.
-        context_id : str, optional
-            Optional UUID string to continue the same remote thread (A2A ``contextId``).
+        Use ``a2a_list_remote_agents`` first to find a valid ``peer_index``.
         """
         peer_or_err = self._resolve_peer_for_send(peer_index)
         if isinstance(peer_or_err, str):

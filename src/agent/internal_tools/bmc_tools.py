@@ -188,14 +188,12 @@ async def bmc_health_check() -> str:
     """
     h = _get_handler()
     try:
-        is_healthy = await h.client.health_ping()
+        await h.client.health_ping()
     except MCPClientError as exc:
         logger.warning("bmc_health_check failed: %s", exc.message)
         return BaseToolHandler.failure(exc).model_dump_json()
-    if is_healthy:
-        logger.info("bmc_health_check successful")
-        return BaseOutput(success=True, message="BMC session is healthy.").model_dump_json()
-    return BaseOutput(success=False, message="Error: BMC health check returned unexpected state.").model_dump_json()
+    logger.info("bmc_health_check successful")
+    return BaseOutput(success=True, message="BMC session is healthy.").model_dump_json()
 
 
 # ---------------------------------------------------------------------------
@@ -205,20 +203,84 @@ async def bmc_health_check() -> str:
 
 @tool
 async def bmc_create_work_order(
-    summary: str,
-    detailed_description: str,
-    reporter_email: str,
-    categorization_tier_1: str,
-    categorization_tier_2: str,
-    product_cat_tier_1: str,
-    product_cat_tier_2: str,
-    product_cat_tier_3: str,
+    summary: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Short, specific subject line: what is requested and for whom or which "
+                'system (e.g. "New network user - Juan Perez, Bogota site"), never a '
+                'generic label like "User request".'
+            ),
+        ),
+    ],
+    detailed_description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Full request detail: who needs it, exactly what must be done, and any "
+                "data required to execute it (access, equipment, location, dates) — "
+                "enough for the service desk to act without asking the user again."
+            ),
+        ),
+    ],
+    reporter_email: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Email of the person requesting this Work Order. Required: looked up in "
+                "CTM:People to fill the submitter's First/Last Name with the real requester "
+                "(never the fixed Customer identity). Never invent or guess this value — ask "
+                "the user for it, or take it from the incoming structured message in A2A mode."
+            ),
+        ),
+    ],
+    categorization_tier_1: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Operational categorization tier 1: from the matching categorias-<dominio> "
+                "skill row when one applies, otherwise the catch-all value from "
+                "guia-creacion-tickets (section 1)."
+            ),
+        ),
+    ],
+    categorization_tier_2: Annotated[
+        str,
+        Field(min_length=1, description="Operational categorization tier 2, same row/catch-all as tier 1."),
+    ],
+    product_cat_tier_1: Annotated[
+        str,
+        Field(min_length=1, description="Product categorization tier 1, same row/catch-all as tier 1."),
+    ],
+    product_cat_tier_2: Annotated[
+        str,
+        Field(min_length=1, description="Product categorization tier 2, same row/catch-all as tier 1."),
+    ],
+    product_cat_tier_3: Annotated[
+        str,
+        Field(min_length=1, description="Product categorization tier 3, same row/catch-all as tier 1."),
+    ],
     status: Annotated[
         Literal[WORK_ORDER_STATUSES],
         Field(description="Work order status label."),
     ] = DEFAULT_WORK_ORDER_STATUS,
-    priority: str = "Medium",
-    assigned_group: str = DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
+    priority: Annotated[
+        str,
+        Field(description="Priority, taken from the same catalog row as the categorization tiers."),
+    ] = "Medium",
+    assigned_group: Annotated[
+        str,
+        Field(
+            description=(
+                "Support group, taken from the same catalog row; keep the default only when "
+                "no domain skill applies."
+            ),
+        ),
+    ] = DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
 ) -> str:
     """Create a Work Order in BMC Helix ARUS (WOI:WorkOrderInterface_Create).
 
@@ -239,39 +301,8 @@ async def bmc_create_work_order(
 
     Parameters
     ----------
-    summary : str
-        Short, specific subject line: what is requested and for whom or which
-        system (e.g. "New network user - Juan Perez, Bogota site"), never a
-        generic label like "User request".
-    detailed_description : str
-        Full request detail: who needs it, exactly what must be done, and any
-        data required to execute it (access, equipment, location, dates) —
-        enough for the service desk to act without asking the user again.
-    reporter_email : str
-        Email of the person requesting this Work Order. Required: looked up in
-        ``CTM:People`` to fill the submitter's First/Last Name with the real
-        requester (never the fixed Customer identity). Never invent or guess
-        this value — ask the user for it, or take it from the incoming
-        structured message in A2A mode.
-    categorization_tier_1 : str
-        Operational categorization tier 1: from the matching
-        ``categorias-<dominio>`` skill row when one applies, otherwise the
-        catch-all value from ``guia-creacion-tickets`` (section 1).
-    categorization_tier_2 : str
-        Operational categorization tier 2, same row/catch-all as tier 1.
-    product_cat_tier_1 : str
-        Product categorization tier 1, same row/catch-all as tier 1.
-    product_cat_tier_2 : str
-        Product categorization tier 2, same row/catch-all as tier 1.
-    product_cat_tier_3 : str
-        Product categorization tier 3, same row/catch-all as tier 1.
-    status : str, optional
-        Work order status label, by default ``'Assigned'``.
-    priority : str, optional
-        Priority, taken from the same catalog row, by default ``'Medium'``.
-    assigned_group : str, optional
-        Support group, taken from the same catalog row; keep the default only when
-        no domain skill applies.
+    See each parameter's own description in the tool schema for format, examples
+    and defaults.
 
     Returns
     -------
@@ -323,16 +354,16 @@ async def bmc_create_work_order(
 
 
 @tool
-async def bmc_get_work_order(work_order_id: str) -> str:
+async def bmc_get_work_order(
+    work_order_id: Annotated[
+        str,
+        Field(min_length=1, description="Work Order ID to look up (e.g. WO0000000000228)."),
+    ],
+) -> str:
     """Read one Work Order by its ID: current status, summary and remaining fields.
 
     Use it to check a ticket before writing to it, or to confirm the result of a
     previous write.
-
-    Parameters
-    ----------
-    work_order_id : str
-        Work Order ID (e.g. ``WO0000000000228``).
 
     Returns
     -------
@@ -357,30 +388,30 @@ async def bmc_get_work_order(work_order_id: str) -> str:
 
 @tool
 async def bmc_add_work_order_note(
-    work_order_id: str,
-    note_text: str,
-    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
-    view_access: str = "Public",
-    secure_work_log: str = "No",
+    work_order_id: Annotated[str, Field(min_length=1, description="Target Work Order ID.")],
+    note_text: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Text of the note, written as it should be read by whoever reviews the ticket.",
+        ),
+    ],
+    work_log_type: Annotated[
+        str,
+        Field(description="Category of the note in the ticket activity log; keep the default unless asked otherwise."),
+    ] = DEFAULT_WORK_LOG_TYPE,
+    view_access: Annotated[
+        str,
+        Field(description="Visibility of the note in BMC; keep the default unless asked otherwise."),
+    ] = "Public",
+    secure_work_log: Annotated[
+        str,
+        Field(description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise."),
+    ] = "No",
 ) -> str:
     """Add a note to the activity log of a Work Order, visible to whoever reviews it.
 
     Fails if the Work Order is already closed.
-
-    Parameters
-    ----------
-    work_order_id : str
-        Target Work Order ID.
-    note_text : str
-        Text of the note, written as it should be read by whoever reviews the ticket.
-    work_log_type : str, optional
-        Category of the note in the ticket activity log; keep the default unless
-        asked otherwise.
-    view_access : str, optional
-        Visibility of the note in BMC; keep the default unless asked otherwise.
-    secure_work_log : str, optional
-        Whether the note is flagged as secure in BMC; keep the default unless
-        asked otherwise.
 
     Returns
     -------
@@ -400,32 +431,29 @@ async def bmc_add_work_order_note(
 
 @tool
 async def bmc_add_work_order_attachment(
-    work_order_id: str,
-    note_text: str,
-    file_path: str,
-    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
-    view_access: str = "Public",
-    secure_work_log: str = "No",
+    work_order_id: Annotated[str, Field(min_length=1, description="Target Work Order ID.")],
+    note_text: Annotated[str, Field(min_length=1, description="Work log detailed description text.")],
+    file_path: Annotated[
+        str,
+        Field(min_length=1, description="Path of the file to attach, as seen by the machine running this agent."),
+    ],
+    work_log_type: Annotated[
+        str,
+        Field(description="Category of the note in the ticket activity log; keep the default unless asked otherwise."),
+    ] = DEFAULT_WORK_LOG_TYPE,
+    view_access: Annotated[
+        str,
+        Field(description="Visibility of the note in BMC; keep the default unless asked otherwise."),
+    ] = "Public",
+    secure_work_log: Annotated[
+        str,
+        Field(description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise."),
+    ] = "No",
 ) -> str:
     """Add a note with one file attached to the activity log of a Work Order.
 
     The file must already exist on the machine running this agent; file content
     cannot be sent through this tool. Fails if the Work Order is already closed.
-
-    Parameters
-    ----------
-    work_order_id : str
-        Target Work Order ID.
-    note_text : str
-        Work log detailed description text.
-    file_path : str
-        Path of the file to attach, as seen by the machine running this agent.
-    work_log_type : str, optional
-        Work log type, by default ``'General Information'``.
-    view_access : str, optional
-        View access, by default ``'Public'``.
-    secure_work_log : str, optional
-        Secure work log flag, by default ``'No'``.
 
     Returns
     -------
@@ -447,8 +475,14 @@ async def bmc_add_work_order_attachment(
 
 @tool
 async def bmc_update_work_order_status(
-    work_order_id: str,
-    description: str,
+    work_order_id: Annotated[
+        str,
+        Field(min_length=1, description="Work Order ID used to resolve Request ID via search."),
+    ],
+    description: Annotated[
+        str,
+        Field(min_length=1, description="What changed and why; BMC also uses this text as the ticket title."),
+    ],
     status: Annotated[
         Literal[WORK_ORDER_STATUSES],
         Field(description="Target status."),
@@ -458,15 +492,6 @@ async def bmc_update_work_order_status(
 
     To close one use ``bmc_close_work_order`` instead: closing needs a sequence of
     updates that this tool does not perform. Fails if the Work Order is already closed.
-
-    Parameters
-    ----------
-    work_order_id : str
-        Work Order ID used to resolve Request ID via search.
-    description : str
-        What changed and why; BMC also uses this text as the ticket title.
-    status : str, optional
-        Target status, by default ``'In Progress'``.
 
     Returns
     -------
@@ -485,24 +510,24 @@ async def bmc_update_work_order_status(
 
 @tool
 async def bmc_close_work_order(
-    work_order_id: str,
-    intermediate_description: str = "Rest API: Resolve WO using RestAPI",
-    final_description: str = "Rest API: Resolve Work order via Mosaico",
+    work_order_id: Annotated[str, Field(min_length=1, description="Work Order ID to close.")],
+    intermediate_description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Summary of the work actually performed, recorded when moving to Completed.",
+        ),
+    ] = "Rest API: Resolve WO using RestAPI",
+    final_description: Annotated[
+        str,
+        Field(min_length=1, description="Documentation of the final solution, recorded when moving to Closed."),
+    ] = "Rest API: Resolve Work order via Mosaico",
 ) -> str:
     """Close a Work Order, taking ownership of it and moving it through Completed to Closed.
 
     Works from any open status, but only on a Work Order created by this agent's own
     BMC user. Once closed it accepts no further notes, attachments or status changes,
     and there is no tool to reopen it.
-
-    Parameters
-    ----------
-    work_order_id : str
-        Work Order ID to close.
-    intermediate_description : str, optional
-        Summary of the work actually performed, recorded when moving to Completed.
-    final_description : str, optional
-        Documentation of the final solution, recorded when moving to Closed.
 
     Returns
     -------
@@ -540,20 +565,68 @@ async def bmc_create_incident(
             ),
         ),
     ],
-    detailed_decription: str,
-    reporter_email: str,
-    product_categorization_tier_1: str,
-    product_categorization_tier_2: str,
-    product_categorization_tier_3: str,
-    categorization_tier_1: str = "",
-    categorization_tier_2: str = "",
-    assigned_group: str = DEFAULT_INCIDENT_ASSIGNED_GROUP,
+    detailed_decription: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Full incident detail (preserves AR field spelling): who reported it, when it "
+                "started, the exact symptom observed, the affected system/application, and "
+                "scope (how many users or which site) — enough to diagnose without asking the "
+                "user again."
+            ),
+        ),
+    ],
+    reporter_email: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Email of the person reporting this incident. Required: looked up in "
+                "CTM:People to fill the submitter's First/Last Name with the real reporter. "
+                "Never invent or guess this value — ask the user for it, or take it from the "
+                "incoming structured message in A2A mode."
+            ),
+        ),
+    ],
+    product_categorization_tier_1: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Product categorization tier 1, from the matching categorias-<dominio> skill row.",
+        ),
+    ],
+    product_categorization_tier_2: Annotated[
+        str,
+        Field(min_length=1, description="Product categorization tier 2, same catalog row."),
+    ],
+    product_categorization_tier_3: Annotated[
+        str,
+        Field(min_length=1, description="Product categorization tier 3, same catalog row."),
+    ],
+    categorization_tier_1: Annotated[
+        str,
+        Field(description="Operational categorization tier 1, same catalog row."),
+    ] = "",
+    categorization_tier_2: Annotated[
+        str,
+        Field(description="Operational categorization tier 2, same catalog row."),
+    ] = "",
+    assigned_group: Annotated[
+        str,
+        Field(
+            description=(
+                "Assigned group, taken from the same catalog row; keep the default only when "
+                "the catalog row does not specify one."
+            ),
+        ),
+    ] = DEFAULT_INCIDENT_ASSIGNED_GROUP,
     status: Annotated[
         Literal[INCIDENT_STATUSES],
         Field(description="Incident status."),
     ] = "Assigned",
-    reported_source: str = "Direct Input",
-    service_type: str = "User Service Restoration",
+    reported_source: Annotated[str, Field(description="Reported source.")] = "Direct Input",
+    service_type: Annotated[str, Field(description="Service type.")] = "User Service Restoration",
 ) -> str:
     """Create an Incident in BMC Helix ARUS (HPD:IncidentInterface_Create).
 
@@ -571,41 +644,8 @@ async def bmc_create_incident(
 
     Parameters
     ----------
-    description : str
-        Short, specific subject line (hard limit: 100 characters — BMC rejects
-        the whole request above that): which service/system is affected and the
-        concrete symptom (e.g. "Payroll app down for all users at Medellin
-        site"), never a generic label like "System not working". Put extra
-        detail in ``detailed_decription`` instead of exceeding this limit.
-    detailed_decription : str
-        Full incident detail (preserves AR field spelling): who reported it,
-        when it started, the exact symptom observed, the affected
-        system/application, and scope (how many users or which site) —
-        enough to diagnose without asking the user again.
-    reporter_email : str
-        Email of the person reporting this incident. Required: looked up in
-        ``CTM:People`` to fill the submitter's First/Last Name with the real
-        reporter. Never invent or guess this value — ask the user for it, or
-        take it from the incoming structured message in A2A mode.
-    product_categorization_tier_1 : str
-        Product categorization tier 1, from the matching ``categorias-<dominio>`` skill row.
-    product_categorization_tier_2 : str
-        Product categorization tier 2, same catalog row.
-    product_categorization_tier_3 : str
-        Product categorization tier 3, same catalog row.
-    categorization_tier_1 : str, optional
-        Operational categorization tier 1, same catalog row, by default ``''``.
-    categorization_tier_2 : str, optional
-        Operational categorization tier 2, same catalog row, by default ``''``.
-    assigned_group : str, optional
-        Assigned group, taken from the same catalog row; keep the default only when
-        the catalog row does not specify one.
-    status : str, optional
-        Incident status, by default ``'Assigned'``.
-    reported_source : str, optional
-        Reported source, by default ``'Direct Input'``.
-    service_type : str, optional
-        Service type, by default ``'User Service Restoration'``.
+    See each parameter's own description in the tool schema for format, examples
+    and defaults.
 
     Returns
     -------
@@ -632,16 +672,16 @@ async def bmc_create_incident(
 
 
 @tool
-async def bmc_get_incident(incident_number: str) -> str:
+async def bmc_get_incident(
+    incident_number: Annotated[
+        str,
+        Field(min_length=1, description="Incident Number to look up (e.g. INC000000002106)."),
+    ],
+) -> str:
     """Read one Incident by its number: current status, description and remaining fields.
 
     Use it to check a ticket before writing to it, or to confirm the result of a
     previous write.
-
-    Parameters
-    ----------
-    incident_number : str
-        Incident Number (e.g. ``INC000000002106``).
 
     Returns
     -------
@@ -666,30 +706,30 @@ async def bmc_get_incident(incident_number: str) -> str:
 
 @tool
 async def bmc_add_incident_note(
-    incident_number: str,
-    note_text: str,
-    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
-    view_access: str = "Public",
-    secure_work_log: str = "No",
+    incident_number: Annotated[str, Field(min_length=1, description="Target Incident Number.")],
+    note_text: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Text of the note, written as it should be read by whoever reviews the ticket.",
+        ),
+    ],
+    work_log_type: Annotated[
+        str,
+        Field(description="Category of the note in the ticket activity log; keep the default unless asked otherwise."),
+    ] = DEFAULT_WORK_LOG_TYPE,
+    view_access: Annotated[
+        str,
+        Field(description="Visibility of the note in BMC; keep the default unless asked otherwise."),
+    ] = "Public",
+    secure_work_log: Annotated[
+        str,
+        Field(description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise."),
+    ] = "No",
 ) -> str:
     """Add a note to the activity log of an Incident, visible to whoever reviews it.
 
     Fails if the incident is already closed.
-
-    Parameters
-    ----------
-    incident_number : str
-        Target Incident Number.
-    note_text : str
-        Text of the note, written as it should be read by whoever reviews the ticket.
-    work_log_type : str, optional
-        Category of the note in the ticket activity log; keep the default unless
-        asked otherwise.
-    view_access : str, optional
-        Visibility of the note in BMC; keep the default unless asked otherwise.
-    secure_work_log : str, optional
-        Whether the note is flagged as secure in BMC; keep the default unless
-        asked otherwise.
 
     Returns
     -------
@@ -709,32 +749,29 @@ async def bmc_add_incident_note(
 
 @tool
 async def bmc_add_incident_attachment(
-    incident_number: str,
-    note_text: str,
-    file_path: str,
-    work_log_type: str = DEFAULT_WORK_LOG_TYPE,
-    view_access: str = "Public",
-    secure_work_log: str = "No",
+    incident_number: Annotated[str, Field(min_length=1, description="Target Incident Number.")],
+    note_text: Annotated[str, Field(min_length=1, description="Work log detailed description text.")],
+    file_path: Annotated[
+        str,
+        Field(min_length=1, description="Path of the file to attach, as seen by the machine running this agent."),
+    ],
+    work_log_type: Annotated[
+        str,
+        Field(description="Category of the note in the ticket activity log; keep the default unless asked otherwise."),
+    ] = DEFAULT_WORK_LOG_TYPE,
+    view_access: Annotated[
+        str,
+        Field(description="Visibility of the note in BMC; keep the default unless asked otherwise."),
+    ] = "Public",
+    secure_work_log: Annotated[
+        str,
+        Field(description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise."),
+    ] = "No",
 ) -> str:
     """Add a note with one file attached to the activity log of an Incident.
 
     The file must already exist on the machine running this agent; file content
     cannot be sent through this tool. Fails if the incident is already closed.
-
-    Parameters
-    ----------
-    incident_number : str
-        Target Incident Number.
-    note_text : str
-        Work log detailed description text.
-    file_path : str
-        Path of the file to attach, as seen by the machine running this agent.
-    work_log_type : str, optional
-        Work log type, by default ``'General Information'``.
-    view_access : str, optional
-        View access, by default ``'Public'``.
-    secure_work_log : str, optional
-        Secure work log flag, by default ``'No'``.
 
     Returns
     -------
@@ -756,7 +793,7 @@ async def bmc_add_incident_attachment(
 
 @tool
 async def bmc_close_incident(
-    incident_number: str,
+    incident_number: Annotated[str, Field(min_length=1, description="Incident Number to close.")],
     description: Annotated[
         str,
         Field(
@@ -770,24 +807,18 @@ async def bmc_close_incident(
             ),
         ),
     ],
-    resolution: str = "Solución no especificada",
+    resolution: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="How the incident was actually solved; replace the placeholder default.",
+        ),
+    ] = "Solución no especificada",
 ) -> str:
     """Close an Incident, taking ownership of it and moving it to Resolved.
 
     Works from any open status, but only on an incident created by this agent's own
     BMC user. There is no tool to reopen it afterwards.
-
-    Parameters
-    ----------
-    incident_number : str
-        Incident Number to close.
-    description : str
-        Short closing summary (hard limit: 100 characters — BMC rejects the
-        whole request above that). Summarize, do not narrate the full
-        resolution here; put the full explanation in ``resolution`` or as a
-        separate note via ``bmc_add_incident_note`` before closing.
-    resolution : str, optional
-        How the incident was actually solved; replace the placeholder default.
 
     Returns
     -------

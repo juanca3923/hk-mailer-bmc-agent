@@ -339,3 +339,12 @@ def test_bmc_create_work_order_requires_categorization_params_explicitly() -> No
         'product_cat_tier_3',
     ):
         assert schema.model_fields[field_name].is_required()
+
+
+def test_all_bmc_tool_params_expose_a_description() -> None:
+    """Regression for the tool-calling standard: every parameter must carry its own
+    description in the JSON schema the model sees, not only in the function docstring."""
+    for t in bmc_tools._ALL_BMC_TOOLS:  # noqa: SLF001
+        schema = t.args_schema.model_json_schema() if t.args_schema else {'properties': {}}
+        for name, prop in schema.get('properties', {}).items():
+            assert 'description' in prop, f'{t.name}.{name} missing description'
