@@ -59,6 +59,11 @@ async def memory_search_chats(
     Useful when the user asks something like "do you remember when we talked about
     X". Returns a JSON list of chats with a matching conversation, including a
     preview of the matched message and its date.
+
+    Never call this to silently source a business identifier (ticket, order, record)
+    that a write tool needs and the user did not give in the current conversation —
+    only to answer the user's own explicit question about past activity, after they
+    confirm they mean a previous conversation.
     """
     logger.info("memory_search_chats: query=%r", query)
     results = await get_chat_service().search_chats(query, limit=10)
@@ -86,6 +91,9 @@ async def memory_get_chat_messages(
     """Retrieve the message history of one chat, in chronological order.
 
     Each message includes role, content and type (normal/error/cancelled).
+
+    Never call this to silently source a business identifier (ticket, order, record)
+    for a write tool the user did not explicitly ask you to look up in a past chat.
     """
     logger.info("memory_get_chat_messages: chat_id=%s limit=%d", chat_id, limit)
     parsed = parse_uuid_param(chat_id, "chat_id")
@@ -121,6 +129,11 @@ async def memory_list_recent_runs(
 
     Ordered by start date, most recent first. Each entry includes the user
     message, status and a preview of the response.
+
+    Never call this to guess which ticket/resource a write tool should act on when
+    the current conversation has none — a run from a different chat is not this
+    conversation's context. Only use it to answer the user's own question about
+    recent activity, or after they confirm they mean a previous conversation.
     """
     safe_limit = min(limit, 50)
     logger.info("memory_list_recent_runs: limit=%d", safe_limit)

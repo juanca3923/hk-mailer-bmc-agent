@@ -24,7 +24,7 @@ Detalle técnico (diagramas, inventario de módulos): [`docs/ARCHITECTURE.md`](A
 
 Otros métodos JSON-RPC devuelven error estándar (sin `tasks/get`, sin streaming A2A propio). El turno reutiliza `AgentRunner.run_agent_turn`, el checkpointer (`thread_id` = `chat_id` / `contextId`) y las tablas `chats` / `agent_runs` igual que la API REST.
 
-`POST /chat`, `POST /chat/stream` y A2A comparten el candado de ocupación (`DOING_TASK` → `409` si el agente está en un turno).
+`POST /chat`, `POST /chat/stream` y A2A comparten el mismo estado (`DOING_TASK`/`UP` en `GET /status`) y la misma política de concurrencia. Por defecto (`HTTP_ALLOW_CONCURRENT_TURNS=1`) aceptan turnos concurrentes; con `=0` los tres rechazan con `409` un turno nuevo mientras haya uno en curso.
 
 Colección de pruebas: [`docs/postman_agente_linux_server.json`](postman_agente_linux_server.json).
 
