@@ -34,31 +34,29 @@ def failure_response(failure: A2AInboundRpcFailure) -> JSONResponse:
     return JSONResponse(failure.envelope, status_code=failure.http_status)
 
 
-async def a2a_preflight_failure(
+def a2a_preflight_failure(
     proc: A2AInboundMessageSendProcessor,
     req: A2AInboundMessageSendRequest,
     graph: object,
-    fast_app: object,
 ) -> A2AInboundRpcFailure | None:
     """Primer fallo entre grafo, apagado o agente ocupado; None si el turno puede ejecutarse."""
     failure = proc.failure_graph_unavailable(graph, req.req_id)
     if failure is None:
         failure = proc.failure_shutdown_requested(agent_state.shutdown_requested, req.req_id)
     if failure is None:
-        failure = await a2a_reserve_turn_or_busy(fast_app, proc.failure_agent_busy(req.req_id))
+        failure = a2a_reserve_turn_or_busy(proc.failure_agent_busy(req.req_id))
     return failure
 
 
-async def a2a_message_send_ready(
+def a2a_message_send_ready(
     proc: A2AInboundMessageSendProcessor,
     parsed: A2AInboundMessageSendRequest | A2AInboundRpcFailure,
     graph: object,
-    fast_app: object,
 ) -> A2AInboundMessageSendRequest | A2AInboundRpcFailure:
     """Validaciones previas al turno; devuelve la petición lista o el fallo JSON-RPC."""
     if isinstance(parsed, A2AInboundRpcFailure):
         return parsed
-    failure = await a2a_preflight_failure(proc, parsed, graph, fast_app)
+    failure = a2a_preflight_failure(proc, parsed, graph)
     if failure is not None:
         return failure
     return parsed
@@ -91,7 +89,7 @@ async def a2a_jsonrpc(
     proc = A2AInboundMessageSendProcessor(settings)
     parsed = proc.parse_message_send_from_raw(raw)
     graph = getattr(request.app.state, "graph", None)
-    ready = await a2a_message_send_ready(proc, parsed, graph, request.app)
+    ready = a2a_message_send_ready(proc, parsed, graph)
     if isinstance(ready, A2AInboundRpcFailure):
         return failure_response(ready)
     req = ready

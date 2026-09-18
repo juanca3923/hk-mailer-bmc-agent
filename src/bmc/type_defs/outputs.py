@@ -2,8 +2,6 @@
 
 from pydantic import BaseModel, Field
 
-from bmc.type_defs.ar_api import ArScalarValue
-
 
 class BaseOutput(BaseModel):
     """Standard MCP tool response with success flag and user message."""
@@ -20,13 +18,17 @@ class WorkOrderCreatedData(BaseModel):
 
 
 class WorkOrderDetailData(BaseModel):
-    """Summary of a work order query result."""
+    """Summary of a work order query result.
+
+    Intentionally lean: only the title, status and assigned group are exposed — no
+    detailed description, notes or the rest of BMC's raw fields, since those can carry
+    sensitive data (contact details, free-text descriptions, etc.).
+    """
 
     work_order_id: str = Field(default='')
-    request_id: str = Field(default='')
     status: str = Field(default='')
     summary: str = Field(default='')
-    values: dict[str, ArScalarValue] = Field(default_factory=dict[str, ArScalarValue])
+    assigned_group: str = Field(default='')
 
 
 class IncidentCreatedData(BaseModel):
@@ -41,10 +43,52 @@ class IncidentCreatedData(BaseModel):
 
 
 class IncidentDetailData(BaseModel):
-    """Summary of an incident query result."""
+    """Summary of an incident query result.
+
+    Intentionally lean: only the title, status and assigned group are exposed — no
+    detailed description, notes or the rest of BMC's raw fields, since those can carry
+    sensitive data (contact details, free-text descriptions, etc.).
+    """
 
     incident_number: str = Field(default='')
-    request_id: str = Field(default='')
     status: str = Field(default='')
     description: str = Field(default='')
-    values: dict[str, ArScalarValue] = Field(default_factory=dict[str, ArScalarValue])
+    assigned_group: str = Field(default='')
+
+
+class WorkOrderByEmailRow(BaseModel):
+    """One row of a work-order-by-requester-email search result."""
+
+    work_order_id: str = Field(default='')
+    status: str = Field(default='')
+    summary: str = Field(default='')
+    assigned_group: str = Field(default='')
+
+
+class WorkOrdersByEmailData(BaseModel):
+    """Result of searching work orders by requester email."""
+
+    email: str = Field(default='')
+    total_found: int = Field(default=0, description='Total matches in BMC before capping.')
+    returned: int = Field(default=0, description='Number of rows actually returned below.')
+    truncated: bool = Field(default=False, description='True when total_found exceeds returned.')
+    work_orders: list[WorkOrderByEmailRow] = Field(default_factory=list)
+
+
+class IncidentByEmailRow(BaseModel):
+    """One row of an incident-by-requester-email search result."""
+
+    incident_number: str = Field(default='')
+    status: str = Field(default='')
+    description: str = Field(default='')
+    assigned_group: str = Field(default='')
+
+
+class IncidentsByEmailData(BaseModel):
+    """Result of searching incidents by requester email."""
+
+    email: str = Field(default='')
+    total_found: int = Field(default=0, description='Total matches in BMC before capping.')
+    returned: int = Field(default=0, description='Number of rows actually returned below.')
+    truncated: bool = Field(default=False, description='True when total_found exceeds returned.')
+    incidents: list[IncidentByEmailRow] = Field(default_factory=list)

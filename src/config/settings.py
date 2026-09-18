@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
     cors_allow_credentials: bool = Field(default=False, alias="CORS_ALLOW_CREDENTIALS")
 
+    # Si es True (por defecto): se permiten turnos concurrentes en POST /chat,
+    # POST /chat/stream y A2A (cada chat ya está aislado por su propio UUID/thread_id en
+    # el checkpointer, así que correrlos en paralelo no mezcla estado entre chats). Si es
+    # False: un run por turno — un turno nuevo se rechaza con 409 mientras haya uno en
+    # curso.
+    http_allow_concurrent_turns: bool = Field(default=True, alias="HTTP_ALLOW_CONCURRENT_TURNS")
+
     # Identificador de instancia (BD, logs, A2A por defecto). Patrón: ^[a-z][a-z0-9_]*$
     agent_slug: str = Field(default="agent_forge", alias="AGENT_SLUG")
     # Nombre visible (Agent Card). Vacío → título a partir del slug.

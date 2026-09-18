@@ -105,10 +105,10 @@ Paquetes bajo `src/` (estructura plana, sin carpeta intermedia):
   - `internal_tools/a2a_tools.py`: tools `a2a_list_remote_agents` y `a2a_send_to_remote` (solo si tras normalizar `A2A_PEER_URLS` hay al menos un peer al construir el grafo).
 - **http_api/** (servicio FastAPI):
   - `__init__.py`: vacío a propósito (no importa `app` al cargar el paquete; evita ciclo con `commons.agent_http`). Usar `http_api.app` para la app FastAPI.
-  - `app.py`: crea la app FastAPI, lifespan (`start_agent`/`stop_agent`, candado, `chat_tasks`), **CORS** desde `Settings` (`cors_origins`, `cors_allow_credentials`) e incluye routers `a2a` + `routers/rest_routes`.
+  - `app.py`: crea la app FastAPI, lifespan (`start_agent`/`stop_agent`, `chat_tasks`), **CORS** desde `Settings` (`cors_origins`, `cors_allow_credentials`) e incluye routers `a2a` + `routers/rest_routes`.
   - `routers/rest_routes.py`: rutas REST `/status`, `/chat`, `/chat/stream`, `/chats`, `/runs`, `/start`, `/stop`, etc.
-  - `agent_turn_guard.py`: exclusión mutua de turno (`DOING_TASK` / restauración `UP`) compartida por POST `/chat`, SSE `/chat/stream` y A2A JSON-RPC.
-  - `chat_handler.py`: `ChatHandler` — registro de `chat_tasks`, guardas (`graph`, `shutdown`, `busy`) y ejecución del turno contra `AgentRunner`.
+  - `agent_turn_guard.py`: reserva/registro de turno (`DOING_TASK` / restauración `UP` cuando no queda ninguno en curso) compartido por POST `/chat`, SSE `/chat/stream` y A2A JSON-RPC. Por defecto (`HTTP_ALLOW_CONCURRENT_TURNS=1`, `Settings`, fijado en `agent_state` al arrancar) permite varios turnos en paralelo; con `=0` rechaza (`409`) un turno nuevo mientras haya uno en curso.
+  - `chat_handler.py`: `ChatHandler` — registro de `chat_tasks`, guardas (`graph`, `shutdown`) y ejecución del turno contra `AgentRunner`.
   - `a2a.py`: A2A **inbound** — `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}` (JSON-RPC `message/send`). Constantes de protocolo y URLs auxiliares en `commons/a2a_constants.py`. Parseo en `commons/a2a_inbound_jsonrpc.py`. Mismo `app.state.graph` y `AgentRunner` que `/chat`.
   - `state.py`: `AgentState` y singleton `agent_state`; la propiedad `status` está tipada como `StatusAgent`.
 - **commons/** (lógica compartida CLI + HTTP):
@@ -235,7 +235,12 @@ sequenceDiagram
 | GET | `/.well-known/agent-card.json` | Agent Card A2A (`assistant_id` query = `A2A_ASSISTANT_ID`) |
 | POST | `/a2a/{assistant_id}` | JSON-RPC A2A; método soportado: `message/send` (mismo grafo que `/chat`) |
 
-- `POST /chat` y `POST /chat/stream` responden `409` si el agente está ocupado (`DOING_TASK`).
+- `POST /chat`, `POST /chat/stream` y A2A permiten turnos concurrentes por defecto
+  (`HTTP_ALLOW_CONCURRENT_TURNS=1`). Con `=0` responden `409` si el agente ya está
+  ocupado (`DOING_TASK`) — un run por turno. En ambos casos un contador interno
+  (`AgentState.try_begin_task`/`end_task`) mantiene `GET /status` en `DOING_TASK`
+  mientras quede al menos un turno en curso, y lo vuelve a `UP` cuando termina el
+  último.
 - Los mensajes de tipo `error` y `cancelled` aparecen en el historial del chat pero no se inyectan como contexto al LLM.
 - `agent_runs.chat_id` es nullable para retrocompatibilidad con runs anteriores.
 
@@ -247,7 +252,7 @@ A2A en AgentForge se divide en **inbound** (este proceso actúa como servidor JS
 
 | Rol | Ruta | Responsabilidad |
 |-----|------|-----------------|
-| Inbound HTTP | [`src/http_api/a2a.py`](../src/http_api/a2a.py) | Router FastAPI: `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}`; `HTTPException`/`JSONResponse`; candado `app.state.agent_lock`; `agent_state`; delega parseo a `commons` y turno a `get_agent_runner()`. |
+| Inbound HTTP | [`src/http_api/a2a.py`](../src/http_api/a2a.py) | Router FastAPI: `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}`; `HTTPException`/`JSONResponse`; reserva el turno en `agent_state` (`try_begin_task`/`restore_agent_up_after_turn`; `409` si está ocupado con `HTTP_ALLOW_CONCURRENT_TURNS=0`); delega parseo a `commons` y turno a `get_agent_runner()`. |
 | Inbound parseo (sin FastAPI) | [`src/commons/a2a_inbound_jsonrpc.py`](../src/commons/a2a_inbound_jsonrpc.py) | `A2AInboundMessageSendProcessor`: validar cuerpo JSON-RPC `message/send` → `A2AInboundMessageSendRequest` o `A2AInboundRpcFailure`; `@staticmethod` `jsonrpc_error`, `extract_text_from_parts`, `build_message_send_success`, `build_agent_forge_agent_card`. |
 | Tipos A2A | [`src/type_defs/dicts/a2a_protocol.py`](../src/type_defs/dicts/a2a_protocol.py), [`src/type_defs/dicts/a2a.py`](../src/type_defs/dicts/a2a.py) | TypedDict / alias JSON-RPC y Agent Card; `PeerInfo`. |
 | Outbound cliente | [`src/agent/a2a_peers.py`](../src/agent/a2a_peers.py) | `A2APeerRegistry`, `fetch_agent_card`, `a2a_message_send` (httpx); registro enlazado al grafo (`bind_a2a_registry_to_graph`). |
@@ -274,7 +279,7 @@ sequenceDiagram
     alt RpcFailure
         Route-->>Ext: JSONResponse error + HTTP status
     else Request valida
-        Route->>Route: graph shutdown lock DOING_TASK
+        Route->>Route: graph shutdown try_begin_task DOING_TASK
         Route->>Runner: run_agent_turn(user_text, graph, chat_id)
         Runner->>Graph: ainvoke thread_id chat_id
         Graph-->>Runner: mensajes y respuesta

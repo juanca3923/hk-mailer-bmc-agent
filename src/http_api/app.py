@@ -22,7 +22,6 @@ _http_settings = Settings.load()
 @asynccontextmanager
 async def lifespan(fast_app: FastAPI) -> Lifespan[AppType]:
     """Ciclo de vida: arranca el agente al subir y lo cierra al bajar."""
-    fast_app.state.agent_lock = asyncio.Lock()
     fast_app.state.chat_tasks: set[asyncio.Task[object]] = set()
     async with AsyncExitStack() as stack:
         await ensure_schema()

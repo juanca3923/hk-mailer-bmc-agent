@@ -53,7 +53,7 @@ async def chat_stream(request: Request, body: ChatRequest) -> StreamingResponse:
     ChatHandler.check_shutdown_or_raise()
     logger.info("chat/stream: iniciando turno mensaje_len=%d", len(body.message))
 
-    async with http_turn_claim_for_stream(request.app):
+    async with http_turn_claim_for_stream():
         return StreamingResponse(
             ChatHandler.stream_sse(body, graph),
             media_type="text/event-stream",

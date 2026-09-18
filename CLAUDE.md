@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 **agent-bmc** is a LangGraph-based AI agent for managing **incidents** and **work orders** in
 **BMC Helix ARUS**. It is built on top of `agent_forge` — a production-ready Python framework for
-conversational agents — and extends it with 12 internal LangChain tools that wrap the BMC Helix
+conversational agents — and extends it with 14 internal LangChain tools that wrap the BMC Helix
 AR REST API directly (no MCP server required).
 
 ---
@@ -54,7 +54,9 @@ agent-bmc/
 │   │   ├── tool_error_policy.py      # Global tool error handling
 │   │   ├── interceptors/             # LLM/tool event callbacks
 │   │   └── internal_tools/
-│   │       ├── bmc_tools.py          # 12 BMC LangChain @tool functions + get_bmc_tools()
+│   │       ├── bmc_tools.py          # bmc_health_check + registry (get_bmc_tools(), _ALL_BMC_TOOLS)
+│   │       ├── bmc_work_order_tools.py  # 7 Work Order @tool functions
+│   │       ├── bmc_incident_tools.py    # 6 Incident @tool functions
 │   │       ├── memory_tools.py       # memory_* tools (chat/run history)
 │   │       ├── skill_tools.py        # skill_get_guide
 │   │       ├── datetime_tools.py     # get_current_date (system clock, AGENT_TIMEZONE)
@@ -114,7 +116,7 @@ User (CLI / HTTP)
         │   ├─ memory_*         (chat/run history)
         │   ├─ skill_get_guide  (Markdown guides)
         │   ├─ get_current_date (system clock, AGENT_TIMEZONE)
-        │   ├─ BMC tools        (12 tools → BmcClient → BMC Helix REST)
+        │   ├─ BMC tools        (14 tools → BmcClient → BMC Helix REST)
         │   └─ a2a_*            (remote agents, optional)
         └─ MCP tools (optional, from MCP_URLS)
 
@@ -268,20 +270,26 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters. The
 
 ## BMC Internal Tools
 
-All 12 tools live in `src/agent/internal_tools/bmc_tools.py` and share a lazy-initialized
-`BaseToolHandler` from `src/bmc/libs/tool_handler.py`.
+The 14 tools are split across `bmc_tools.py` (`bmc_health_check` + the registry),
+`bmc_work_order_tools.py` (Work Orders) and `bmc_incident_tools.py` (Incidents) — split
+once the original single file grew past the repo's 1000-line-per-module limit. All three
+share one lazy `BaseToolHandler` singleton via `bmc.libs.tool_handler.get_shared_handler()`,
+deliberately *not* imported between the three agent-side modules, to avoid a cyclic import
+between the aggregator (`bmc_tools.py`) and the two modules it registers.
 
 | Tool | Operation | AR Form |
 |------|-----------|---------|
 | `bmc_health_check` | Verify JWT session | GET ping |
 | `bmc_create_work_order` | Create WO; `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
-| `bmc_get_work_order` | Search WO by ID | `WOI:WorkOrderInterface` |
+| `bmc_get_work_order` | Search WO by ID; returns only title/status/assigned group — never the detailed description, notes or other raw BMC fields (privacy) | `WOI:WorkOrderInterface` |
+| `bmc_list_work_orders_by_email` | List WOs by requester email (`Customer Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_work_order`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `WOI:WorkOrderInterface` |
 | `bmc_add_work_order_note` | Add note without attachment (rejects if `Closed`) | `WOI:WorkInfo` |
 | `bmc_add_work_order_attachment` | Add note with file attachment (rejects if `Closed`) | `WOI:WorkInfo` multipart |
 | `bmc_update_work_order_status` | PUT intermediate status (rejects if `Closed`) | `WOI:WorkOrderInterface` |
 | `bmc_close_work_order` | Ownership PUT (`ASCHG`) → Completed PUT+note → Closed PUT+note (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
 | `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter); `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no incident created if not found) | `HPD:IncidentInterface_Create` |
-| `bmc_get_incident` | Search incident by number | `HPD:IncidentInterface` |
+| `bmc_get_incident` | Search incident by number; returns only title/status/assigned group — never the detailed description, notes or other raw BMC fields (privacy) | `HPD:IncidentInterface` |
+| `bmc_list_incidents_by_email` | List incidents by requester email (`Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_incident`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `HPD:IncidentInterface` |
 | `bmc_add_incident_note` | Add note without attachment (rejects if `Closed`) | `HPD:WorkLog` |
 | `bmc_add_incident_attachment` | Add note with file attachment (rejects if `Closed`) | `HPD:WorkLog` multipart |
 | `bmc_close_incident` | Ownership PUT (`Assignee`) → Resolved PUT with `Status_Reason=Closing` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `HPD:IncidentInterface` |
@@ -317,9 +325,13 @@ since BMC's result order for a non-unique match is not guaranteed.
 2. Add AR field constants to `src/bmc/libs/constants.py` if needed.
 3. Add the HTTP method to `src/bmc/libs/api_client.py`.
 4. Add a helper in `src/bmc/libs/helpers/` if the operation has multiple steps.
-5. Add the `@tool` function to `src/agent/internal_tools/bmc_tools.py` following the lazy
-   handler pattern (`h = _get_handler()`).
-6. Register it in `_ALL_BMC_TOOLS` list at the bottom of that file.
+5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`
+   (whichever ticket type it's for), following the lazy handler pattern
+   (`handler = tool_handler.get_shared_handler()`). Pass an explicit, concise
+   `@tool(description=...)` for the LLM — see "Docstring de humanos vs. descripción de
+   tool para el LLM" in `.claude/rules/estandar-python.md`; don't rely on the bare
+   `@tool` decorator falling back to the (human-facing) docstring.
+6. Register it in the `_ALL_BMC_TOOLS` list and import it, both in `bmc_tools.py`.
 7. Document it in this file and in `README.md`.
 
 ---

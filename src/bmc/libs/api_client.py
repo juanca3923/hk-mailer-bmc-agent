@@ -13,11 +13,13 @@ from bmc.libs.connection_manager import BmcConnectionManager
 from bmc.libs.constants import (
     API_PATH_ARSYS_ENTRY_PREFIX,
     AR_FIELD_INCIDENT_NUMBER,
+    AR_FIELD_INCIDENT_REPORTER_EMAIL,
     AR_FIELD_PEOPLE_EMAIL,
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_REQUEST_ID,
+    AR_FIELD_WO_CUSTOMER_EMAIL,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     USER_ERROR_MESSAGE_INVALID_JSON,
@@ -49,67 +51,6 @@ class BmcClient:
     _manager : BmcConnectionManager
         Singleton providing JWT and shared ``httpx`` client.
     """
-
-    @staticmethod
-    def message_for_status(code: int) -> str:
-        """Return the user-facing error message for an HTTP status code.
-
-        Parameters
-        ----------
-        code : int
-            HTTP status code from the BMC API response.
-
-        Returns
-        -------
-        str
-            Mapped message from ``USER_ERROR_MESSAGES``, or a generic fallback.
-        """
-        return USER_ERROR_MESSAGES.get(
-            code,
-            f"Error: La API de BMC respondió con estado {code}.",
-        )
-
-    @staticmethod
-    def format_http_response_body(response: httpx.Response) -> str | None:
-        """Serialize the BMC HTTP error body for MCP tool output.
-
-        Parameters
-        ----------
-        response : httpx.Response
-            HTTP response from a failed BMC call.
-
-        Returns
-        -------
-        str | None
-            JSON or plain-text body when non-empty; otherwise ``None``.
-        """
-        if not response.content:
-            return None
-        try:
-            body = response.json()
-        except json.JSONDecodeError:
-            text = response.text.strip()
-            return text if text else None
-        return json.dumps(body, ensure_ascii=False)
-
-    @staticmethod
-    def message_for_http_error(response: httpx.Response) -> str:
-        """Build the MCP tool error message from an HTTP error response.
-
-        Parameters
-        ----------
-        response : httpx.Response
-            Failed BMC HTTP response.
-
-        Returns
-        -------
-        str
-            Serialized API body when present; otherwise a status-based fallback.
-        """
-        api_body = BmcClient.format_http_response_body(response)
-        if api_body:
-            return api_body
-        return BmcClient.message_for_status(response.status_code)
 
     def __init__(
         self,
@@ -211,6 +152,67 @@ class BmcClient:
         response.raise_for_status()
         return response
 
+    @staticmethod
+    def message_for_status(code: int) -> str:
+        """Return the user-facing error message for an HTTP status code.
+
+        Parameters
+        ----------
+        code : int
+            HTTP status code from the BMC API response.
+
+        Returns
+        -------
+        str
+            Mapped message from ``USER_ERROR_MESSAGES``, or a generic fallback.
+        """
+        return USER_ERROR_MESSAGES.get(
+            code,
+            f"Error: La API de BMC respondió con estado {code}.",
+        )
+
+    @staticmethod
+    def format_http_response_body(response: httpx.Response) -> str | None:
+        """Serialize the BMC HTTP error body for MCP tool output.
+
+        Parameters
+        ----------
+        response : httpx.Response
+            HTTP response from a failed BMC call.
+
+        Returns
+        -------
+        str | None
+            JSON or plain-text body when non-empty; otherwise ``None``.
+        """
+        if not response.content:
+            return None
+        try:
+            body = response.json()
+        except json.JSONDecodeError:
+            text = response.text.strip()
+            return text if text else None
+        return json.dumps(body, ensure_ascii=False)
+
+    @staticmethod
+    def message_for_http_error(response: httpx.Response) -> str:
+        """Build the MCP tool error message from an HTTP error response.
+
+        Parameters
+        ----------
+        response : httpx.Response
+            Failed BMC HTTP response.
+
+        Returns
+        -------
+        str
+            Serialized API body when present; otherwise a status-based fallback.
+        """
+        api_body = BmcClient.format_http_response_body(response)
+        if api_body:
+            return api_body
+        return BmcClient.message_for_status(response.status_code)
+
     def _raise_from_httpx(self, exc: BaseException, *, method: str, path: str) -> None:
         """Map httpx or JSON errors to ``MCPClientError`` with user messages.
 
@@ -268,8 +270,6 @@ class BmcClient:
         try:
             response = await self._request_with_retry("GET", path, params=params)
             return response.json()
-        except MCPClientError:
-            raise
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="GET", path=path)
             raise AssertionError("unreachable") from exc
@@ -317,8 +317,6 @@ class BmcClient:
                 self._raise_from_httpx(exc, method="POST", path=path)
                 raise AssertionError("unreachable") from exc
             return body, location
-        except MCPClientError:
-            raise
         except httpx.HTTPError as exc:
             self._raise_from_httpx(exc, method="POST", path=path)
             raise AssertionError("unreachable") from exc
@@ -349,8 +347,6 @@ class BmcClient:
             if not response.content:
                 return {}
             return response.json()
-        except MCPClientError:
-            raise
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="PUT", path=path)
             raise AssertionError("unreachable") from exc
@@ -390,8 +386,6 @@ class BmcClient:
             if not response.content:
                 return {}
             return response.json()
-        except MCPClientError:
-            raise
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="POST", path=path)
             raise AssertionError("unreachable") from exc
@@ -414,9 +408,9 @@ class BmcClient:
         MCPClientError
             On HTTP or parse errors.
         """
-        q = ArQueryBuilder.equals(AR_FIELD_WORK_ORDER_ID, work_order_id)
+        qualification = ArQueryBuilder.equals(AR_FIELD_WORK_ORDER_ID, work_order_id)
         path = self.entry_path(self._settings.form_wo_query)
-        payload = await self.get_json(path, params={"q": q})
+        payload = await self.get_json(path, params={"q": qualification})
         return parse_entry_list(payload)
 
     async def search_incident(self, incident_number: str) -> BmcEntryListResponse:
@@ -437,9 +431,55 @@ class BmcClient:
         MCPClientError
             On HTTP or parse errors.
         """
-        q = ArQueryBuilder.equals(AR_FIELD_INCIDENT_NUMBER, incident_number)
+        qualification = ArQueryBuilder.equals(AR_FIELD_INCIDENT_NUMBER, incident_number)
         path = self.entry_path(self._settings.form_incident_query)
-        payload = await self.get_json(path, params={"q": q})
+        payload = await self.get_json(path, params={"q": qualification})
+        return parse_entry_list(payload)
+
+    async def search_work_orders_by_email(self, email: str) -> BmcEntryListResponse:
+        """Search work orders by requester email (``Customer Internet E-mail``).
+
+        Parameters
+        ----------
+        email : str
+            Requester email, as originally passed to ``reporter_email`` at creation.
+
+        Returns
+        -------
+        BmcEntryListResponse
+            Parsed list/search response; may contain any number of entries.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP or parse errors.
+        """
+        qualification = ArQueryBuilder.equals(AR_FIELD_WO_CUSTOMER_EMAIL, email)
+        path = self.entry_path(self._settings.form_wo_query)
+        payload = await self.get_json(path, params={"q": qualification})
+        return parse_entry_list(payload)
+
+    async def search_incidents_by_email(self, email: str) -> BmcEntryListResponse:
+        """Search incidents by requester email (``Internet E-mail``).
+
+        Parameters
+        ----------
+        email : str
+            Requester email, as originally passed to ``reporter_email`` at creation.
+
+        Returns
+        -------
+        BmcEntryListResponse
+            Parsed list/search response; may contain any number of entries.
+
+        Raises
+        ------
+        MCPClientError
+            On HTTP or parse errors.
+        """
+        qualification = ArQueryBuilder.equals(AR_FIELD_INCIDENT_REPORTER_EMAIL, email)
+        path = self.entry_path(self._settings.form_incident_query)
+        payload = await self.get_json(path, params={"q": qualification})
         return parse_entry_list(payload)
 
     async def search_person_by_email(self, email: str) -> BmcEntryListResponse:
@@ -461,13 +501,13 @@ class BmcClient:
         MCPClientError
             On HTTP or parse errors.
         """
-        q = ArQueryBuilder.equals(AR_FIELD_PEOPLE_EMAIL, email)
+        qualification = ArQueryBuilder.equals(AR_FIELD_PEOPLE_EMAIL, email)
         path = self.entry_path(self._settings.form_people_query)
         fields = (
             f"values({AR_FIELD_PEOPLE_LOGIN_ID},{AR_FIELD_PEOPLE_FIRST_NAME},"
             f"{AR_FIELD_PEOPLE_LAST_NAME},{AR_FIELD_PEOPLE_EMAIL})"
         )
-        payload = await self.get_json(path, params={"q": q, "fields": fields})
+        payload = await self.get_json(path, params={"q": qualification, "fields": fields})
         return parse_entry_list(payload)
 
     async def create_work_order_entry(
@@ -622,10 +662,8 @@ class BmcClient:
     async def health_ping(self) -> None:
         """Run a lightweight authenticated request to verify session health.
 
-        Returns
-        -------
-        bool
-            ``True`` when the session is valid (including 404 on empty search).
+        A 404 on this search counts as healthy (empty result, not an auth or
+        connectivity failure).
 
         Raises
         ------
@@ -634,8 +672,6 @@ class BmcClient:
         """
         try:
             await self.search_work_order("WO0000000000000")
-            return
         except MCPClientError as exc:
-            if exc.status_code == HTTPStatus.NOT_FOUND:
-                return
-            raise
+            if exc.status_code != HTTPStatus.NOT_FOUND:
+                raise

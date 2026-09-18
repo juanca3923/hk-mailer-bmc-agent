@@ -8,21 +8,28 @@ import pydantic
 import pytest
 
 from agent.internal_tools import bmc_tools
+from bmc.libs import tool_handler
 from bmc.libs.business_defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from bmc.libs.constants import (
+    AR_FIELD_INCIDENT_ASSIGNED_GROUP,
+    AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_STATUS,
     AR_FIELD_SUBMITTER,
+    AR_FIELD_WORK_ORDER_ASGRP,
+    AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
+    MAX_TICKETS_BY_EMAIL_RESULTS,
     WORK_ORDER_STATUSES,
 )
 from bmc.type_defs.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
 from bmc.type_defs.inputs import CloseIncidentInput, CreateIncidentInput
+from bmc.type_defs.outputs import IncidentByEmailRow, IncidentDetailData, WorkOrderByEmailRow, WorkOrderDetailData
 
 REPORTER_EMAIL = 'ana.reportante@arus.com.co'
 
@@ -53,6 +60,7 @@ class FakeClient:
         self._status = status
         self._submitter = submitter
         self._request_id = request_id
+        self.email_search_result = BmcEntryListResponse(entries=[])
         self._person_entries = (
             [BmcEntry(values=BmcEntryValues(data={
                 AR_FIELD_PEOPLE_LOGIN_ID: 'ana.reportante@arus.com.co',
@@ -90,12 +98,21 @@ class FakeClient:
     async def search_incident(self, incident_number: str) -> BmcEntryListResponse:  # noqa: ARG002
         return self._search_result()
 
+    async def search_work_orders_by_email(self, email: str) -> BmcEntryListResponse:  # noqa: ARG002
+        return self.email_search_result
+
+    async def search_incidents_by_email(self, email: str) -> BmcEntryListResponse:  # noqa: ARG002
+        return self.email_search_result
+
     def _search_result(self) -> BmcEntryListResponse:
         values = BmcEntryValues(
             data={
                 AR_FIELD_REQUEST_ID: self._request_id,
                 AR_FIELD_STATUS: self._status,
                 AR_FIELD_SUBMITTER: self._submitter,
+                'Description': 'Fake ticket description',
+                AR_FIELD_WORK_ORDER_ASGRP: 'GTI.FAKE_GROUP',
+                AR_FIELD_INCIDENT_ASSIGNED_GROUP: 'GTI.FAKE_GROUP',
             },
         )
         return BmcEntryListResponse(entries=[BmcEntry(values=values)])
@@ -128,14 +145,14 @@ class FakeHandler:
 
 
 @pytest.fixture(autouse=True)
-def _reset_handler_singleton(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ensure each test starts from a clean module-level ``_handler`` singleton."""
-    monkeypatch.setattr(bmc_tools, '_handler', None)
+def _reset_handler_singleton() -> None:
+    """Ensure each test starts from a clean cached ``get_shared_handler`` singleton."""
+    tool_handler.get_shared_handler.cache_clear()
 
 
 async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Closed', submitter='svc_mosaico')
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_close_work_order.ainvoke({'work_order_id': 'WO1'})
 
@@ -146,7 +163,7 @@ async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.M
 
 async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='In Progress', submitter='otro_usuario')
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_close_incident.ainvoke({'incident_number': 'INC1', 'description': 'cierre'})
 
@@ -158,7 +175,7 @@ async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.Mon
 
 async def test_bmc_add_incident_note_uses_work_log_not_work_info(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_add_incident_note.ainvoke({'incident_number': 'INC1', 'note_text': 'hola'})
 
@@ -199,7 +216,7 @@ def test_bmc_create_work_order_has_no_support_company_organization_params_but_ha
 
 async def test_bmc_create_work_order_sends_support_company_and_organization(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
@@ -227,7 +244,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
 
 async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(person_entries=[])
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_work_order.ainvoke({
         'summary': 'S',
@@ -248,7 +265,7 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
 
 async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_incident.ainvoke({
         'description': 'D',
@@ -270,7 +287,7 @@ async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch:
 
 async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient(person_entries=[])
-    monkeypatch.setattr(bmc_tools, '_handler', FakeHandler(client))
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
     raw = await bmc_tools.bmc_create_incident.ainvoke({
         'description': 'D',
@@ -339,3 +356,131 @@ def test_bmc_create_work_order_requires_categorization_params_explicitly() -> No
         'product_cat_tier_3',
     ):
         assert schema.model_fields[field_name].is_required()
+
+
+def test_all_bmc_tool_params_expose_a_description() -> None:
+    """Regression for the tool-calling standard: every parameter must carry its own
+    description in the JSON schema the model sees, not only in the function docstring."""
+    for t in bmc_tools._ALL_BMC_TOOLS:  # noqa: SLF001
+        schema = t.args_schema.model_json_schema() if t.args_schema else {'properties': {}}
+        for name, prop in schema.get('properties', {}).items():
+            assert 'description' in prop, f'{t.name}.{name} missing description'
+
+
+async def test_bmc_list_work_orders_by_email_returns_rows_and_flags_truncation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entries = [
+        BmcEntry(
+            values=BmcEntryValues(
+                data={
+                    AR_FIELD_WORK_ORDER_ID: f'WO{i}',
+                    'Status': 'Assigned',
+                    'Description': f'S{i}',
+                    AR_FIELD_WORK_ORDER_ASGRP: f'GTI.GROUP{i}',
+                }
+            )
+        )
+        for i in range(3)
+    ]
+    client = FakeClient()
+    client.email_search_result = BmcEntryListResponse(entries=entries)
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
+
+    raw = await bmc_tools.bmc_list_work_orders_by_email.ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert 'WO0' in payload['message'] and 'WO1' in payload['message']
+    assert 'WO2' not in payload['message']
+    assert 'GTI.GROUP0' in payload['message'] and 'GTI.GROUP1' in payload['message']
+    # Regression: the raw AR field for a WO's subject is "Description", not "Summary"
+    # ("z1D_Summary" exists on the form but is unused) — verified empirically against BMC.
+    assert 'S0' in payload['message'] and 'S1' in payload['message']
+
+
+async def test_bmc_list_work_orders_by_email_empty_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = FakeClient()
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
+
+    raw = await bmc_tools.bmc_list_work_orders_by_email.ainvoke({'email': REPORTER_EMAIL})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+
+
+async def test_bmc_list_incidents_by_email_returns_rows_and_flags_truncation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entries = [
+        BmcEntry(
+            values=BmcEntryValues(
+                data={
+                    AR_FIELD_INCIDENT_NUMBER: f'INC{i}',
+                    'Status': 'Resolved',
+                    'Description': f'D{i}',
+                    AR_FIELD_INCIDENT_ASSIGNED_GROUP: f'GTI.GROUP{i}',
+                }
+            )
+        )
+        for i in range(3)
+    ]
+    client = FakeClient()
+    client.email_search_result = BmcEntryListResponse(entries=entries)
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
+
+    raw = await bmc_tools.bmc_list_incidents_by_email.ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert 'INC0' in payload['message'] and 'INC1' in payload['message']
+    assert 'INC2' not in payload['message']
+    assert 'GTI.GROUP0' in payload['message'] and 'GTI.GROUP1' in payload['message']
+
+
+async def test_bmc_get_work_order_summary_comes_from_description_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: the raw AR field for a WO's subject is "Description", not "Summary"
+    ("z1D_Summary" exists on the form but is unused) — verified empirically against BMC."""
+    client = FakeClient()
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
+
+    raw = await bmc_tools.bmc_get_work_order.ainvoke({'work_order_id': 'WO1'})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert 'Fake ticket description' in payload['message']
+    # "ASGRP" is the field that reflects the real assigned group on a WO — not the
+    # create-time alias "Support Group Name", which always reads back as the fixed
+    # desk default regardless of what was requested (verified against BMC).
+    assert 'GTI.FAKE_GROUP' in payload['message']
+
+
+async def test_bmc_get_incident_returns_description_and_assigned_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeClient()
+    monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
+
+    raw = await bmc_tools.bmc_get_incident.ainvoke({'incident_number': 'INC1'})
+
+    payload = json.loads(raw)
+    assert payload['success'] is True
+    assert 'Fake ticket description' in payload['message']
+    assert 'GTI.FAKE_GROUP' in payload['message']
+
+
+def test_ticket_info_tools_never_expose_raw_values_or_request_id() -> None:
+    """Privacy guardrail: bmc_get_*/bmc_list_*_by_email must only ever expose
+    id/title/status/assigned_group — never the raw BMC values dict or request_id,
+    which can carry sensitive data (contact details, free-text descriptions, etc.)."""
+    for model in (WorkOrderDetailData, IncidentDetailData, WorkOrderByEmailRow, IncidentByEmailRow):
+        fields = set(model.model_fields)
+        assert 'values' not in fields
+        assert 'request_id' not in fields
+
+
+def test_tickets_by_email_limit_is_capped_at_the_schema_level() -> None:
+    assert bmc_tools.bmc_list_work_orders_by_email.args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
+    assert bmc_tools.bmc_list_incidents_by_email.args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS

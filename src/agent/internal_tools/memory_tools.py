@@ -7,8 +7,10 @@ queries: ``services.agent_runs_service.AgentRunsService`` and ``ChatService``.
 from __future__ import annotations
 
 import json
+from typing import Annotated
 
 from langchain_core.tools import BaseTool, tool
+from pydantic import Field
 
 from commons.serializers import MemorySerializer
 from commons.utils import parse_uuid_param
@@ -19,12 +21,17 @@ from services.chat_service import get_chat_service
 logger = get_logger()
 
 
-@tool
+@tool(
+    description=(
+        "Check whether the agent currently has an active task in progress. Use this "
+        "to answer 'what are you doing right now?' or 'are you busy?'."
+    )
+)
 async def memory_get_current_task() -> str:
-    """Consulta si el agente tiene una tarea activa en este momento.
+    """Check whether the agent currently has an active task in progress.
 
-    Retorna un JSON con el run en curso (status=running) o indica que no hay
-    ninguna tarea activa. Útil para responder '¿qué estás haciendo ahora mismo?'
+    Useful for answering "what are you doing right now?". Returns a JSON with the
+    run in progress (status=running), or indicates there is none.
     """
     logger.debug("memory_get_current_task: consultando runs activos")
     active_run = await get_agent_runs_service().get_active_run()
@@ -42,16 +49,34 @@ async def memory_get_current_task() -> str:
     )
 
 
-@tool
-async def memory_search_chats(query: str) -> str:
-    """Busca en el historial de chats mensajes que contengan el texto indicado.
+@tool(
+    description=(
+        "Search the chat history for messages containing the given text — for finding "
+        "a past conversation the user vaguely references (e.g. 'remember when we "
+        "talked about X'). Never use this to silently source a business identifier "
+        "(ticket, order, record) a write tool needs and the user did not give in the "
+        "current conversation — only after they confirm they mean a previous one."
+    )
+)
+async def memory_search_chats(
+    query: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Text to search for across the chat history (case-insensitive substring match).",
+        ),
+    ],
+) -> str:
+    """Search the chat history for messages containing the given text.
 
-    Args:
-        query: Texto a buscar (no distingue mayúsculas/minúsculas).
+    Useful when the user asks something like "do you remember when we talked about
+    X". Returns a JSON list of chats with a matching conversation, including a
+    preview of the matched message and its date.
 
-    Retorna un JSON con lista de chats que tuvieron conversaciones relacionadas,
-    incluyendo un preview del mensaje que hizo match y la fecha.
-    Útil cuando el usuario pregunta 'recuerdas cuando hablamos de X'.
+    Never call this to silently source a business identifier (ticket, order, record)
+    that a write tool needs and the user did not give in the current conversation —
+    only to answer the user's own explicit question about past activity, after they
+    confirm they mean a previous conversation.
     """
     logger.info("memory_search_chats: query=%r", query)
     results = await get_chat_service().search_chats(query, limit=10)
@@ -68,16 +93,26 @@ async def memory_search_chats(query: str) -> str:
     )
 
 
-@tool
-async def memory_get_chat_messages(chat_id: str, limit: int = 20) -> str:
-    """Recupera el historial de mensajes de un chat específico.
+@tool(
+    description=(
+        "Retrieve the full message history of one chat, in chronological order. Never "
+        "use this to silently source a business identifier (ticket, order, record) for "
+        "a write tool the user did not explicitly ask you to look up in a past chat."
+    )
+)
+async def memory_get_chat_messages(
+    chat_id: Annotated[
+        str,
+        Field(min_length=1, description="UUID of the chat, previously obtained from memory_search_chats."),
+    ],
+    limit: Annotated[int, Field(description="Maximum number of messages to return.")] = 20,
+) -> str:
+    """Retrieve the message history of one chat, in chronological order.
 
-    Args:
-        chat_id: UUID del chat (obtenido previamente con memory_search_chats).
-        limit: Número máximo de mensajes a retornar (default 20).
+    Each message includes role, content and type (normal/error/cancelled).
 
-    Retorna un JSON con la lista de mensajes en orden cronológico,
-    incluyendo role, contenido y tipo (normal/error/cancelled).
+    Never call this to silently source a business identifier (ticket, order, record)
+    for a write tool the user did not explicitly ask you to look up in a past chat.
     """
     logger.info("memory_get_chat_messages: chat_id=%s limit=%d", chat_id, limit)
     parsed = parse_uuid_param(chat_id, "chat_id")
@@ -97,15 +132,35 @@ async def memory_get_chat_messages(chat_id: str, limit: int = 20) -> str:
     )
 
 
-@tool
-async def memory_list_recent_runs(limit: int = 10) -> str:
-    """Lista las últimas ejecuciones del agente con su resumen.
+@tool(
+    description=(
+        "List the agent's most recent runs with a short summary of each (capped at "
+        "50). Never use this to guess which ticket/resource a write tool should act on "
+        "when the current conversation has none — only to answer the user's own "
+        "question about recent activity, or after they confirm they mean a previous "
+        "conversation."
+    )
+)
+async def memory_list_recent_runs(
+    limit: Annotated[
+        int,
+        Field(
+            description=(
+                "Number of runs to return; silently capped at 50 by this tool regardless of "
+                "the value requested."
+            ),
+        ),
+    ] = 10,
+) -> str:
+    """List the agent's most recent runs with a short summary of each.
 
-    Args:
-        limit: Número de runs a retornar (default 10, máximo 50).
+    Ordered by start date, most recent first. Each entry includes the user
+    message, status and a preview of the response.
 
-    Retorna un JSON con los runs más recientes ordenados por fecha de inicio
-    descendente, incluyendo el mensaje del usuario, estado y preview de la respuesta.
+    Never call this to guess which ticket/resource a write tool should act on when
+    the current conversation has none — a run from a different chat is not this
+    conversation's context. Only use it to answer the user's own question about
+    recent activity, or after they confirm they mean a previous conversation.
     """
     safe_limit = min(limit, 50)
     logger.info("memory_list_recent_runs: limit=%d", safe_limit)
@@ -122,16 +177,23 @@ async def memory_list_recent_runs(limit: int = 10) -> str:
     )
 
 
-@tool
-async def memory_get_run_events(run_id: str) -> str:
-    """Obtiene la traza detallada de una ejecución: cada llamada LLM y herramienta usada.
+@tool(
+    description=(
+        "Retrieve the detailed step-by-step trace of one run (every LLM call and tool "
+        "call, in order). Use it when the user wants to know exactly what happened "
+        "during a specific execution."
+    )
+)
+async def memory_get_run_events(
+    run_id: Annotated[
+        str,
+        Field(min_length=1, description="UUID of the run, previously obtained from memory_list_recent_runs."),
+    ],
+) -> str:
+    """Retrieve the detailed trace of one run: every LLM call and tool call used.
 
-    Args:
-        run_id: UUID del run (obtenido con memory_list_recent_runs).
-
-    Retorna un JSON con los eventos ordenados cronológicamente: llm_start,
-    tool_start, tool_end, llm_end, etc. Útil para explicar en detalle qué hizo
-    el agente en una ejecución específica.
+    Events come in chronological order (llm_start, tool_start, tool_end, llm_end,
+    etc.). Useful for explaining in detail what the agent did during that run.
     """
     logger.info("memory_get_run_events: run_id=%s", run_id)
     parsed = parse_uuid_param(run_id, "run_id")
@@ -153,7 +215,7 @@ async def memory_get_run_events(run_id: str) -> str:
 
 
 def get_memory_tools() -> list[BaseTool]:
-    """Retorna la lista de tools internas de memoria para pasarlas al agente."""
+    """Return the internal memory tools to register on the agent."""
     return [
         memory_get_current_task,
         memory_search_chats,
