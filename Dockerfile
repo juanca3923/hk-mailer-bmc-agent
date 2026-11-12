@@ -21,8 +21,8 @@ RUN rm -rf ./skills/example \
     && pip install --no-cache-dir uv \
     && uv sync --frozen --no-dev
 RUN pip uninstall -y uv \
-    && mkdir -p /app/logs \
-    && chown -R appuser:appuser /app/logs
+    && mkdir -p /app/logs /app/data/ticket_files \
+    && chown -R appuser:appuser /app/logs /app/data
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV HTTP_HOST=0.0.0.0
