@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from bmc.libs.preflight import run_startup_preflight
 from commons.agent_http import start_agent, stop_agent
 from config import Settings
 from database.engine import close_engine, ensure_schema
@@ -26,6 +27,7 @@ async def lifespan(fast_app: FastAPI) -> AsyncIterator[None]:
     async with AsyncExitStack() as stack:
         await ensure_schema()
         await start_agent(fast_app, stack)
+        await run_startup_preflight()
         try:
             yield
         finally:

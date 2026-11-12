@@ -140,7 +140,7 @@ El agente solo recibe el `staging_id` y llama a `bmc_attach_staged_files(ticket_
 | `POST` | `/start` / `/stop` | Control del agente |
 | `POST` | `/people/verify` | Dice si un correo existe en `CTM:People` y está habilitado (sin LLM). Requiere cabecera `X-API-Key` = `BMC_VERIFY_API_KEY` |
 
-**`POST /people/verify`**: cuerpo `{"email": "persona@dominio"}` → `{"exists": true, "enabled": true}`. No devuelve nada más de la persona. Sin `BMC_VERIFY_API_KEY` el endpoint responde `503` (cerrado); con clave ausente o incorrecta, `401`; si BMC falla, `502`. Lo usa `hk-mailer-agent` para aceptar solo remitentes válidos. El campo de estado (`AR_FIELD_PEOPLE_STATUS`, `Profile Status`) hay que confirmarlo contra la instancia BMC.
+**`POST /people/verify`**: cuerpo `{"email": "persona@dominio"}` → `{"exists": true, "enabled": true}`. No devuelve nada más de la persona. Sin `BMC_VERIFY_API_KEY` el endpoint responde `503` (cerrado); con clave ausente o incorrecta, `401`; si BMC falla, `502`. Lo usa `hk-mailer-agent` para aceptar solo remitentes válidos. El campo de estado (`AR_FIELD_PEOPLE_STATUS`, `Profile Status`) hay que confirmarlo contra la instancia BMC: al arrancar, el agente hace una consulta de prueba (con una dirección `.invalid`, sin buscar a nadie real) y avisa en el log (`preflight:`) si BMC rechaza ese campo; el arranque nunca se bloquea.
 
 ---
 

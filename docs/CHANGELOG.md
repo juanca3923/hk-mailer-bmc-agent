@@ -12,6 +12,12 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-12 — feat: autochequeo de arranque del campo de estado de `CTM:People`
+
+- Al arrancar, una consulta de prueba a `CTM:People` (dirección ficticia `.invalid`; no busca a nadie) pide el campo `AR_FIELD_PEOPLE_STATUS`. Si BMC lo rechaza (HTTP 400) el log trae un warning `preflight:` que remite a confirmar el nombre del campo; otros fallos se registran sin culpar al campo. Tiempo límite de 60 s y **nunca bloquea el arranque** (`bmc/libs/preflight.py`).
+
+---
+
 ## 2026-11-12 — feat: endpoint para verificar que un correo es un origen válido
 
 - **`POST /people/verify`** (`{"email"}` → `{"exists", "enabled"}`): consulta `CTM:People` por `Internet E-mail` y comprueba el estado de la persona (`AR_FIELD_PEOPLE_STATUS`, `Profile Status`; **nombre del campo pendiente de confirmar contra la instancia BMC**). Mismo desempate que la creación de tickets (el bot `AgentesIA` que comparte correo no decide). Sin LLM ni tokens. `search_person_by_email` ahora pide también el estado.
