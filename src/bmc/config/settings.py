@@ -3,6 +3,7 @@
 Values are read from the process environment only. No ``.env`` file is loaded at runtime.
 """
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -127,6 +128,13 @@ class BmcSettings(BaseSettings):
     http_timeout_seconds: float = Field(default=30.0, ge=5.0, le=300.0)
     allow_write: bool = Field(default=True)
     max_attachment_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=100 * 1024 * 1024)
+    attachment_base_dir: Path | None = Field(
+        default=None,
+        description=(
+            'Only folder from which files can be attached to tickets (BMC_ATTACHMENT_BASE_DIR). '
+            'Unset disables attachments: the tools never read arbitrary paths.'
+        ),
+    )
 
     form_incident_create: str = Field(default='HPD:IncidentInterface_Create')
     form_incident_query: str = Field(default='HPD:IncidentInterface')
@@ -146,6 +154,25 @@ class BmcSettings(BaseSettings):
         description='Apellido fijo del solicitante/cliente en Work Order e Incidente creados por este agente',
     )
     default_wo_company: str = Field(default='ARUS')
+
+    @field_validator('attachment_base_dir', mode='before')
+    @classmethod
+    def blank_attachment_dir_is_none(cls, value: object) -> object:
+        """Treat an empty ``BMC_ATTACHMENT_BASE_DIR`` as unset.
+
+        Parameters
+        ----------
+        value : object
+            Raw environment value.
+
+        Returns
+        -------
+        object
+            ``None`` for blank strings; the original value otherwise.
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator('base_url', mode='before')
     @classmethod

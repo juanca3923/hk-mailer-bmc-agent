@@ -8,6 +8,8 @@ from bmc.config.settings import BmcSettings
 from bmc.exceptions.mcp import MCPClientError
 from bmc.libs.api_client import BmcClient
 from bmc.libs.constants import (
+    USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED,
+    USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
     USER_ERROR_MESSAGE_WRITE_DISABLED,
@@ -114,6 +116,10 @@ class BaseToolHandler:
     def load_attachment(self, file_path: str) -> AttachmentPart:
         """Load and validate an attachment from disk.
 
+        Only files inside ``attachment_base_dir`` are readable: the path is fully resolved
+        (``..`` and symlinks included) before checking it, so neither traversal nor a link
+        planted inside the folder can reach other files of the host.
+
         Parameters
         ----------
         file_path : str
@@ -127,9 +133,16 @@ class BaseToolHandler:
         Raises
         ------
         MCPClientError
-            If the file is missing or exceeds ``max_attachment_bytes``.
+            If attachments are not configured, the file is outside ``attachment_base_dir``,
+            it is missing, or it exceeds ``max_attachment_bytes``.
         """
-        path = Path(file_path)
+        base_dir = self._settings.attachment_base_dir
+        if base_dir is None:
+            raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED, status_code=None)
+        path = Path(file_path).resolve()
+        if not path.is_relative_to(base_dir.resolve()):
+            self._logger.warning("Attachment rejected, outside base dir: %s", file_path)
+            raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED, status_code=None)
         if not path.is_file():
             msg = USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND
             raise MCPClientError(msg, status_code=None)

@@ -23,6 +23,7 @@ from agent.internal_tools.bmc_incident_tools import (
     bmc_get_incident,
     bmc_list_incidents_by_email,
 )
+from agent.internal_tools.bmc_staged_files_tools import bmc_attach_staged_files
 from agent.internal_tools.bmc_work_order_tools import (
     bmc_add_work_order_attachment,
     bmc_add_work_order_note,
@@ -82,6 +83,7 @@ _ALL_BMC_TOOLS: list[BaseTool] = [
     bmc_add_incident_note,
     bmc_add_incident_attachment,
     bmc_close_incident,
+    bmc_attach_staged_files,
 ]
 
 
@@ -91,7 +93,7 @@ def get_bmc_tools() -> list[BaseTool]:
     Returns
     -------
     list[BaseTool]
-        All 14 BMC LangChain tools, or ``[]`` when BMC is not configured.
+        All 15 BMC LangChain tools, or ``[]`` when BMC is not configured.
     """
     if not os.environ.get("BMC_BASE_URL"):
         logger.info("BMC_BASE_URL not set — BMC tools disabled")

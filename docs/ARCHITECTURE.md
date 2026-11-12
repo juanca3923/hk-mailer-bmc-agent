@@ -49,6 +49,8 @@ un ticket ya `Closed`, y el cierre además exige que el `Submitter` del ticket c
 con el usuario de servicio BMC configurado. `bmc_add_incident_note`/
 `bmc_add_incident_attachment` escriben contra `HPD:WorkLog` (no `WOI:WorkInfo`).
 
+`src/agent/internal_tools/bmc_staged_files_tools.py` añade `bmc_attach_staged_files`: sube a un Incidente o WO los archivos que otro agente dejó en la carpeta compartida (`BMC_ATTACHMENT_BASE_DIR/<staging_id>/` + `manifest.json`). La lógica vive en `src/bmc/libs/helpers/staged_files.py` (`StagedFilesAttacher`, independiente de LangChain y del tipo de ticket mediante el puerto `TicketWriter`). Los bytes no pasan por el LLM: la tool solo recibe ids. `BaseToolHandler.load_attachment` confina toda lectura a `BMC_ATTACHMENT_BASE_DIR` (resuelve `..` y enlaces simbólicos).
+
 Todas comparten un `BaseToolHandler` lazy-inicializado y retornan JSON con `{success, message}`.
 
 ---

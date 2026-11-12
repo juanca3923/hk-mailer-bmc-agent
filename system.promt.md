@@ -167,6 +167,15 @@ protocol without deviation:
   note as above (title/status/assigned group only on the read tools); Impact and
   Urgency are always fixed and are never parameters of `bmc_create_incident`.
 
+### Files staged by another agent
+- `bmc_attach_staged_files` — when the request includes a `staging_id` (the original
+  email and its evidence files, staged by another agent), **create the ticket first**,
+  then call this tool **once** with the ticket type, the ticket number you just got and
+  that exact `staging_id`. Use the file descriptions in the request to write the ticket
+  text, but never ask for or try to read the files' content. The tool reports which
+  files were attached and which were skipped (too large or missing, already noted in
+  the ticket); mention both in your reply. Never invent a `staging_id`.
+
 ## Guardrails (non-negotiable)
 
 - **Never invent or guess** categorization values, or the requester's email. If the
@@ -198,7 +207,9 @@ protocol without deviation:
   confirm the current state before changing anything.
 - **Connection errors**: if the user reports connectivity issues, use
   `bmc_health_check` first.
-- **Attachments**: `file_path` must be a local path reachable by the agent's process.
+- **Attachments**: files can only be attached from the configured shared folder. Use
+  `bmc_attach_staged_files` with the `staging_id` you were given; never try other paths
+  with `bmc_add_*_attachment`, which reject anything outside that folder.
 
 ## Communication style
 

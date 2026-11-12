@@ -116,7 +116,7 @@ User (CLI / HTTP)
         │   ├─ memory_*         (chat/run history)
         │   ├─ skill_get_guide  (Markdown guides)
         │   ├─ get_current_date (system clock, AGENT_TIMEZONE)
-        │   ├─ BMC tools        (14 tools → BmcClient → BMC Helix REST)
+        │   ├─ BMC tools        (15 tools → BmcClient → BMC Helix REST)
         │   └─ a2a_*            (remote agents, optional)
         └─ MCP tools (optional, from MCP_URLS)
 
@@ -210,6 +210,7 @@ Copy `.env.example` to `.env` and fill in the required values.
 | `BMC_JWT_REFRESH_MARGIN_SECONDS` | `300` | Refresh JWT this many seconds before expiry |
 | `BMC_HTTP_TIMEOUT_SECONDS` | `30.0` | HTTP timeout toward BMC |
 | `BMC_MAX_ATTACHMENT_BYTES` | `10485760` | Max attachment size (10 MiB) |
+| `BMC_ATTACHMENT_BASE_DIR` | (none) | Only folder files can be attached from; unset disables attachments (path traversal/symlinks are rejected) |
 
 ### Business defaults — BMC tickets
 
@@ -271,12 +272,13 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters. The
 
 ## BMC Internal Tools
 
-The 14 tools are split across `bmc_tools.py` (`bmc_health_check` + the registry),
-`bmc_work_order_tools.py` (Work Orders) and `bmc_incident_tools.py` (Incidents) — split
-once the original single file grew past the repo's 1000-line-per-module limit. All three
+The 15 tools are split across `bmc_tools.py` (`bmc_health_check` + the registry),
+`bmc_work_order_tools.py` (Work Orders), `bmc_incident_tools.py` (Incidents) and
+`bmc_staged_files_tools.py` (files staged by another agent) — split
+once the original single file grew past the repo's 1000-line-per-module limit. All four
 share one lazy `BaseToolHandler` singleton via `bmc.libs.tool_handler.get_shared_handler()`,
-deliberately *not* imported between the three agent-side modules, to avoid a cyclic import
-between the aggregator (`bmc_tools.py`) and the two modules it registers.
+deliberately *not* imported between the agent-side modules, to avoid a cyclic import
+between the aggregator (`bmc_tools.py`) and the modules it registers.
 
 | Tool | Operation | AR Form |
 |------|-----------|---------|
@@ -293,6 +295,7 @@ between the aggregator (`bmc_tools.py`) and the two modules it registers.
 | `bmc_list_incidents_by_email` | List incidents by requester email (`Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_incident`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `HPD:IncidentInterface` |
 | `bmc_add_incident_note` | Add note without attachment (rejects if `Closed`) | `HPD:WorkLog` |
 | `bmc_add_incident_attachment` | Add note with file attachment (rejects if `Closed`) | `HPD:WorkLog` multipart |
+| `bmc_attach_staged_files` | Upload every file listed in `<BMC_ATTACHMENT_BASE_DIR>/<staging_id>/manifest.json` to an Incident or WO (one work log entry each); over-limit/missing files are skipped and listed in one note. Takes only a `staging_id`, never paths or bytes | `HPD:WorkLog` / `WOI:WorkInfo` multipart |
 | `bmc_close_incident` | Ownership PUT (`Assignee`) → Resolved PUT with `Status_Reason=Closing` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `HPD:IncidentInterface` |
 
 All tools return a JSON string with `{"success": bool, "message": "..."}`. On success, `message`

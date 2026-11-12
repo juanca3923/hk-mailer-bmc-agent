@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-12 — feat: adjuntar archivos staged desde carpeta compartida y confinar rutas de adjuntos
+
+- **Seguridad (cambio de comportamiento)**: `BaseToolHandler.load_attachment` solo lee archivos dentro de `BMC_ATTACHMENT_BASE_DIR`; la ruta se resuelve por completo (`..` y enlaces simbólicos incluidos) y lo que quede fuera se rechaza. **Sin definir esa variable, los adjuntos quedan deshabilitados**, también `bmc_add_incident_attachment` / `bmc_add_work_order_attachment`, que antes aceptaban cualquier ruta legible del contenedor.
+- **`bmc_attach_staged_files`** (tool nueva, 15 en total): recibe `ticket_type`, `ticket_number` y `staging_id`; sube cada archivo de `<BMC_ATTACHMENT_BASE_DIR>/<staging_id>/manifest.json` como una entrada del log de actividad. Los archivos que superan `BMC_MAX_ATTACHMENT_BYTES` o que falten no se suben y se listan en una nota del ticket. Nunca recibe rutas ni bytes. Lógica en `src/bmc/libs/helpers/staged_files.py`.
+- **Acción operativa**: definir `BMC_ATTACHMENT_BASE_DIR` y montar esa carpeta (solo lectura) compartida con el agente que deja los archivos; en Kubernetes, un volumen `ReadWriteMany`. Sin cambios en la API HTTP.
+
+---
+
 ## 2026-11-12 — chore: mypy como verificador de tipado estático
 
 - **Dependencia dev**: `mypy==2.4.1` en el grupo `dev` de `pyproject.toml` (y `uv.lock`). Se ejecuta con `uv run mypy`.

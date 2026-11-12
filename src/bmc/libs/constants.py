@@ -146,6 +146,17 @@ USER_ERROR_MESSAGE_WRITE_DISABLED: Final[str] = (
 )
 USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE: Final[str] = "Error: El adjunto supera el tamaño máximo permitido."
 USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND: Final[str] = "Error: No se encontró el archivo adjunto en la ruta indicada."
+USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED: Final[str] = (
+    "Error: El archivo está fuera de la carpeta de adjuntos permitida y no se puede adjuntar."
+)
+USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED: Final[str] = (
+    "Error: Los adjuntos no están habilitados (BMC_ATTACHMENT_BASE_DIR sin configurar)."
+)
+USER_ERROR_MESSAGE_STAGING_INVALID_ID: Final[str] = "Error: El staging_id no es válido."
+USER_ERROR_MESSAGE_STAGING_NOT_FOUND: Final[str] = "Error: No se encontró la carpeta de archivos indicada."
+USER_ERROR_MESSAGE_STAGING_INVALID_MANIFEST: Final[str] = (
+    "Error: El manifiesto de archivos falta o es inválido."
+)
 USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND: Final[str] = "Error: WO no encontrada: {work_order_id}."
 USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING: Final[str] = "Error: Request ID no disponible en la WO."
 USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND: Final[str] = "Error: Incidente no encontrado: {incident_number}."

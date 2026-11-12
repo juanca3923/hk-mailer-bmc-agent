@@ -13,6 +13,7 @@ que interactúan directamente con la API REST de BMC Helix AR.
 | **Sesión** | `bmc_health_check` — verifica la sesión JWT |
 | **Órdenes de trabajo** | `bmc_create_work_order`, `bmc_get_work_order`, `bmc_add_work_order_note`, `bmc_add_work_order_attachment`, `bmc_update_work_order_status`, `bmc_close_work_order` |
 | **Incidentes** | `bmc_create_incident`, `bmc_get_incident`, `bmc_add_incident_note`, `bmc_add_incident_attachment`, `bmc_close_incident` |
+| **Archivos del correo** | `bmc_attach_staged_files` — adjunta a un Incidente/WO los archivos que otro agente dejó en la carpeta compartida (ver [Adjuntos](#adjuntos-y-carpeta-compartida)) |
 
 Además hereda las capacidades de `agent_forge`:
 - Memoria de conversaciones (checkpointer PostgreSQL).
@@ -96,6 +97,8 @@ BMC_BASE_URL=https://arus-dev-restapi.onbmc.com
 BMC_USERNAME=webservice_mosaico@arus.com.co
 BMC_PASSWORD=<clave-api>
 BMC_ALLOW_WRITE=true
+# Única carpeta desde la que se pueden adjuntar archivos (sin definir: adjuntos deshabilitados)
+BMC_ATTACHMENT_BASE_DIR=/app/data/ticket_files
 
 # LLM
 LLM_PROVIDER=anthropic
@@ -107,6 +110,21 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/agent_bmc
 # Identificador del agente
 AGENT_SLUG=agent_bmc
 ```
+
+---
+
+## Adjuntos y carpeta compartida
+
+Los archivos nunca viajan por el protocolo A2A ni por el contexto del LLM. Otro agente (p. ej. `hk-mailer-agent`) deja en una **carpeta compartida** `<BMC_ATTACHMENT_BASE_DIR>/<staging_id>/` los archivos y un `manifest.json`:
+
+```json
+{"files": [{"name": "correo_original.eml", "description": "Correo original recibido"},
+           {"name": "captura.png", "description": "Captura del error"}]}
+```
+
+El agente solo recibe el `staging_id` y llama a `bmc_attach_staged_files(ticket_type, ticket_number, staging_id)`. Cada archivo se sube como su propia entrada del log de actividad (la `description` es el texto de la nota). Los archivos que superan `BMC_MAX_ATTACHMENT_BYTES` (10 MiB por defecto) o que falten no se suben y se listan en **una nota** del ticket.
+
+**Seguridad:** `BMC_ATTACHMENT_BASE_DIR` es la **única** carpeta de la que se puede adjuntar. La ruta se resuelve por completo (`..` y enlaces simbólicos incluidos) y todo lo que quede fuera se rechaza, también en `bmc_add_*_attachment`. Sin definir, los adjuntos quedan deshabilitados. En el contenedor del BMC conviene montar la carpeta **solo lectura**; en Kubernetes, un volumen `ReadWriteMany` compartido con el agente que escribe.
 
 ---
 
