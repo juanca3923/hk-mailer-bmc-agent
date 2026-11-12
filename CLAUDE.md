@@ -168,6 +168,7 @@ uv sync --group dev
 # Lint
 uv run ruff check src/
 uv run pylint src/
+uv run mypy                 # tipado estático; config en mypy.ini; debe quedar en 0 errores
 
 # Run tests (unit only, no BMC or Postgres required)
 uv run pytest test/test_fake_llm_tool_flow.py test/test_skill_catalog.py -v

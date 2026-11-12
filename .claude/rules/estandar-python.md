@@ -127,6 +127,7 @@ detalle de implementación):
 ## Pylint y herramientas
 
 - Python objetivo: **3.14**.
+- **Mypy** (`uv run mypy`, config en `mypy.ini`) debe quedar en 0 errores. Preferir anotar o acotar tipos antes que `# type: ignore`; si es inevitable, usar el código de error concreto (`# type: ignore[attr-defined]`). `warn_unused_ignores` está activo.
 - No capturar excepciones demasiado amplias (`Exception`, `BaseException`).
 - Logging: formato estilo `%` con el módulo `logging`.
 - `requests`: métodos con `timeout=...` explícito siempre.

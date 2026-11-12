@@ -138,6 +138,7 @@ implementación):
 ## Pylint y herramientas
 
 - Python objetivo: 3.14. Ignorar directorios como `.venv` (y CVS) al analizar.
+- **Mypy** (`uv run mypy`, config en `mypy.ini`) debe quedar en 0 errores. Preferir anotar o acotar tipos antes que `# type: ignore`; si es inevitable, usar el código de error concreto (`# type: ignore[attr-defined]`). `warn_unused_ignores` está activo.
 - Tratar **Pylint** como referencia al revisar: no capturar excepciones demasiado amplias (`Exception`, `BaseException`).
 - **Logging** estándar: formato estilo `%` (`logging`).
 - **`requests`**: métodos bajo `requests.api.*` con `timeout=...` explícito.

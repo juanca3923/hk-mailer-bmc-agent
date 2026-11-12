@@ -5,6 +5,17 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-12 — chore: mypy como verificador de tipado estático
+
+- **Dependencia dev**: `mypy==2.4.1` en el grupo `dev` de `pyproject.toml` (y `uv.lock`). Se ejecuta con `uv run mypy`.
+- **`mypy.ini`** (nuevo, igual que en `hk-mailer-agent`): `mypy_path = src`, los 9 paquetes de `src/` (incluye `bmc`), plugin `pydantic.mypy`, `check_untyped_defs`, `disallow_untyped_defs`, `disallow_any_generics`, `warn_return_any`, `warn_unused_ignores`, `ignore_missing_imports`; `alembic.*` con `ignore_errors`. `warn_unreachable` queda desactivado a propósito.
+- **Baseline en 0 errores** (74 iniciales): solo anotaciones y ajustes de tipos, sin cambios de lógica. Los archivos comunes con el mailer reciben las mismas correcciones (callback de eventos, `runner`, `store`, `cli`, `lifespan` de FastAPI, `StatsResponse.model_validate`). Específicos del BMC: `EntryValuesMapper.wrap_entry_body` devuelve `dict[str, JsonValue]` (los `dict` son invariantes en el valor y rechazaban el cuerpo en `BmcClient`), `cast` donde `httpx` y `ToonEncoder` devuelven `Any`, dos `# type: ignore` sobrantes eliminados y `HuggingFaceEndpoint` recibe `model=` en lugar de `repo_id=` (son excluyentes; `test_llm_huggingface.py` se ajusta).
+- **`# type: ignore[valid-type]`** en 3 parámetros `Literal[<constante>]` de las tools (`WORK_ORDER_STATUSES`, `INCIDENT_STATUSES`): en runtime la tupla se expande a `Literal` con cada valor (y alimenta el `enum` del esquema que ve el LLM), pero mypy no admite una variable ahí.
+- **Acción operativa**: ejecutar `uv sync --group dev` y, antes de merge, `uv run mypy` junto a `ruff` y `pylint`. Aún no corre en el pipeline de Azure/SonarQube.
+- **Pendiente previo, no tocado**: 4 tests de `test_incident_operations_create.py` fallan desde antes (`CreateIncidentInput` exige `reporter_email` y los tests no lo envían).
+
+---
+
 ## 2026-11-12 — chore: Python 3.14 y actualización de dependencias
 
 - **Python**: el proyecto pasa a Python **3.14**, el mismo que `hk-mailer-agent`. `requires-python = ">=3.14"`, imágenes `python:3.14-slim` en `Dockerfile` y `Dockerfile.dev`, y `target-version`/`py-version` alineados en `ruff.toml` y `.pylintrc`. Antes: `>=3.11`, Docker en 3.12, ruff/pylint en 3.13.
