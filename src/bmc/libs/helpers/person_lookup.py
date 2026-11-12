@@ -19,6 +19,8 @@ from bmc.libs.constants import (
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
+    AR_FIELD_PEOPLE_STATUS,
+    PEOPLE_STATUS_ENABLED,
     USER_ERROR_MESSAGE_PERSON_NOT_FOUND,
 )
 from bmc.type_defs.ar_api import BmcEntryValues
@@ -125,3 +127,44 @@ async def resolve_reporter_identity(client: BmcClient, email: str) -> ReporterId
             message=USER_ERROR_MESSAGE_PERSON_NOT_FOUND.format(email=normalized_email),
         )
     return ReporterIdentity(first_name=first_name, last_name=last_name)
+
+
+class PersonCheck(NamedTuple):
+    """Result of looking an email up in ``CTM:People`` to decide whether it is a valid origin."""
+
+    exists: bool
+    enabled: bool
+
+
+async def verify_person_by_email(client: BmcClient, email: str) -> PersonCheck:
+    """Check that an email belongs to a person registered in ``CTM:People`` and enabled.
+
+    Unlike ``resolve_reporter_identity`` it does not need the name fields, and it tells a failed
+    lookup (raises) apart from a person that does not exist (``exists=False``), so callers can
+    fail closed on BMC outages without treating them as "unknown sender".
+
+    Parameters
+    ----------
+    client : BmcClient
+        BMC HTTP client.
+    email : str
+        Email address, matched against ``Internet E-mail``.
+
+    Returns
+    -------
+    PersonCheck
+        ``exists`` when at least one entry matches; ``enabled`` when the entry chosen with the same
+        tie-break as ``resolve_reporter_identity`` has ``Profile Status`` = ``Enabled``.
+
+    Raises
+    ------
+    MCPClientError
+        When the BMC lookup itself fails.
+    """
+    normalized_email = email.strip()
+    search = await client.search_person_by_email(normalized_email)
+    if not search.entries:
+        return PersonCheck(exists=False, enabled=False)
+    chosen = _pick_entry([entry.values for entry in search.entries], normalized_email)
+    status = chosen.get_str(AR_FIELD_PEOPLE_STATUS).strip().lower()
+    return PersonCheck(exists=True, enabled=status == PEOPLE_STATUS_ENABLED)

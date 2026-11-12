@@ -12,6 +12,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-12 — feat: endpoint para verificar que un correo es un origen válido
+
+- **`POST /people/verify`** (`{"email"}` → `{"exists", "enabled"}`): consulta `CTM:People` por `Internet E-mail` y comprueba el estado de la persona (`AR_FIELD_PEOPLE_STATUS`, `Profile Status`; **nombre del campo pendiente de confirmar contra la instancia BMC**). Mismo desempate que la creación de tickets (el bot `AgentesIA` que comparte correo no decide). Sin LLM ni tokens. `search_person_by_email` ahora pide también el estado.
+- **Seguridad**: exige `X-API-Key` = `BMC_VERIFY_API_KEY` (comparación en tiempo constante); sin clave configurada responde 503; devuelve solo `exists`/`enabled`; el error de BMC sale como 502 sin detalle.
+- **Acción operativa**: definir `BMC_VERIFY_API_KEY` (Secret de Kubernetes, el mismo valor en el mailer) y confirmar el nombre del campo de estado.
+
+---
+
 ## 2026-11-12 — refactor: esqueleto compartido de las escrituras con guardas
 
 - `run_guarded_write` (`bmc/libs/helpers/guarded_write.py`) reemplaza el bloque repetido (escritura habilitada, ticket resuelto, no `Closed`, `try/except MCPClientError`) de `add_note`, `add_attachment`, `update_status` y `close` en `IncidentOperations` y `WorkOrderOperations`; `WorkLogInput` unifica los campos del work log y `ticket_tool_helpers.py` las piezas comunes de las tools. Sin cambio de comportamiento ni de esquemas de las tools; pylint vuelve a 10,00 (sin los 6 avisos `R0801`).

@@ -13,6 +13,7 @@ from commons.agent_http import start_agent, stop_agent
 from config import Settings
 from database.engine import close_engine, ensure_schema
 from http_api.a2a import router as a2a_router
+from http_api.routers.people_routes import router as people_router
 from http_api.routers.rest_routes import router as rest_router
 
 _http_settings = Settings.load()
@@ -48,6 +49,7 @@ app.add_middleware(
 
 app.include_router(a2a_router)
 app.include_router(rest_router)
+app.include_router(people_router)
 
 
 def run() -> None:

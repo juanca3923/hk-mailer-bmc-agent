@@ -39,6 +39,11 @@ AR_FIELD_PEOPLE_LOGIN_ID: Final[str] = "Remedy Login ID"
 AR_FIELD_PEOPLE_FIRST_NAME: Final[str] = "First Name"
 AR_FIELD_PEOPLE_LAST_NAME: Final[str] = "Last Name"
 AR_FIELD_PEOPLE_EMAIL: Final[str] = "Internet E-mail"
+# Whether the person is active ("Enabled"; other values: "Offline", "Obsolete", ...). The field name is
+# not in BMC's public docs and still has to be confirmed against the real instance (GET a person
+# without ``fields`` and look for the one that says "Enabled"); this is the only place it is defined.
+AR_FIELD_PEOPLE_STATUS: Final[str] = "Profile Status"
+PEOPLE_STATUS_ENABLED: Final[str] = "enabled"
 
 # Requester-email fields used to list tickets by requester (verified empirically
 # against BMC: each form stores the raw reporter_email in a different field — WO

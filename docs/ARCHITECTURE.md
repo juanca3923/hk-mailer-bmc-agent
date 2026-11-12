@@ -110,6 +110,7 @@ Paquetes bajo `src/` (estructura plana, sin carpeta intermedia):
 - **http_api/** (servicio FastAPI):
   - `__init__.py`: vacío a propósito (no importa `app` al cargar el paquete; evita ciclo con `commons.agent_http`). Usar `http_api.app` para la app FastAPI.
   - `app.py`: crea la app FastAPI, lifespan (`start_agent`/`stop_agent`, `chat_tasks`), **CORS** desde `Settings` (`cors_origins`, `cors_allow_credentials`) e incluye routers `a2a` + `routers/rest_routes`.
+  - `routers/people_routes.py`: `POST /people/verify` (¿el correo existe en `CTM:People` y está habilitado?). Lógica en `bmc/libs/helpers/person_lookup.py` (`verify_person_by_email`, mismo desempate que `resolve_reporter_identity`); protegido con `X-API-Key` frente a `BMC_VERIFY_API_KEY` (comparación en tiempo constante; sin clave configurada responde 503). Sin LLM: lo consume el mailer para validar el remitente antes de atender un correo.
   - `routers/rest_routes.py`: rutas REST `/status`, `/chat`, `/chat/stream`, `/chats`, `/runs`, `/start`, `/stop`, etc.
   - `agent_turn_guard.py`: reserva/registro de turno (`DOING_TASK` / restauración `UP` cuando no queda ninguno en curso) compartido por POST `/chat`, SSE `/chat/stream` y A2A JSON-RPC. Por defecto (`HTTP_ALLOW_CONCURRENT_TURNS=1`, `Settings`, fijado en `agent_state` al arrancar) permite varios turnos en paralelo; con `=0` rechaza (`409`) un turno nuevo mientras haya uno en curso.
   - `chat_handler.py`: `ChatHandler` — registro de `chat_tasks`, guardas (`graph`, `shutdown`) y ejecución del turno contra `AgentRunner`.

@@ -573,6 +573,45 @@
           ""
         ]
       }
+    },
+    {
+      "name": "Verificar persona (CTM:People)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{verifyApiKey}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"persona@dominio.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/people/verify",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "people",
+            "verify"
+          ]
+        },
+        "description": "Dice si el correo existe en CTM:People y está habilitado. Requiere X-API-Key igual a BMC_VERIFY_API_KEY (503 si no está configurada, 401 si la clave es inválida, 502 si BMC falla). Respuesta: {\"exists\": bool, \"enabled\": bool}."
+      },
+      "response": []
     }
   ],
   "variable": [
@@ -584,6 +623,11 @@
       "key": "chatId",
       "value": "",
       "description": "UUID del chat activo. Se obtiene del campo chat_id en la respuesta de POST /chat."
+    },
+    {
+      "key": "verifyApiKey",
+      "value": "",
+      "description": "Debe coincidir con BMC_VERIFY_API_KEY del servidor."
     },
     {
       "key": "a2aAssistantId",
