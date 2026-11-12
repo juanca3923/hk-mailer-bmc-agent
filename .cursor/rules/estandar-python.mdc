@@ -137,7 +137,7 @@ implementación):
 
 ## Pylint y herramientas
 
-- Python objetivo: 3.11. Ignorar directorios como `.venv` (y CVS) al analizar.
+- Python objetivo: 3.14. Ignorar directorios como `.venv` (y CVS) al analizar.
 - Tratar **Pylint** como referencia al revisar: no capturar excepciones demasiado amplias (`Exception`, `BaseException`).
 - **Logging** estándar: formato estilo `%` (`logging`).
 - **`requests`**: métodos bajo `requests.api.*` con `timeout=...` explícito.

@@ -26,7 +26,7 @@ Además hereda las capacidades de `agent_forge`:
 
 ## Requisitos
 
-- Python **≥ 3.11**
+- Python **≥ 3.14**
 - [`uv`](https://docs.astral.sh/uv/) instalado
 - PostgreSQL corriendo (para memoria y trazas)
 - Credenciales de servicio de **BMC Helix ARUS** (`BMC_BASE_URL`, `BMC_USERNAME`, `BMC_PASSWORD`)

@@ -5,6 +5,17 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-12 — chore: Python 3.14 y actualización de dependencias
+
+- **Python**: el proyecto pasa a Python **3.14**, el mismo que `hk-mailer-agent`. `requires-python = ">=3.14"`, imágenes `python:3.14-slim` en `Dockerfile` y `Dockerfile.dev`, y `target-version`/`py-version` alineados en `ruff.toml` y `.pylintrc`. Antes: `>=3.11`, Docker en 3.12, ruff/pylint en 3.13.
+- **Dependencias**: 25 de las 28 dependencias directas suben (quedan igual `langchain-ollama`, `httpx` y `toon-formatter`, ya en su última versión) y el `uv.lock` completo se resuelve con la última versión con **al menos 7 días de publicada** (corte 2026-11-05; ningún artefacto del lock es posterior). `pip-audit` sobre el lock: sin vulnerabilidades conocidas.
+- **`Dockerfile`**: el `RUN` que instalaba `uv`, sincronizaba el venv y desinstalaba `uv` se divide en dos (`uv sync` / `pip uninstall`). En una misma capa, el image store containerd de Docker puede generar una imagen vacía que falla al arrancar con `unable to find user appuser`. El resultado funcional es el mismo.
+- **`sqlalchemy[asyncio]`**: SQLAlchemy 2.1 ya no instala `greenlet` por defecto; el extra `asyncio` lo trae y evita un `ImportError` al importar los módulos de base de datos.
+- **`src/commons/langfuse_tracing.py`**: `opentelemetry-exporter-otlp-proto-http` 1.45 cambió su transporte HTTP, y el parche de `_certificate_file` de `LANGFUSE_SSL_VERIFY=false` dejó de funcionar. Ahora se inyecta `RequestsHTTPTransport(verify=False)` vía `_transport`. Verificado contra un servidor HTTPS autofirmado: el exportador normal lo rechaza y el nuestro entrega el span.
+- **Acción operativa**: reconstruir las imágenes Docker y ejecutar `uv sync --group dev`. Sin cambios en variables de entorno ni en la API.
+
+---
+
 ## 2026-09-16 — refactor: separa descripción de tool (LLM) del docstring (humanos)
 
 - `@tool` sin argumento enviaba al LLM el docstring NumPy completo (RST, `Returns`

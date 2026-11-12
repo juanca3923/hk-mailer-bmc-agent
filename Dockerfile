@@ -1,7 +1,7 @@
 # Producción: solo lo necesario para ejecutar el servicio HTTP (sin docs ni README).
 # Ver README sección "Docker" para uso.
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
@@ -14,10 +14,13 @@ COPY src ./src
 COPY system.promt.md system.promt.default.md base.prompt.md ./
 # Guías locales (catálogo <skills>); sin skills/example/ (solo plantilla en repo).
 COPY skills ./skills
+# Dos RUN a propósito: instalar uv, sincronizar el venv y desinstalar uv en una MISMA capa producía,
+# con el image store containerd de Docker, una imagen vacía (capa con marcas de borrado de "/"):
+# fallaba al arrancar con "unable to find user appuser".
 RUN rm -rf ./skills/example \
     && pip install --no-cache-dir uv \
-    && uv sync --frozen --no-dev \
-    && pip uninstall -y uv \
+    && uv sync --frozen --no-dev
+RUN pip uninstall -y uv \
     && mkdir -p /app/logs \
     && chown -R appuser:appuser /app/logs
 

@@ -14,7 +14,7 @@ jobs=1
 limit-inference-results=100
 persistent=yes
 prefer-stubs=no
-py-version=3.13
+py-version=3.14
 recursive=no
 unsafe-load-any-extension=no
 

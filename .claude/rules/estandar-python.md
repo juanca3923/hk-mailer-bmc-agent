@@ -126,7 +126,7 @@ detalle de implementación):
 
 ## Pylint y herramientas
 
-- Python objetivo: **3.11**.
+- Python objetivo: **3.14**.
 - No capturar excepciones demasiado amplias (`Exception`, `BaseException`).
 - Logging: formato estilo `%` con el módulo `logging`.
 - `requests`: métodos con `timeout=...` explícito siempre.

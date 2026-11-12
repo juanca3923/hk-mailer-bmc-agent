@@ -1,7 +1,7 @@
 # Desarrollo: incluye documentación (docs/, README) y dependencias de dev (ruff, watchfiles).
 # Ver README sección "Docker" para uso.
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 

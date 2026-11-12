@@ -9,6 +9,7 @@ from typing import Optional
 import httpx
 from langfuse import Langfuse
 from langfuse._version import __version__ as langfuse_version
+from opentelemetry.exporter.http.transport._requests import RequestsHTTPTransport
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from config import get_logger
@@ -33,12 +34,12 @@ def _build_insecure_span_exporter(
     Required when Langfuse is self-hosted with a self-signed certificate and
     LANGFUSE_SSL_VERIFY=false.
 
-    SSL bypass requires patching ``exporter._certificate_file = False`` after creation.
-    ``OTLPSpanExporter._export`` passes ``verify=self._certificate_file`` explicitly on
-    every ``session.post()``, which overrides any ``session.verify`` setting.
-    Passing ``certificate_file=False`` to the constructor does NOT work because the
-    internal assignment uses ``certificate_file or default``, which evaluates ``False``
-    as falsy and falls through to the default ``True``.
+    Since ``opentelemetry-exporter-otlp-proto-http`` 1.45 the exporter delegates HTTP to a
+    transport object whose ``verify`` flag is fixed at construction time (it overwrites
+    ``session.verify``), and ``_certificate_file`` no longer exists. Neither
+    ``certificate_file=False`` (falsy, falls back to ``True``) nor a custom ``requests``
+    session can disable verification, so a ``RequestsHTTPTransport(verify=False)`` is
+    injected through the exporter's ``_transport`` keyword.
 
     Parameters
     ----------
@@ -55,7 +56,7 @@ def _build_insecure_span_exporter(
         Exporter pointing at ``{host}/api/public/otel/v1/traces`` with SSL disabled.
     """
     token = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
-    exporter = OTLPSpanExporter(
+    return OTLPSpanExporter(
         endpoint=f"{host.rstrip('/')}/api/public/otel/v1/traces",
         headers={
             "Authorization": f"Basic {token}",
@@ -64,11 +65,8 @@ def _build_insecure_span_exporter(
             "x-langfuse-public-key": public_key,
         },
         timeout=LANGFUSE_CLIENT_TIMEOUT_S,
+        _transport=RequestsHTTPTransport(verify=False),  # noqa: S501 — opt-in vía LANGFUSE_SSL_VERIFY=false
     )
-    # ``_export`` passes ``verify=self._certificate_file`` to session.post(), so
-    # patching the attribute is the only reliable way to disable SSL verification.
-    exporter._certificate_file = False  # type: ignore[assignment]  # pylint: disable=protected-access
-    return exporter
 
 
 def ensure_langfuse_tracing_client(settings: Settings) -> None:
@@ -78,9 +76,9 @@ def ensure_langfuse_tracing_client(settings: Settings) -> None:
     que exista un ``Langfuse`` previo con esas credenciales (host/secret viven en el
     gestor de recursos interno).
 
-    Cuando ``LANGFUSE_SSL_VERIFY=false``, crea un ``OTLPSpanExporter`` con
-    ``_certificate_file=False`` (parche post-creación) para que las trazas no fallen
-    por SSL con servidores self-hosted que usan certificado autofirmado.
+    Cuando ``LANGFUSE_SSL_VERIFY=false``, crea un ``OTLPSpanExporter`` con un transporte
+    ``requests`` sin verificación TLS para que las trazas no fallen por SSL con servidores
+    self-hosted que usan certificado autofirmado.
     """
     if not settings.langfuse_tracing_ready:
         return
