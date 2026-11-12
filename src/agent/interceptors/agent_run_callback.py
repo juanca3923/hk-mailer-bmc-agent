@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, cast
 from uuid import UUID
 
 from langchain_core.callbacks import AsyncCallbackHandler
@@ -79,7 +80,9 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
     # Emisión de eventos
     # ------------------------------------------------------------------
 
-    async def _emit(self, event_type: AgentEventType, payload: JsonDict) -> None:
+    async def _emit(self, event_type: AgentEventType, event_payload: Mapping[str, object]) -> None:
+        # Los payloads son TypedDict; se pasan como ``dict`` plano a persistencia y logging.
+        payload: JsonDict = dict(event_payload)
         if self._events_service is not None:
             try:
                 await self._events_service.insert_event(
@@ -110,15 +113,16 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         **kwargs: Any,  # noqa: ANN401 — firma impuesta por AsyncCallbackHandler
     ) -> None:
         model = serialized.get("name")
-        if not model and isinstance(serialized.get("id"), list) and len(serialized.get("id", [])) > 0:
-            model = serialized.get("id")[-1]
+        serialized_id = serialized.get("id")
+        if not model and isinstance(serialized_id, list) and len(serialized_id) > 0:
+            model = serialized_id[-1]
         step = None
         if isinstance(metadata, dict):
             step = metadata.get("langgraph_step")
         human_message, ai_message = self._helpers.extract_last_human_and_ai_messages(messages)
         tool_results = self._helpers.extract_trailing_tool_results_for_llm_start(messages)
         payload: LlmStartPayload = {
-            "model": model,
+            "model": cast("str | None", model),
             "human_message": human_message,
             "ai_message": ai_message,
         }
@@ -197,7 +201,7 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         tool_call_id = kwargs.get("tool_call_id")
         if tool_call_id is not None:
             self._tool_starts[str(tool_call_id)] = time.monotonic()
-        payload: ToolStartPayload = {"tool_name": tool_name, "input": input_params or {}}
+        payload: ToolStartPayload = {"tool_name": cast("str | None", tool_name), "input": input_params or {}}
         if tool_call_id is not None:
             payload["tool_call_id"] = str(tool_call_id)
         logger.info("tool_start: run=%s tool=%r input_str=%r", self.agent_run_id, tool_name, input_str)

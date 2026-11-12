@@ -56,7 +56,7 @@ class AgentPostgresStore(BaseStore):
     # API principal: batch y abatch
     # ------------------------------------------------------------------
 
-    def batch(self, ops: object) -> list[Result]:  # type: ignore[override]
+    def batch(self, ops: object) -> list[Result]:
         """Ejecuta operaciones síncronamente. Solo para uso fuera de contextos async."""
         try:
             loop = asyncio.get_event_loop()
@@ -67,11 +67,12 @@ class AgentPostgresStore(BaseStore):
     async def abatch(self, ops: list[object]) -> list[Result]:  # type: ignore[override]
         """Ejecuta las operaciones en batch de forma asíncrona."""
         results: list[Result] = []
-        for op in ops:  # type: ignore[union-attr]
+        for op in ops:
             if isinstance(op, GetOp):
                 results.append(await self._aget(op))
             elif isinstance(op, PutOp):
-                results.append(await self._aput(op))
+                await self._aput(op)
+                results.append(None)
             elif isinstance(op, SearchOp):
                 results.append(await self._asearch(op))
             elif isinstance(op, ListNamespacesOp):
@@ -103,7 +104,7 @@ class AgentPostgresStore(BaseStore):
 
         logger.debug("store.aget: namespace=%r key=%r → found", ns, op.key)
         return Item(
-            value=dict(row.value),  # type: ignore[arg-type]
+            value=dict(row.value),
             key=row.key,
             namespace=_str_to_ns(row.namespace),
             created_at=row.created_at,
@@ -185,7 +186,7 @@ class AgentPostgresStore(BaseStore):
         )
         return [
             SearchItem(
-                value=dict(row.value),  # type: ignore[arg-type]
+                value=dict(row.value),
                 key=row.key,
                 namespace=_str_to_ns(row.namespace),
                 created_at=row.created_at,

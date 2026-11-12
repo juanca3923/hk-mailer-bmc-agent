@@ -15,7 +15,7 @@ from collections.abc import AsyncIterator
 from functools import lru_cache
 from uuid import UUID, uuid4
 
-from langchain_core.callbacks import AsyncCallbackHandler
+from langchain_core.callbacks import AsyncCallbackHandler, BaseCallbackHandler
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
 
@@ -224,8 +224,8 @@ class AgentRunner:
         result: AgentTurnResult | None = None
 
         try:
-            result = await graph.ainvoke({"messages": ctx.messages}, config=config)  # type: ignore[union-attr]
-            reply = ReplyExtractor().from_messages(result.get("messages", []))
+            graph_output = await graph.ainvoke({"messages": ctx.messages}, config=config)  # type: ignore[attr-defined]
+            reply = ReplyExtractor().from_messages(graph_output.get("messages", []))
             return await self.finish_turn_success(ctx=ctx, reply=reply)
 
         except asyncio.CancelledError:
@@ -322,7 +322,7 @@ class AgentRunner:
     ) -> AsyncIterator[ChatStreamChunkEvent]:
         """Emite eventos ``chunk`` por cada fragmento de texto del modelo."""
         helpers = InterceptorHelpers()
-        async for chunk, _meta in graph.astream(  # type: ignore[union-attr]
+        async for chunk, _meta in graph.astream(  # type: ignore[attr-defined]
             {"messages": messages},
             config,
             stream_mode="messages",
@@ -340,7 +340,7 @@ class AgentRunner:
         settings: Settings,
     ) -> dict[str, object]:
         """Construye el dict ``config`` para ``ainvoke`` / ``astream`` del grafo."""
-        merged_callbacks: list[AsyncCallbackHandler] = []
+        merged_callbacks: list[BaseCallbackHandler] = []
         if events_service is not None:
             merged_callbacks.extend(AgentRunCallbackHandler.build_callbacks(ctx.run_id, events_service))
         if settings.langfuse_tracing_ready:

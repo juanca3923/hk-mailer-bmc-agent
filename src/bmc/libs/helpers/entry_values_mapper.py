@@ -29,7 +29,7 @@ class EntryValuesMapper:
         return result
 
     @staticmethod
-    def wrap_entry_body(model: BaseModel) -> dict[str, dict[str, JsonValue]]:
+    def wrap_entry_body(model: BaseModel) -> dict[str, JsonValue]:
         """Wrap serialized values in the BMC POST/PUT body shape.
 
         Parameters
@@ -39,7 +39,7 @@ class EntryValuesMapper:
 
         Returns
         -------
-        dict[str, dict[str, JsonValue]]
+        dict[str, JsonValue]
             Body of the form ``{"values": {...}}``.
         """
         return {'values': EntryValuesMapper.to_values_dict(model)}
@@ -60,7 +60,7 @@ def coerce_json_value(value: object) -> JsonValue:
     """
     result: JsonValue
     if value is None or isinstance(value, (str, int, float, bool)):
-        result = value  # type: ignore[assignment]
+        result = value
     elif isinstance(value, list):
         result = [coerce_json_value(item) for item in value]
     elif isinstance(value, dict):

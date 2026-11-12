@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
+from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.types import AppType, Lifespan
 
 from commons.agent_http import start_agent, stop_agent
 from config import Settings
@@ -20,9 +19,9 @@ _http_settings = Settings.load()
 
 
 @asynccontextmanager
-async def lifespan(fast_app: FastAPI) -> Lifespan[AppType]:
+async def lifespan(fast_app: FastAPI) -> AsyncIterator[None]:
     """Ciclo de vida: arranca el agente al subir y lo cierra al bajar."""
-    fast_app.state.chat_tasks: set[asyncio.Task[object]] = set()
+    fast_app.state.chat_tasks = set()  # set[asyncio.Task[object]]
     async with AsyncExitStack() as stack:
         await ensure_schema()
         await start_agent(fast_app, stack)

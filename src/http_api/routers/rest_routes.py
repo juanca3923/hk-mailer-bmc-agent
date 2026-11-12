@@ -93,7 +93,7 @@ async def get_runs_stats() -> StatsResponse:
     """Estadísticas agregadas: tokens de entrada/salida y tiempo promedio."""
     stats_service = get_agent_runs_stats_service()
     data = await stats_service.get_token_and_time_stats()
-    return StatsResponse(**data)
+    return StatsResponse.model_validate(data)
 
 
 @router.get("/chats", response_model=list[ChatSummaryResponse])

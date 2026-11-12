@@ -1,5 +1,7 @@
 """TOON encoding for token-efficient tool responses."""
 
+from typing import cast
+
 from pydantic import BaseModel
 from toon import ToonEncoder
 
@@ -25,7 +27,7 @@ class ToonResponseEncoder:
         str
             TOON-formatted string for ``BaseOutput.message``.
         """
-        return encoder.encode(data)
+        return cast("str", encoder.encode(data))
 
     @staticmethod
     def encode_model(model: BaseModel) -> str:
@@ -43,5 +45,5 @@ class ToonResponseEncoder:
         """
         dumped = model.model_dump(mode='json')
         if isinstance(dumped, dict):
-            return encoder.encode(dumped)
-        return encoder.encode({'data': dumped})
+            return cast("str", encoder.encode(dumped))
+        return cast("str", encoder.encode({'data': dumped}))

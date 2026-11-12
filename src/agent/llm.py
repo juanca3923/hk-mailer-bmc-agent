@@ -6,6 +6,7 @@ import functools
 import os
 import ssl
 from collections.abc import Callable
+from typing import cast
 
 import certifi
 import httpx
@@ -114,7 +115,7 @@ def get_openai_llm(settings: Settings, temperature: float = 0.6, stream: bool = 
 def get_huggingface_llm(settings: Settings, temperature: float = 0.6, stream: bool = False) -> BaseChatModel:
     """Get a Hugging Face chat model via the Inference Providers router.
 
-    Uses ``HuggingFaceEndpoint`` with ``repo_id`` (no ``endpoint_url``), which routes the
+    Uses ``HuggingFaceEndpoint`` with ``model`` (no ``endpoint_url``), which routes the
     call through https://router.huggingface.co to whichever provider serves that model.
     Tool calling depends entirely on the chosen model/provider supporting it; unlike
     OpenAI/Anthropic this is not guaranteed for every ``HUGGINGFACE_MODEL``.
@@ -138,7 +139,7 @@ def get_huggingface_llm(settings: Settings, temperature: float = 0.6, stream: bo
 
     bill_to = (settings.huggingface_bill_to or "").strip()
     endpoint = HuggingFaceEndpoint(
-        repo_id=settings.huggingface_model,
+        model=settings.huggingface_model,
         provider=(settings.huggingface_provider or "").strip() or None,
         huggingfacehub_api_token=settings.huggingface_api_key.strip(),
         temperature=temperature,
@@ -158,7 +159,8 @@ def get_anthropic_llm(settings: Settings, temperature: float = 0.6, stream: bool
         temperature=temperature,
         streaming=stream,
     )
-    return llm.bind(cache_control=ANTHROPIC_CACHE_CONTROL)
+    # ``bind`` devuelve un ``RunnableBinding`` que delega en el modelo; se trata como ``BaseChatModel``.
+    return cast("BaseChatModel", llm.bind(cache_control=ANTHROPIC_CACHE_CONTROL))
 
 
 def get_ollama_llm(settings: Settings, temperature: float = 0.6, stream: bool = False) -> BaseChatModel:

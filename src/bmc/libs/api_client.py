@@ -3,6 +3,7 @@
 import json
 import logging
 from http import HTTPStatus
+from typing import cast
 from urllib.parse import quote
 
 import httpx
@@ -269,7 +270,7 @@ class BmcClient:
         logger.debug("BMC GET %s", path)
         try:
             response = await self._request_with_retry("GET", path, params=params)
-            return response.json()
+            return cast("JsonValue", response.json())
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="GET", path=path)
             raise AssertionError("unreachable") from exc
@@ -346,7 +347,7 @@ class BmcClient:
             response = await self._request_with_retry("PUT", path, json_body=json_body)
             if not response.content:
                 return {}
-            return response.json()
+            return cast("JsonValue", response.json())
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="PUT", path=path)
             raise AssertionError("unreachable") from exc
@@ -385,7 +386,7 @@ class BmcClient:
             )
             if not response.content:
                 return {}
-            return response.json()
+            return cast("JsonValue", response.json())
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             self._raise_from_httpx(exc, method="POST", path=path)
             raise AssertionError("unreachable") from exc

@@ -208,7 +208,7 @@ async def bmc_create_work_order(
         Field(min_length=1, description="Product categorization tier 3, same row/catch-all as tier 1."),
     ],
     status: Annotated[
-        Literal[WORK_ORDER_STATUSES],
+        Literal[WORK_ORDER_STATUSES],  # type: ignore[valid-type]  # tuple constant expands to Literal values at runtime
         Field(description="Work order status at creation; keep the default unless told otherwise."),
     ] = DEFAULT_WORK_ORDER_STATUS,
     priority: Annotated[
@@ -511,7 +511,7 @@ async def bmc_update_work_order_status(
         Field(min_length=1, description="What changed and why; BMC also uses this text as the ticket title."),
     ],
     status: Annotated[
-        Literal[WORK_ORDER_STATUSES],
+        Literal[WORK_ORDER_STATUSES],  # type: ignore[valid-type]  # tuple constant expands to Literal values at runtime
         Field(description="Target status."),
     ] = DEFAULT_WORK_ORDER_UPDATE_STATUS,
 ) -> str:

@@ -139,13 +139,12 @@ class AgentCLI:
             chat_id=self.chat_id,
             events_service=get_agent_events_service(),
         ):
-            kind = event["type"]
-            if kind == "chunk":
+            if event["type"] == "chunk":
                 print(event["text"], end="", flush=True)
-            elif kind == "done":
+            elif event["type"] == "done":
                 self.chat_id = UUID(event["chat_id"])
                 print("\n", flush=True)
-            elif kind == "error":
+            elif event["type"] == "error":
                 self.user_logger.error("\n[error] %s\n", event["detail"])
 
     async def _repl_loop(self, graph: object) -> None:

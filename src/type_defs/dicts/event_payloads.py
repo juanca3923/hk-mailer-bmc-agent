@@ -50,7 +50,7 @@ class ToolStartPayload(TypedDict, total=False):
 class ToolEndPayload(TypedDict):
     """Payload del evento tool_end. Campos que se persisten en DB."""
 
-    result: str | None
+    result: str | JsonDict | None
     duration_seconds: float | None
 
 

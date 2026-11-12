@@ -106,7 +106,7 @@ class BaseToolHandler:
         if hasattr(data, 'model_dump'):
             message = ToonResponseEncoder.encode_model(data)  # type: ignore[arg-type]
         elif isinstance(data, dict):
-            message = ToonResponseEncoder.encode(data)  # type: ignore[arg-type]
+            message = ToonResponseEncoder.encode(data)
         else:
             message = str(data)
         return BaseOutput(success=True, message=message)

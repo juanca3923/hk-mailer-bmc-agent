@@ -58,7 +58,7 @@ def test_defaults_translate_to_none_provider_and_empty_server_kwargs() -> None:
     assert isinstance(chat, _FakeChatHuggingFace)
     endpoint = chat.llm
     assert isinstance(endpoint, _FakeEndpoint)
-    assert endpoint.kwargs["repo_id"] == settings.huggingface_model
+    assert endpoint.kwargs["model"] == settings.huggingface_model
     assert endpoint.kwargs["provider"] is None
     assert endpoint.kwargs["server_kwargs"] == {}
     assert endpoint.kwargs["max_new_tokens"] == _DEFAULT_MAX_NEW_TOKENS

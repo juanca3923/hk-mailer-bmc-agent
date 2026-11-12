@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Final, Literal
 
 # AgentRun.status en BD y dominio
 RunStatus = Literal["running", "success", "cancelled", "error"]
@@ -19,11 +19,12 @@ MessageType = Literal["normal", "error", "cancelled"]
 # ChatMessage.role
 ChatRole = Literal["user", "assistant"]
 
-# Constantes en tiempo de ejecución (mismos valores que los Literals anteriores)
-RUN_STATUS_RUNNING: RunStatus = "running"
-RUN_STATUS_SUCCESS: RunStatus = "success"
-RUN_STATUS_CANCELLED: RunStatus = "cancelled"
-RUN_STATUS_ERROR: RunStatus = "error"
+# Constantes en tiempo de ejecución (mismos valores que los Literals anteriores).
+# ``Final`` conserva el literal exacto (p. ej. ``Literal['success']``), compatible con ``TurnStatus``.
+RUN_STATUS_RUNNING: Final = "running"
+RUN_STATUS_SUCCESS: Final = "success"
+RUN_STATUS_CANCELLED: Final = "cancelled"
+RUN_STATUS_ERROR: Final = "error"
 
 MESSAGE_TYPE_NORMAL: MessageType = "normal"
 MESSAGE_TYPE_ERROR: MessageType = "error"

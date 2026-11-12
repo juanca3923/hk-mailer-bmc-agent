@@ -66,7 +66,7 @@ class AgentRunsStatsService:
                 "total_output_tokens": r.total_output_tokens,
             }
 
-        stats = {
+        stats: dict[str, object] = {
             "total_runs": total_runs,
             "total_input_tokens": sum_input,
             "total_output_tokens": sum_output,

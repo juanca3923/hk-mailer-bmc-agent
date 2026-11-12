@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from functools import lru_cache
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -78,8 +79,8 @@ class AgentRunsService:
                 )
             )
             events = result.scalars().all()
-            total_input_tokens = sum(int(e.payload.get("input_tokens") or 0) for e in events)
-            total_output_tokens = sum(int(e.payload.get("output_tokens") or 0) for e in events)
+            total_input_tokens = sum(int(cast("int | str", e.payload.get("input_tokens") or 0)) for e in events)
+            total_output_tokens = sum(int(cast("int | str", e.payload.get("output_tokens") or 0)) for e in events)
             run.ended_at = now
             run.total_time = total_time_minutes
             run.status = status

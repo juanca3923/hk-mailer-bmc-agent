@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import cast
 
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
@@ -162,7 +163,7 @@ class InterceptorHelpers:
         parts: list[str] = []
         for gen_list in response.generations:
             for gen in gen_list:
-                msg = gen.message
+                msg: BaseMessage | None = getattr(gen, "message", None)
                 if msg is None:
                     continue
                 piece = self.llm_message_reasoning_plus_content(msg)
@@ -177,7 +178,7 @@ class InterceptorHelpers:
         """Recorre cada AIMessage dentro de LLMResult.generations."""
         for gen_list in response.generations:
             for gen in gen_list:
-                msg = gen.message
+                msg: BaseMessage | None = getattr(gen, "message", None)
                 if msg is not None:
                     yield msg
 
@@ -280,8 +281,8 @@ class InterceptorHelpers:
                 gen_info = self.as_dict(getattr(gen, "generation_info", None))
                 resp_meta = self.as_dict(getattr(msg, "response_metadata", None))
                 merged: dict[str, object] = {**resp_meta, **gen_info, **usage_meta}
-                inp += int(merged.get("input_tokens") or merged.get("prompt_eval_count") or 0)
-                out += int(merged.get("output_tokens") or merged.get("eval_count") or 0)
+                inp += int(cast("int | str", merged.get("input_tokens") or merged.get("prompt_eval_count") or 0))
+                out += int(cast("int | str", merged.get("output_tokens") or merged.get("eval_count") or 0))
         return inp, out
 
     def tool_result_summary(self, output: object, limit: int = 2000) -> str | dict[str, object] | None:
@@ -303,7 +304,7 @@ class InterceptorHelpers:
     @staticmethod
     def tool_result_summary_from_dict(output: dict[str, object]) -> str | dict[str, object]:
         if "structured_content" in output:
-            return output["structured_content"]
+            return cast("str | dict[str, object]", output["structured_content"])
         return dict(list(output.items())[:10])
 
     @staticmethod

@@ -148,7 +148,7 @@ async def bmc_create_incident(
         ),
     ] = DEFAULT_INCIDENT_ASSIGNED_GROUP,
     status: Annotated[
-        Literal[INCIDENT_STATUSES],
+        Literal[INCIDENT_STATUSES],  # type: ignore[valid-type]  # tuple constant expands to Literal values at runtime
         Field(description="Incident status at creation; keep the default unless told otherwise."),
     ] = "Assigned",
     reported_source: Annotated[
