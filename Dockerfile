@@ -17,9 +17,11 @@ COPY skills ./skills
 # Dos RUN a propósito: instalar uv, sincronizar el venv y desinstalar uv en una MISMA capa producía,
 # con el image store containerd de Docker, una imagen vacía (capa con marcas de borrado de "/"):
 # fallaba al arrancar con "unable to find user appuser".
+# --link-mode copy: uv enlaza los paquetes por hardlink y containerd guarda esa capa vacía
+# (el siguiente RUN no encuentra /bin/sh ni appuser).
 RUN rm -rf ./skills/example \
     && pip install --no-cache-dir uv \
-    && uv sync --frozen --no-dev
+    && uv sync --frozen --no-dev --link-mode copy
 RUN pip uninstall -y uv \
     && mkdir -p /app/logs /app/data/ticket_files \
     && chown -R appuser:appuser /app/logs /app/data

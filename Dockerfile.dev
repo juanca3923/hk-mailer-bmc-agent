@@ -5,6 +5,8 @@ FROM python:3.14-slim
 
 WORKDIR /app
 
+RUN useradd -m -u 1000 appuser
+
 # Incluir docs y README para desarrollo.
 COPY pyproject.toml uv.lock ./
 COPY src ./src
@@ -15,9 +17,13 @@ RUN rm -rf ./skills/example
 COPY docs ./docs
 COPY README.md ./
 
+# uv sync y pip uninstall van en capas distintas: juntas, el image store containerd
+# deja la capa vacía y el siguiente RUN no encuentra /bin/sh.
 RUN pip install --no-cache-dir uv \
-    && uv sync --frozen --group dev \
-    && pip uninstall -y uv
+    && uv sync --frozen --group dev --link-mode copy
+RUN pip uninstall -y uv \
+    && mkdir -p /app/logs /app/data/ticket_files \
+    && chown -R appuser:appuser /app/logs /app/data
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV HTTP_HOST=0.0.0.0
@@ -27,6 +33,5 @@ ENV HTTP_PORT=8000
 ENV TZ=America/Bogota
 EXPOSE 8000
 
-RUN useradd -m -u 1000 appuser
 USER appuser
 CMD ["sh", "-c", "exec watchfiles --ignore-paths logs \"uvicorn http_api.app:app --reload --host ${HTTP_HOST:-0.0.0.0} --port ${HTTP_PORT:-8000}\""]
