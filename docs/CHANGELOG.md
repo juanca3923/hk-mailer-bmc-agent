@@ -5,6 +5,20 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-12 — fix: `Dockerfile.dev` no pierde `/bin/sh` al crear `appuser`
+
+- **`Dockerfile.dev`**: `useradd` pasa al inicio de la imagen, y `uv sync` y `pip uninstall` quedan en capas distintas (`--link-mode copy`). En una sola capa, el image store containerd de Docker la guardaba vacía y el `RUN useradd` siguiente fallaba con `stat /bin/sh: no such file or directory`. También crea `/app/data/ticket_files` y `/app/logs` con dueño `appuser`.
+- **Acción operativa**: reconstruir la imagen de desarrollo (`docker compose build` apuntando a `Dockerfile.dev`).
+
+---
+
+## 2026-11-12 — refactor: esqueleto compartido de las escrituras con guardas
+
+- `run_guarded_write` (`bmc/libs/helpers/guarded_write.py`) reemplaza el bloque repetido (escritura habilitada, ticket resuelto, no `Closed`, `try/except MCPClientError`) de `add_note`, `add_attachment`, `update_status` y `close` en `IncidentOperations` y `WorkOrderOperations`; `WorkLogInput` unifica los campos del work log y `ticket_tool_helpers.py` las piezas comunes de las tools. Sin cambio de comportamiento ni de esquemas de las tools; pylint vuelve a 10,00 (sin los 6 avisos `R0801`).
+- `Dockerfile`/`Dockerfile.dev`: `uv sync --link-mode copy` para evitar la capa vacía de containerd.
+
+---
+
 ## 2026-11-12 — feat: adjuntar archivos staged desde carpeta compartida y confinar rutas de adjuntos
 
 - **Seguridad (cambio de comportamiento)**: `BaseToolHandler.load_attachment` solo lee archivos dentro de `BMC_ATTACHMENT_BASE_DIR`; la ruta se resuelve por completo (`..` y enlaces simbólicos incluidos) y lo que quede fuera se rechaza. **Sin definir esa variable, los adjuntos quedan deshabilitados**, también `bmc_add_incident_attachment` / `bmc_add_work_order_attachment`, que antes aceptaban cualquier ruta legible del contenedor.

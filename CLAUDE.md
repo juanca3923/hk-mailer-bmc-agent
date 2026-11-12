@@ -73,6 +73,7 @@ agent-bmc/
 │   │   │   └── helpers/
 │   │   │       ├── ar_query_builder.py
 │   │   │       ├── entry_values_mapper.py
+│   │   │       ├── guarded_write.py       # run_guarded_write: shared guard skeleton for ticket writes
 │   │   │       ├── multipart_builder.py
 │   │   │       ├── work_order_operations.py
 │   │   │       ├── incident_operations.py
@@ -304,7 +305,8 @@ contains TOON-encoded structured data. On error, `message` contains a user-facin
 Business-rule guards (`src/bmc/libs/helpers/ticket_guards.py`) run before any write: `require_not_closed`
 rejects writes on tickets already `Closed`; `require_submitter` (close only) rejects closing a ticket
 whose `Submitter` does not match `BMC_USERNAME` — adding notes/attachments to such a ticket is still
-allowed.
+allowed. The common write skeleton is `run_guarded_write` in `helpers/guarded_write.py` (both
+`*Operations` classes use it; `require_submitter` is passed as `extra_guard` by the close flows).
 
 ### Reporter identity resolution (`bmc_create_work_order` / `bmc_create_incident`)
 

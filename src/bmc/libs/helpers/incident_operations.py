@@ -1,6 +1,7 @@
 """Incident write operations shared by agent tools."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Protocol
 
 from bmc.config.settings import BmcSettings
@@ -30,11 +31,11 @@ from bmc.libs.constants import (
     WORK_LOG_ATTACHMENT_MARKER,
 )
 from bmc.libs.helpers.entry_values_mapper import EntryValuesMapper
+from bmc.libs.helpers.guarded_write import run_guarded_write, work_log_fields
 from bmc.libs.helpers.multipart_builder import AttachmentPart, MultipartBuilder
 from bmc.libs.helpers.person_lookup import resolve_reporter_identity
 from bmc.libs.helpers.ticket_guards import (
     TicketState,
-    require_not_closed,
     require_submitter,
     resolve_ticket_state_from_search,
 )
@@ -99,6 +100,21 @@ class IncidentOperations:
             self._handler.client.search_incident(incident_number),
             not_found_message=USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND.format(incident_number=incident_number),
             request_id_missing_message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING,
+        )
+
+    async def _guarded_write(
+        self,
+        incident_number: str,
+        action: Callable[[TicketState], Awaitable[BaseOutput]],
+        extra_guard: Callable[[TicketState], BaseOutput | None] | None = None,
+    ) -> BaseOutput:
+        """Run ``action`` on an incident after the common write guards (see ``run_guarded_write``)."""
+        return await run_guarded_write(
+            self._handler,
+            resolve=lambda: self.resolve_ticket_state(incident_number),
+            missing_message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING,
+            action=action,
+            extra_guard=extra_guard,
         )
 
     async def create(self, data: CreateIncidentInput) -> BaseOutput:
@@ -277,31 +293,13 @@ class IncidentOperations:
         BaseOutput
             Success or error output for the tool.
         """
-        blocked = self._handler.ensure_write_allowed()
-        if blocked is not None:
-            return blocked
+        async def post(_state: TicketState) -> BaseOutput:
+            values = WorkInfoIncidentValues(incident_number=data.incident_number, **work_log_fields(data))
+            await self._handler.client.post_incident_work_log(MultipartBuilder.build(values))
+            logger.info("add_incident_note ok incident_number=%s", data.incident_number)
+            return BaseOutput(success=True, message=f"Nota añadida a {data.incident_number}.")
 
-        state, error = await self.resolve_ticket_state(data.incident_number)
-        if error is not None or state is None:
-            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING)
-
-        output = require_not_closed(state.status)
-        if output is None:
-            try:
-                values = WorkInfoIncidentValues(
-                    incident_number=data.incident_number,
-                    work_log_type=data.work_log_type,
-                    view_access=data.view_access,
-                    secure_work_log=data.secure_work_log,
-                    detailed_description=data.note_text,
-                )
-                work_info_body = MultipartBuilder.build(values)
-                await self._handler.client.post_incident_work_log(work_info_body)
-                logger.info("add_incident_note ok incident_number=%s", data.incident_number)
-                output = BaseOutput(success=True, message=f"Nota añadida a {data.incident_number}.")
-            except MCPClientError as exc:
-                output = BaseOutput(success=False, message=exc.message)
-        return output
+        return await self._guarded_write(data.incident_number, post)
 
     async def add_attachment(self, data: AddIncidentAttachmentInput) -> BaseOutput:
         """Post a work log with file attachment, after guard checks.
@@ -316,33 +314,18 @@ class IncidentOperations:
         BaseOutput
             Success or error output for the tool.
         """
-        blocked = self._handler.ensure_write_allowed()
-        if blocked is not None:
-            return blocked
+        async def post(_state: TicketState) -> BaseOutput:
+            attachment = self._handler.load_attachment(data.file_path)
+            values = WorkInfoIncidentValues(
+                incident_number=data.incident_number,
+                attachment_marker=WORK_LOG_ATTACHMENT_MARKER,
+                **work_log_fields(data),
+            )
+            await self._handler.client.post_incident_work_log(MultipartBuilder.build(values, attachment))
+            logger.info("add_incident_attachment ok incident_number=%s", data.incident_number)
+            return BaseOutput(success=True, message=f"Adjunto añadido a {data.incident_number}.")
 
-        state, error = await self.resolve_ticket_state(data.incident_number)
-        if error is not None or state is None:
-            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING)
-
-        output = require_not_closed(state.status)
-        if output is None:
-            try:
-                attachment = self._handler.load_attachment(data.file_path)
-                values = WorkInfoIncidentValues(
-                    incident_number=data.incident_number,
-                    work_log_type=data.work_log_type,
-                    view_access=data.view_access,
-                    secure_work_log=data.secure_work_log,
-                    detailed_description=data.note_text,
-                    attachment_marker=WORK_LOG_ATTACHMENT_MARKER,
-                )
-                work_info_body = MultipartBuilder.build(values, attachment)
-                await self._handler.client.post_incident_work_log(work_info_body)
-                logger.info("add_incident_attachment ok incident_number=%s", data.incident_number)
-                output = BaseOutput(success=True, message=f"Adjunto añadido a {data.incident_number}.")
-            except MCPClientError as exc:
-                output = BaseOutput(success=False, message=exc.message)
-        return output
+        return await self._guarded_write(data.incident_number, post)
 
     async def close(self, data: CloseIncidentInput) -> BaseOutput:
         """Close an incident: PUT ownership+In Progress, then PUT close (Resolved).
@@ -362,38 +345,28 @@ class IncidentOperations:
         BaseOutput
             Success or error output for the tool.
         """
-        blocked = self._handler.ensure_write_allowed()
-        if blocked is not None:
-            return blocked
+        async def close_flow(state: TicketState) -> BaseOutput:
+            ownership = UpdateIncidentStatusValues(
+                description=DEFAULT_INCIDENT_CLOSE_OWNERSHIP_DESCRIPTION,
+                status=DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
+                assignee=self._handler.settings.assignee_display_name,
+            )
+            await self._handler.client.update_incident(state.request_id, EntryValuesMapper.wrap_entry_body(ownership))
+            close_values = CloseIncidentValues(
+                description=data.description,
+                resolution=data.resolution,
+                status=DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
+                status_reason=DEFAULT_INCIDENT_CLOSE_STATUS_REASON,
+            )
+            await self._handler.client.update_incident(
+                state.request_id,
+                EntryValuesMapper.wrap_entry_body(close_values),
+            )
+            logger.info("close_incident ok incident_number=%s", data.incident_number)
+            return BaseOutput(success=True, message=f"Incidente {data.incident_number} cerrado.")
 
-        state, error = await self.resolve_ticket_state(data.incident_number)
-        if error is not None or state is None:
-            return error or BaseOutput(success=False, message=USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING)
-
-        output = require_not_closed(state.status) or require_submitter(state.submitter, self._handler.settings.username)
-        if output is None:
-            try:
-                ownership = UpdateIncidentStatusValues(
-                    description=DEFAULT_INCIDENT_CLOSE_OWNERSHIP_DESCRIPTION,
-                    status=DEFAULT_INCIDENT_CLOSE_INTERMEDIATE_STATUS,
-                    assignee=self._handler.settings.assignee_display_name,
-                )
-                await self._handler.client.update_incident(
-                    state.request_id,
-                    EntryValuesMapper.wrap_entry_body(ownership),
-                )
-                close_values = CloseIncidentValues(
-                    description=data.description,
-                    resolution=data.resolution,
-                    status=DEFAULT_INCIDENT_CLOSE_FINAL_STATUS,
-                    status_reason=DEFAULT_INCIDENT_CLOSE_STATUS_REASON,
-                )
-                await self._handler.client.update_incident(
-                    state.request_id,
-                    EntryValuesMapper.wrap_entry_body(close_values),
-                )
-                logger.info("close_incident ok incident_number=%s", data.incident_number)
-                output = BaseOutput(success=True, message=f"Incidente {data.incident_number} cerrado.")
-            except MCPClientError as exc:
-                output = BaseOutput(success=False, message=exc.message)
-        return output
+        return await self._guarded_write(
+            data.incident_number,
+            close_flow,
+            extra_guard=lambda state: require_submitter(state.submitter, self._handler.settings.username),
+        )

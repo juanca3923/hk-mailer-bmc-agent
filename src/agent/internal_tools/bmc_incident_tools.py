@@ -19,6 +19,7 @@ from typing import Annotated, Literal
 from langchain_core.tools import tool
 from pydantic import Field
 
+from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
 from bmc.exceptions.mcp import MCPClientError
 from bmc.libs import tool_handler
 from bmc.libs.business_defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP
@@ -42,7 +43,6 @@ from bmc.type_defs.inputs import (
     TicketsByEmailInput,
 )
 from bmc.type_defs.outputs import (
-    BaseOutput,
     IncidentByEmailRow,
     IncidentDetailData,
     IncidentsByEmailData,
@@ -229,18 +229,11 @@ async def bmc_get_incident(
     """
     handler = tool_handler.get_shared_handler()
     data = IncidentNumberInput(incident_number=incident_number)
-    try:
-        result = await handler.client.search_incident(data.incident_number)
-    except MCPClientError as exc:
-        return BaseToolHandler.failure(exc).model_dump_json()
-    first = result.first_values()
-    if first is None:
-        return BaseOutput(
-            success=False,
-            message=f"Error: No se encontró el incidente {data.incident_number}.",
-        ).model_dump_json()
-    detail = _incident_detail_from_search(data.incident_number, first.data)
-    return BaseToolHandler.success_toon(detail).model_dump_json()
+    return await search_detail_json(
+        handler.client.search_incident(data.incident_number),
+        not_found_message=f"Error: No se encontró el incidente {data.incident_number}.",
+        build_detail=lambda values: _incident_detail_from_search(data.incident_number, values),
+    )
 
 
 @tool(
@@ -343,10 +336,7 @@ async def bmc_add_incident_note(
     """
     data = AddIncidentNoteInput(
         incident_number=incident_number,
-        note_text=note_text,
-        work_log_type=work_log_type,
-        view_access=view_access,
-        secure_work_log=secure_work_log,
+        **work_log_options(note_text, work_log_type, view_access, secure_work_log),
     )
     result = await IncidentOperations(tool_handler.get_shared_handler()).add_note(data)
     return result.model_dump_json()
@@ -392,11 +382,8 @@ async def bmc_add_incident_attachment(
     handler = tool_handler.get_shared_handler()
     data = AddIncidentAttachmentInput(
         incident_number=incident_number,
-        note_text=note_text,
         file_path=file_path,
-        work_log_type=work_log_type,
-        view_access=view_access,
-        secure_work_log=secure_work_log,
+        **work_log_options(note_text, work_log_type, view_access, secure_work_log),
     )
     result = await IncidentOperations(handler).add_attachment(data)
     return result.model_dump_json()

@@ -218,8 +218,8 @@ class CreateIncidentInput(BaseModel):
     )
 
 
-class AddWorkOrderNoteInput(WorkOrderIdInput):
-    """Add a work log note to a work order."""
+class WorkLogInput(BaseModel):
+    """Work log note fields shared by incidents and work orders."""
 
     note_text: str = Field(
         ..., min_length=1, description="Text of the note, written as it should be read by whoever reviews the ticket."
@@ -235,6 +235,10 @@ class AddWorkOrderNoteInput(WorkOrderIdInput):
         default="No",
         description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise.",
     )
+
+
+class AddWorkOrderNoteInput(WorkLogInput, WorkOrderIdInput):
+    """Add a work log note to a work order."""
 
 
 class AddWorkOrderAttachmentInput(AddWorkOrderNoteInput):
@@ -243,23 +247,8 @@ class AddWorkOrderAttachmentInput(AddWorkOrderNoteInput):
     file_path: str = Field(..., min_length=1, description="Local path readable by the MCP server.")
 
 
-class AddIncidentNoteInput(IncidentNumberInput):
+class AddIncidentNoteInput(WorkLogInput, IncidentNumberInput):
     """Add a work log note to an incident."""
-
-    note_text: str = Field(
-        ..., min_length=1, description="Text of the note, written as it should be read by whoever reviews the ticket."
-    )
-    work_log_type: str = Field(
-        default="General Information",
-        description="Category of the note in the ticket activity log; keep the default unless asked otherwise.",
-    )
-    view_access: str = Field(
-        default="Public", description="Visibility of the note in BMC; keep the default unless asked otherwise."
-    )
-    secure_work_log: str = Field(
-        default="No",
-        description="Whether the note is flagged as secure in BMC; keep the default unless asked otherwise.",
-    )
 
 
 class AddIncidentAttachmentInput(AddIncidentNoteInput):
