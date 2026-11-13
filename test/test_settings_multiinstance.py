@@ -84,11 +84,13 @@ def test_effective_agent_card_description_from_env(monkeypatch: pytest.MonkeyPat
     assert s.effective_agent_card_description == "Descripción personalizada."
 
 
-def test_effective_agent_card_description_default_includes_slug(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_effective_agent_card_description_default_states_requirements(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_SLUG", "mybot")
     s = Settings()
-    assert "mybot" in s.effective_agent_card_description
-    assert "POST /chat" in s.effective_agent_card_description
+    description = s.effective_agent_card_description
+    assert "mybot" in description
+    assert "correo real" in description
+    assert "quedan abiertos" in description
 
 
 def test_normalized_a2a_peer_configs_requires_url_pipe_agent_id(monkeypatch: pytest.MonkeyPatch) -> None:

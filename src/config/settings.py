@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     stream: bool = Field(default=False, alias="STREAM")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    # Caps per run (0 = no cap): they stop a model that repeats tools or loops.
+    agent_max_model_calls_per_run: int = Field(default=20, ge=0, alias="AGENT_MAX_MODEL_CALLS_PER_RUN")
+    agent_max_tool_calls_per_run: int = Field(default=15, ge=0, alias="AGENT_MAX_TOOL_CALLS_PER_RUN")
+    bmc_max_create_calls_per_run: int = Field(default=3, ge=0, alias="BMC_MAX_CREATE_CALLS_PER_RUN")
+
     http_host: str = Field(default="0.0.0.0", alias="HTTP_HOST")
     http_port: int = Field(alias="HTTP_PORT")
 
@@ -202,7 +207,13 @@ class Settings(BaseSettings):
         text = (self.agent_card_description or "").strip()
         if text:
             return text
-        return f"Agente operativo Linux (Deep Agents + MCP); mismo grafo que POST /chat. Instancia: {self.agent_slug}."
+        return (
+            "Agente que registra y consulta incidentes y órdenes de trabajo en BMC Helix ARUS. "
+            "Para crear un ticket requiere el correo real de la persona solicitante (nunca inventado) y la "
+            "descripción del caso; para consultar un ticket requiere su número (INC... o WO...) o el correo del "
+            "solicitante. Los casos se registran y quedan abiertos. "
+            f"Instancia: {self.agent_slug}."
+        )
 
     @property
     def langfuse_tracing_ready(self) -> bool:

@@ -5,6 +5,34 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — feat: topes por run para el modelo y las tools
+
+- Ningún tope limitaba al agente (el default de LangGraph son ~10.000 pasos): ante un fallo persistente el modelo repitió `bmc_create_work_order` 28 veces seguidas (~21k tokens de entrada por vuelta) y siguió corriendo aunque el llamador (el mailer) ya había abandonado por tiempo.
+- Nuevo `agent/middleware/run_limits.py` (`ToolCallLimitMiddleware` y `ModelCallLimitMiddleware` de LangChain), configurable: `AGENT_MAX_MODEL_CALLS_PER_RUN` (20; al superarlo el run termina con error, que el llamador A2A ve como fallo), `AGENT_MAX_TOOL_CALLS_PER_RUN` (15; las sobrantes se bloquean y el modelo responde) y `BMC_MAX_CREATE_CALLS_PER_RUN` (3 para cada `bmc_create_*`). `0` desactiva cada tope.
+
+---
+
+## 2026-11-13 — fix: tickets abiertos en modo automático y Agent Card con los datos requeridos
+
+- En modo automático (A2A) el agente ya no cierra el ticket: solo lo crea (y agrega la nota) y lo deja abierto; `Estado final: Abierto`. El cierre sigue disponible en modo interactivo.
+- La descripción por defecto de la Agent Card (antes "Agente operativo Linux…") dice qué necesita el agente: el correo real del solicitante y la descripción del caso para crear, y el número del ticket o el correo para consultar; y que los casos quedan abiertos. `AGENT_CARD_DESCRIPTION` sigue pudiendo sobrescribirla.
+
+---
+
+## 2026-11-13 — fix: `tool_end` y `tool_error` registran el nombre y la duración de la tool
+
+- Los logs mostraban `tool=None duration=0.000s`: el callback buscaba el nombre por `tool_call_id`, que LangChain solo entrega al iniciar la tool. Ahora se usa el `run_id`, igual en los tres callbacks.
+
+---
+
+## 2026-11-13 — feat: catálogo único de categorización `categorias-mail-drive`
+
+- Las skills `categorias-eventos` y `categorias-usuario` se reemplazan por `categorias-mail-drive`, con la tabla de Requerimientos (con palabras clave para elegir la fila) y la de Incidentes de la mesa de servicio. Sin cambios de código.
+- Los niveles de producto 2 y 3 que la tabla original dejaba vacíos se completaron con combinaciones existentes del catálogo anterior (aproximadas); `Prioridad` y `Escalamiento 1` quedan vacíos y se usan los defaults de la tool. **Pendiente**: confirmar ambos con la mesa de servicio.
+- **Acción operativa**: si el prompt vive en Langfuse, reemplazar allí las referencias a `categorias-eventos`/`categorias-usuario`.
+
+---
+
 ## 2026-11-13 — refactor: tools del LLM en clases y errores siempre visibles
 
 - Cada archivo de `agent/internal_tools/` expone una clase (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`, `DatetimeTools`, `MemoryTools`, `SkillTools`, `A2APeerTools`) con un `get_tools()` estático; `_ALL_BMC_TOOLS` y las funciones `get_*_tools` desaparecen.
