@@ -41,66 +41,27 @@ AR REST API directly (no MCP server required).
 
 ## Project Structure
 
-```
-agent-bmc/
-├── src/
-│   ├── agent/                        # LangGraph agent core
-│   │   ├── agent.py                  # build_agent(): BMC lifecycle + graph compilation
-│   │   ├── llm.py                    # LLM factory (Ollama / OpenAI / Anthropic)
-│   │   ├── mcp_tools.py              # Optional extra MCP tools via MCP_URLS
-│   │   ├── cli.py                    # Interactive REPL
-│   │   ├── prompts.py                # System prompt loader (Langfuse / file)
-│   │   ├── a2a_peers.py              # Outbound A2A client
-│   │   ├── tool_error_policy.py      # Global tool error handling
-│   │   ├── interceptors/             # LLM/tool event callbacks
-│   │   └── internal_tools/
-│   │       ├── bmc_tools.py          # bmc_health_check + registry (get_bmc_tools(), _ALL_BMC_TOOLS)
-│   │       ├── bmc_work_order_tools.py  # 7 Work Order @tool functions
-│   │       ├── bmc_incident_tools.py    # 6 Incident @tool functions
-│   │       ├── memory_tools.py       # memory_* tools (chat/run history)
-│   │       ├── skill_tools.py        # skill_get_guide
-│   │       ├── datetime_tools.py     # get_current_date (system clock, AGENT_TIMEZONE)
-│   │       └── a2a_tools.py          # a2a_list_remote_agents, a2a_send_to_remote
-│   ├── bmc/                          # BMC Helix client layer
-│   │   ├── config/settings.py        # BmcSettings (BMC_BASE_URL, BMC_USERNAME, …)
-│   │   ├── exceptions/mcp.py         # MCPClientError, MCPLoginError, MCPValidationError
-│   │   ├── libs/
-│   │   │   ├── connection_manager.py # Singleton JWT session + auto-refresh
-│   │   │   ├── api_client.py         # BmcClient: async HTTP methods per AR form
-│   │   │   ├── tool_handler.py       # BaseToolHandler: shared write guard + TOON encode
-│   │   │   ├── constants.py          # AR field names, status catalogs, error messages
-│   │   │   ├── toon_encoder.py       # TOON response encoder
-│   │   │   └── helpers/
-│   │   │       ├── ar_query_builder.py
-│   │   │       ├── entry_values_mapper.py
-│   │   │       ├── guarded_write.py       # run_guarded_write: shared guard skeleton for ticket writes
-│   │   │       ├── multipart_builder.py
-│   │   │       ├── work_order_operations.py
-│   │   │       ├── incident_operations.py
-│   │   │       └── person_lookup.py       # CTM:People reporter identity resolution
-│   │   └── type_defs/                # Pydantic models for BMC inputs/outputs
-│   │       ├── inputs.py             # CreateWorkOrderInput, CreateIncidentInput, …
-│   │       ├── outputs.py            # BaseOutput, WorkOrderCreatedData, …
-│   │       ├── ar_values.py          # AR field aliases (CreateWorkOrderValues, …)
-│   │       ├── ar_api.py             # BmcEntryListResponse, BmcCreateEntryResponse
-│   │       ├── ticket_status.py      # WorkOrderStatus, IncidentStatus enums
-│   │       └── json_types.py         # JsonValue alias
-│   ├── config/                       # Agent settings (LLM, DB, A2A, Langfuse)
-│   ├── http_api/                     # FastAPI service
-│   ├── commons/                      # Shared runner, A2A inbound, utils
-│   ├── database/                     # Checkpointer, store, models
-│   ├── services/                     # Chat, run and event services
-│   ├── exception/                    # Domain exceptions
-│   └── type_defs/                    # HTTP contract types (Pydantic + TypedDict)
-├── skills/                           # Local Markdown skill guides
-├── docs/                             # Technical documentation
-├── test/                             # Tests (pytest + integration)
-├── alembic/                          # DB migrations
-├── pyproject.toml
-├── .env.example
-├── system.promt.md                   # BMC-specific system prompt
-└── base.prompt.md                    # Memory and skills base prompt
-```
+All source code is in `src/`, flat (no nested `src/src/`): packages are imported as `from agent import ...`, `from services.bmc import ...`, etc. The full, generated module map is in `docs/ARCHITECTURE.md` (section "Estructura del paquete").
+
+**Layers (a package only imports from the ones before it; nothing imports upward):**
+
+| Layer | Package | What lives there |
+|---|---|---|
+| base | `type_defs/` | Types only, no logic: `models/<domain>/` (TypedDict, dataclasses, BMC Pydantic models), `enums/` (closed sets as `StrEnum`), `ports/` (`Protocol` contracts), `http/` (Pydantic API models) |
+| base | `constants/` | Public constants, one module per domain (`bmc/fields.py`, `bmc/messages.py`, `bmc/api.py`, `bmc/tickets.py`, ...) |
+| base | `exception/` | Domain exceptions (`AgentError`, `ToolAgentError`, BMC/MCP client errors) |
+| 1 | `commons/` | **Pure** logic by domain: `text/`, `a2a/`, `bmc/` (AR query builder, entry values, multipart, ticket guards, guarded write, TOON). Never imports `config`, `database`, `services`, `agent` or `http_api` |
+| 2 | `config/` | `Settings`, `BmcSettings`, logger, skill catalog |
+| 3 | `database/` | Engine, SQLAlchemy models, checkpointer, store |
+| 4 | `services/` | `persistence/` (DB services), `bmc/` (AR client, JWT connection, tool handler, WO/incident operations, people lookup, staged files), `startup/` (preflight) |
+| 5 | `agent/` | LangGraph agent: `runtime/`, `observability/`, `internal_tools/` (BMC tools), `interceptors/`, `llm.py`, `prompts.py`, `cli.py` |
+| 6 | `http_api/` | FastAPI service (app, lifecycle, A2A inbound, routers) |
+
+**One file, one responsibility:** types only in `type_defs/`; public constants only in `constants/` (private `_X` constants and behavioural objects stay where they are used); services and classes alone in their module; closed sets of values are `StrEnum` in `type_defs/enums/`.
+
+**Where does new code go?** type -> `type_defs/models/<domain>/`; contract between layers -> `type_defs/ports/`; fixed value -> `constants/<domain>/`; dependency-free logic -> `commons/<domain>/`; database access -> `services/persistence/`; BMC client or operation -> `services/bmc/`; LLM tool -> `agent/internal_tools/`. Do not leave files loose at the root of `commons/` or `services/`.
+
+Documented exceptions: `TicketHandlerContext` (a `Protocol` over services-layer types) lives in `services/bmc/handler_context.py`; `constants/bmc/defaults.py` reads the environment at import; `type_defs/enums/bmc_status.py` keeps the small validators needed by Pydantic `Annotated` types.
 
 ---
 
@@ -216,7 +177,7 @@ Copy `.env.example` to `.env` and fill in the required values.
 
 ### Business defaults — BMC tickets
 
-Fixed values injected by `src/bmc/libs/business_defaults.py` into every `bmc_create_work_order`
+Fixed values injected by `src/constants/bmc/defaults.py` into every `bmc_create_work_order`
 and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
 `First Name`/`Last Name` are **not** in this table — they are resolved per-call from
 `reporter_email` (see "Reporter identity resolution" above), not a fixed default.
@@ -278,7 +239,7 @@ The 15 tools are split across `bmc_tools.py` (`bmc_health_check` + the registry)
 `bmc_work_order_tools.py` (Work Orders), `bmc_incident_tools.py` (Incidents) and
 `bmc_staged_files_tools.py` (files staged by another agent) — split
 once the original single file grew past the repo's 1000-line-per-module limit. All four
-share one lazy `BaseToolHandler` singleton via `bmc.libs.tool_handler.get_shared_handler()`,
+share one lazy `BaseToolHandler` singleton via `services.bmc.tool_handler.get_shared_handler()`,
 deliberately *not* imported between the agent-side modules, to avoid a cyclic import
 between the aggregator (`bmc_tools.py`) and the modules it registers.
 
@@ -303,7 +264,7 @@ between the aggregator (`bmc_tools.py`) and the modules it registers.
 All tools return a JSON string with `{"success": bool, "message": "..."}`. On success, `message`
 contains TOON-encoded structured data. On error, `message` contains a user-facing Spanish error.
 
-Business-rule guards (`src/bmc/libs/helpers/ticket_guards.py`) run before any write: `require_not_closed`
+Business-rule guards (`src/commons/bmc/ticket_guards.py`) run before any write: `require_not_closed`
 rejects writes on tickets already `Closed`; `require_submitter` (close only) rejects closing a ticket
 whose `Submitter` does not match `BMC_USERNAME` — adding notes/attachments to such a ticket is still
 allowed. The common write skeleton is `run_guarded_write` in `helpers/guarded_write.py` (both
@@ -313,7 +274,7 @@ allowed. The common write skeleton is `run_guarded_write` in `helpers/guarded_wr
 
 BMC's create forms have no "create from just an email" field — `First Name`/`Last Name`
 (submitter identity, distinct from the fixed `Customer` identity) must be sent as free text.
-`src/bmc/libs/helpers/person_lookup.py` resolves them from the required `reporter_email`
+`src/services/bmc/person_lookup.py` resolves them from the required `reporter_email`
 parameter by querying `CTM:People` (`BmcClient.search_person_by_email`, form
 `BmcSettings.form_people_query`, default `CTM:People`) instead of a fixed persona. If no
 person is found (or the matched record has an incomplete name), the call fails with no
@@ -328,10 +289,10 @@ since BMC's result order for a non-unique match is not guaranteed.
 
 ## Adding New BMC Tools
 
-1. Add input/output models to `src/bmc/type_defs/inputs.py` and `outputs.py` if needed.
-2. Add AR field constants to `src/bmc/libs/constants.py` if needed.
-3. Add the HTTP method to `src/bmc/libs/api_client.py`.
-4. Add a helper in `src/bmc/libs/helpers/` if the operation has multiple steps.
+1. Add input/output models to `src/type_defs/models/bmc/inputs.py` and `outputs.py` if needed.
+2. Add AR field constants to `src/constants/bmc/` if needed.
+3. Add the HTTP method to `src/services/bmc/api_client.py`.
+4. Add a helper in `src/commons/bmc/` (pure builders) or `src/services/bmc/` (multi-step operations) if the operation has multiple steps.
 5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`
    (whichever ticket type it's for), following the lazy handler pattern
    (`handler = tool_handler.get_shared_handler()`). Pass an explicit, concise

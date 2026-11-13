@@ -1,10 +1,10 @@
-"""Tests de :class:`commons.last_ai_reply.ReplyExtractor`."""
+"""Tests de :class:`agent.runtime.last_ai_reply.ReplyExtractor`."""
 
 from __future__ import annotations
 
 from langchain_core.messages import AIMessage
 
-from commons.last_ai_reply import ReplyExtractor
+from agent.runtime.last_ai_reply import ReplyExtractor
 
 
 def test_from_messages_extracts_text_from_anthropic_style_blocks() -> None:

@@ -7,7 +7,7 @@ from uuid import UUID
 
 from agent.a2a_peers import get_a2a_registry_from_graph
 from agent.agent import build_agent
-from commons.runner import get_agent_runner
+from agent.runtime.runner import get_agent_runner
 from config import Settings, get_logger, get_user_logger
 from database.engine import ensure_schema
 from exception import AgentError

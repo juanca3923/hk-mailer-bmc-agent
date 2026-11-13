@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs.constants import AR_FIELD_PEOPLE_LOGIN_ID, AR_FIELD_PEOPLE_STATUS
-from bmc.libs.helpers.person_lookup import PersonCheck, verify_person_by_email
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from constants.bmc.fields import AR_FIELD_PEOPLE_LOGIN_ID, AR_FIELD_PEOPLE_STATUS
+from exception.mcp import MCPClientError
+from services.bmc.person_lookup import verify_person_by_email
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.person import PersonCheck
 
 EMAIL = 'nia.correo@henkia.com'
 
@@ -80,7 +81,7 @@ async def test_lookup_errors_are_not_reported_as_a_missing_person() -> None:
 async def test_people_search_also_asks_bmc_for_the_status_field() -> None:
     from types import SimpleNamespace  # noqa: PLC0415
 
-    from bmc.libs.api_client import BmcClient  # noqa: PLC0415
+    from services.bmc.api_client import BmcClient  # noqa: PLC0415
 
     seen: dict[str, str] = {}
 

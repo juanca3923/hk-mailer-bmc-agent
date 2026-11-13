@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
-from commons.a2a_reply_text import extract_a2a_reply_text
-from type_defs.dicts.json_types import JsonDict
+from commons.a2a.reply_text import extract_a2a_reply_text
+from type_defs.models.common.json_types import JsonDict
 
 
 def test_extract_from_artifacts() -> None:

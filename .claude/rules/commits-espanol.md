@@ -21,7 +21,7 @@ Corrige ids de recurso del calendario de liquidación
 BUG
 
 ## Archivos
-- `src/commons/runner.py`: descripción breve del cambio.
+- `src/agent/runtime/runner.py`: descripción breve del cambio.
 - `src/config/settings.py`: descripción breve del cambio.
 ```
 

@@ -6,11 +6,11 @@ import asyncio
 
 import pytest
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs import preflight
-from bmc.libs.constants import AR_FIELD_PEOPLE_STATUS
-from bmc.libs.preflight import check_people_status_field, run_startup_preflight
-from bmc.type_defs.ar_api import BmcEntryListResponse
+from constants.bmc.fields import AR_FIELD_PEOPLE_STATUS
+from exception.mcp import MCPClientError
+from services.startup import preflight
+from services.startup.preflight import check_people_status_field, run_startup_preflight
+from type_defs.models.bmc.ar_api import BmcEntryListResponse
 
 
 class FakeClient:

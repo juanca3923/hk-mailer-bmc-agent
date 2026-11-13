@@ -11,20 +11,12 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
 
-from commons.interceptor_helpers import InterceptorHelpers
-from commons.utils import TextUtils
+from agent.observability.interceptor_helpers import InterceptorHelpers
+from commons.text.utils import TextUtils
 from config import get_logger
 from exception import AgentError
-from services.agent_events_service import AgentEventsService
-from type_defs.dicts.event_payloads import (
-    LlmEndPayload,
-    LlmErrorPayload,
-    LlmStartPayload,
-    ToolEndPayload,
-    ToolErrorPayload,
-    ToolStartPayload,
-)
-from type_defs.dicts.event_types import (
+from services.persistence.agent_events_service import AgentEventsService
+from type_defs.enums.event_types import (
     EVENT_LLM_END,
     EVENT_LLM_ERROR,
     EVENT_LLM_START,
@@ -33,8 +25,16 @@ from type_defs.dicts.event_types import (
     EVENT_TOOL_START,
     AgentEventType,
 )
-from type_defs.dicts.json_types import JsonDict
-from type_defs.dicts.protocols import LogFn
+from type_defs.models.agent.event_payloads import (
+    LlmEndPayload,
+    LlmErrorPayload,
+    LlmStartPayload,
+    ToolEndPayload,
+    ToolErrorPayload,
+    ToolStartPayload,
+)
+from type_defs.models.common.json_types import JsonDict
+from type_defs.ports.agent import LogFn
 
 logger = get_logger()
 

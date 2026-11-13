@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from type_defs.dicts.domain_literals import TurnStatus
+from type_defs.enums.domain_literals import TurnStatus
 
 
 class ChatRequest(BaseModel):

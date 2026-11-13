@@ -15,8 +15,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import HTTPException
 
-from commons.a2a_inbound_jsonrpc import A2AInboundRpcFailure
 from http_api.state import agent_state
+from type_defs.models.a2a.inbound import A2AInboundRpcFailure
 
 
 def reserve_turn_or_raise_http() -> None:

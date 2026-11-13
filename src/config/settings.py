@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Literal, Self
 
@@ -11,7 +10,7 @@ from dotenv import load_dotenv
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-AGENT_SLUG_RE = re.compile(r"^[a-z][a-z0-9_]*\Z")
+from constants.config import AGENT_SLUG_RE
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,1 @@
+"""Conjuntos cerrados de valores."""

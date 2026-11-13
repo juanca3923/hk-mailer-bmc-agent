@@ -1,4 +1,4 @@
-"""Tests unitarios de :class:`commons.a2a_inbound_jsonrpc.A2AInboundMessageSendProcessor`."""
+"""Tests unitarios de :class:`http_api.a2a_jsonrpc.A2AInboundMessageSendProcessor`."""
 
 from __future__ import annotations
 
@@ -8,12 +8,9 @@ from http import HTTPStatus
 
 import pytest
 
-from commons.a2a_inbound_jsonrpc import (
-    A2AInboundMessageSendProcessor,
-    A2AInboundMessageSendRequest,
-    A2AInboundRpcFailure,
-)
 from config import Settings
+from http_api.a2a_jsonrpc import A2AInboundMessageSendProcessor
+from type_defs.models.a2a.inbound import A2AInboundMessageSendRequest, A2AInboundRpcFailure
 
 JSONRPC_PARSE_ERROR = -32700
 JSONRPC_INVALID_REQUEST = -32600

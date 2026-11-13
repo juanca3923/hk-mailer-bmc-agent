@@ -8,16 +8,10 @@ from pathlib import Path
 
 from config.logger import get_logger
 from config.settings import skills_dir as repo_skills_dir
-from type_defs.dicts.skill_catalog import SkillCatalogEntry
+from constants.config import DEFAULT_MAX_SKILL_CHARS, SKILL_STEM_RE
+from type_defs.models.agent.skill_catalog import SkillCatalogEntry
 
 logger = get_logger()
-
-# Nombre lógico del archivo sin extensión: letra/número inicial, resto alfanumérico + _ -
-SKILL_STEM_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$")
-
-
-# Tope de caracteres devueltos al LLM al leer una guía completa
-DEFAULT_MAX_SKILL_CHARS = 12_000
 
 
 def discover_skill_entries(root: Path | None = None) -> list[SkillCatalogEntry]:

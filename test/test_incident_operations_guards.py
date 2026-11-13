@@ -1,9 +1,9 @@
 """Unit tests for Incident business-rule guards (close ownership, reopen, ownership)."""
 
-from bmc.libs.constants import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
-from bmc.libs.helpers.incident_operations import IncidentOperations
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
-from bmc.type_defs.inputs import AddIncidentNoteInput, CloseIncidentInput
+from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from services.bmc.incident_operations import IncidentOperations
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.inputs import AddIncidentNoteInput, CloseIncidentInput
 
 
 class FakeSettings:

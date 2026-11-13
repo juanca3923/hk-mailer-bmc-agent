@@ -7,15 +7,15 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from commons.agent_http import start_agent, stop_agent
 from config import get_logger
 from exception import AgentError
 from http_api.agent_turn_guard import http_turn_claim_for_stream
 from http_api.chat_handler import ChatHandler
+from http_api.lifecycle import start_agent, stop_agent
 from http_api.state import agent_state
-from services.agent_runs_service import AgentRunsService, get_agent_runs_service
-from services.agent_runs_stats_service import get_agent_runs_stats_service
-from services.chat_service import get_chat_service
+from services.persistence.agent_runs_service import AgentRunsService, get_agent_runs_service
+from services.persistence.agent_runs_stats_service import get_agent_runs_stats_service
+from services.persistence.chat_service import get_chat_service
 from type_defs import (
     ChatMessageResponse,
     ChatRequest,

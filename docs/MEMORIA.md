@@ -22,7 +22,7 @@ El modelo puede **consultar** conversaciones y runs anteriores con las tools int
 
 No sustituyen al checkpointer del hilo actual: sirven cuando el usuario pregunta por algo que ocurrió **en otro momento** o en otro chat.
 
-Las consultas SQL de esas tools pasan por `AgentRunsService`; la serialización de filas usa `commons.serializers.MemorySerializer`.
+Las consultas SQL de esas tools pasan por `AgentRunsService`; la serialización de filas usa `services.persistence.memory_serializer.MemorySerializer`.
 
 ## Errores en tools (grafo no se corta)
 
@@ -30,9 +30,9 @@ Si una tool falla (MCP, memoria, A2A, etc.), el grafo **no debe** dejar un `tool
 
 ## Dónde mirar en código
 
-- Turno y persistencia de mensajes: `src/commons/runner.py`.
+- Turno y persistencia de mensajes: `src/agent/runtime/runner.py`.
 - Checkpointer: `src/database/checkpointer.py`.
 - Tools de memoria: `src/agent/internal_tools/memory_tools.py`.
-- Lecturas de runs: `src/services/agent_runs_service.py`.
-- Serialización: `src/commons/serializers/memory_serializer.py`.
+- Lecturas de runs: `src/services/persistence/agent_runs_service.py`.
+- Serialización: `src/services/persistence/memory_serializer.py`.
 - Política de errores en tools: `src/agent/tool_error_policy.py`.

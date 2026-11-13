@@ -16,24 +16,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from langchain_core.tools import BaseTool, tool
 
 from config import Settings, get_logger
+from constants.agent import MONTHS_ES, WEEKDAYS_ES
 
 logger = get_logger()
-
-WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
-MONTHS_ES = (
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-)
 
 
 def _resolve_timezone() -> ZoneInfo:

@@ -2,7 +2,7 @@
 
 Split out of ``bmc_tools`` (which stays as the thin aggregator + registry) once that
 module grew past the repo's 1000-line-per-module limit. Shares the same lazy
-``BaseToolHandler`` singleton via ``bmc.libs.tool_handler.get_shared_handler()`` —
+``BaseToolHandler`` singleton via ``services.bmc.tool_handler.get_shared_handler()`` —
 deliberately not imported from ``bmc_tools`` itself, to avoid a cyclic import with
 the aggregator that registers this module's tools. See ``bmc_work_order_tools.py``
 for the full rationale behind the
@@ -20,21 +20,20 @@ from langchain_core.tools import tool
 from pydantic import Field
 
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs import tool_handler
-from bmc.libs.business_defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP
-from bmc.libs.constants import (
-    AR_FIELD_INCIDENT_ASSIGNED_GROUP,
-    AR_FIELD_INCIDENT_NUMBER,
+from constants.bmc.defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP
+from constants.bmc.fields import AR_FIELD_INCIDENT_ASSIGNED_GROUP, AR_FIELD_INCIDENT_NUMBER
+from constants.bmc.tickets import (
     DEFAULT_WORK_LOG_TYPE,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     MAX_TICKETS_BY_EMAIL_RESULTS,
 )
-from bmc.libs.helpers.incident_operations import IncidentOperations
-from bmc.libs.tool_handler import BaseToolHandler
-from bmc.type_defs.ar_api import ArScalarValue
-from bmc.type_defs.inputs import (
+from exception.mcp import MCPClientError
+from services.bmc import tool_handler
+from services.bmc.incident_operations import IncidentOperations
+from services.bmc.tool_handler import BaseToolHandler
+from type_defs.models.bmc.ar_api import ArScalarValue
+from type_defs.models.bmc.inputs import (
     AddIncidentAttachmentInput,
     AddIncidentNoteInput,
     CloseIncidentInput,
@@ -42,7 +41,7 @@ from bmc.type_defs.inputs import (
     IncidentNumberInput,
     TicketsByEmailInput,
 )
-from bmc.type_defs.outputs import (
+from type_defs.models.bmc.outputs import (
     IncidentByEmailRow,
     IncidentDetailData,
     IncidentsByEmailData,

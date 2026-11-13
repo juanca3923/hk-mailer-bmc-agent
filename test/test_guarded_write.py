@@ -9,13 +9,14 @@ import pytest
 from pydantic import BaseModel
 
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs.constants import USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED, USER_ERROR_MESSAGE_WRITE_DISABLED
-from bmc.libs.helpers.guarded_write import run_guarded_write, work_log_fields
-from bmc.libs.helpers.ticket_guards import TicketState, require_submitter
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
-from bmc.type_defs.inputs import AddIncidentNoteInput, AddWorkOrderNoteInput, WorkLogInput
-from bmc.type_defs.outputs import BaseOutput
+from commons.bmc.guarded_write import run_guarded_write, work_log_fields
+from commons.bmc.ticket_guards import require_submitter
+from constants.bmc.messages import USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED, USER_ERROR_MESSAGE_WRITE_DISABLED
+from exception.mcp import MCPClientError
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.inputs import AddIncidentNoteInput, AddWorkOrderNoteInput, WorkLogInput
+from type_defs.models.bmc.outputs import BaseOutput
+from type_defs.models.bmc.ticket_state import TicketState
 
 OPEN_STATE = TicketState(request_id='REQ1', status='In Progress', submitter='svc')
 MISSING = 'falta el id'

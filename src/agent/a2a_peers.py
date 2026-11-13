@@ -16,19 +16,18 @@ from typing import cast
 
 import httpx
 
-from commons.a2a_constants import a2a_jsonrpc_url, well_known_agent_card_url
 from config import Settings, get_logger
-from type_defs.dicts.a2a import PeerInfo
-from type_defs.dicts.a2a_protocol import (
+from constants.a2a import a2a_jsonrpc_url, well_known_agent_card_url
+from constants.agent import GRAPH_ATTR_A2A_REGISTRY
+from type_defs.models.a2a.a2a import PeerInfo
+from type_defs.models.a2a.a2a_protocol import (
     A2AJsonRpcMessageSendEnvelope,
     A2AOutboundUserMessage,
     A2ATextContentPart,
 )
-from type_defs.dicts.json_types import JsonDict
+from type_defs.models.common.json_types import JsonDict
 
 logger = get_logger()
-
-GRAPH_ATTR_A2A_REGISTRY = "_agent_forge_a2a_registry"
 
 
 class A2APeerRegistry:

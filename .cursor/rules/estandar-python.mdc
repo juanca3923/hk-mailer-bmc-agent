@@ -155,15 +155,23 @@ los tipos reales:
    capturar** — un SDK/librería externa cuya propia documentación admite que propaga
    excepciones arbitrarias (ej. `Langfuse.get_prompt()`: *"Raises: Exception: Propagates any
    exceptions..."*), o un punto final de la aplicación después de agotar los tipos específicos
-   conocidos (ver `commons/runner.py`: primero `asyncio.CancelledError`, luego `AgentError`, y
+   conocidos (ver `agent/runtime/runner.py`: primero `asyncio.CancelledError`, luego `AgentError`, y
    solo al final el catch-all).
 2. La **recuperación es idéntica sin importar el tipo de fallo** (loguear + degradar con
    gracia) — no hay rama de manejo distinta por tipo de excepción que se esté evitando escribir.
 
 Si aplica, el comentario junto al `except` debe explicar el motivo (por qué no hay un tipo más
 específico y cuál es la recuperación), no solo repetir qué hace el código. Ejemplos ya en el
-repo: `agent/prompts.py` (`fetch_prompt_from_langfuse`) y `commons/runner.py` (los dos
+repo: `agent/prompts.py` (`fetch_prompt_from_langfuse`) y `agent/runtime/runner.py` (los dos
 catch-all de `run_agent_turn`).
+
+## Estructura del repositorio
+
+- **Capas** (un paquete solo importa de los anteriores; nada importa hacia arriba): `type_defs`/`constants`/`exception` < `commons` < `config` < `database` < `services` < `agent` < `http_api`. `commons` es **puro**: no importa `config`, base de datos ni agente.
+- **Un archivo, una responsabilidad:** los **tipos** (dataclass, `TypedDict`, `NamedTuple`, `Protocol`, `Enum`, alias `Literal`, modelos Pydantic) solo en `type_defs/`; las **constantes públicas** solo en `constants/<dominio>/` (las privadas `_X` y los objetos con comportamiento, como un `ContextVar` o una sesión, se quedan donde se usan); las clases y servicios, solos en su módulo.
+- **Conjuntos cerrados** (estados, motivos): `StrEnum` en `type_defs/enums/`, una sola fuente de verdad.
+- **Dónde va algo nuevo:** tipo → `type_defs/models/<dominio>/`; contrato entre capas → `type_defs/ports/`; valor fijo → `constants/<dominio>/`; lógica sin dependencias → `commons/<dominio>/`; acceso a base de datos → `services/persistence/`; cliente u operación de BMC → `services/bmc/`; tool del LLM → `agent/internal_tools/`.
+- **Nada suelto:** no dejes archivos en la raíz de `commons/` ni de `services/`; usa un subpaquete por dominio. Mapa completo en `docs/ARCHITECTURE.md`.
 
 ## Seguridad y corrección
 

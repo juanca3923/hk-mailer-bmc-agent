@@ -4,19 +4,19 @@ Resumen del diseño de **agent-bmc** y del servicio HTTP.
 
 ## Capa BMC (nueva en agent-bmc)
 
-El paquete `src/bmc/` encapsula toda la lógica de integración con BMC Helix AR. No expone servidor MCP; sus operaciones son herramientas internas de LangChain.
+La integración con BMC Helix AR se reparte por capas (`config/bmc_settings.py`, `constants/bmc/`, `type_defs/models/bmc/`, `commons/bmc/`, `services/bmc/`). No expone servidor MCP; sus operaciones son herramientas internas de LangChain.
 
 ### Componentes
 
 | Módulo | Responsabilidad |
 |--------|----------------|
-| `bmc/config/settings.py` | `BmcSettings` — lee variables `BMC_*` del entorno |
-| `bmc/libs/connection_manager.py` | Singleton JWT: login al arranque, refresh automático en background |
-| `bmc/libs/api_client.py` | `BmcClient` — métodos HTTP async por formulario AR; retry 401 automático |
-| `bmc/libs/tool_handler.py` | `BaseToolHandler` — write guard, encodificación TOON, carga de adjuntos |
-| `bmc/libs/constants.py` | Nombres de campos AR, catálogos de estados, mensajes de error |
-| `bmc/libs/helpers/` | Builders (AR query, entry values, multipart) y operaciones multi-paso (WO, incident) |
-| `bmc/type_defs/` | Modelos Pydantic de entrada/salida, enums de estado, tipos AR |
+| `config/bmc_settings.py` | `BmcSettings` — lee variables `BMC_*` del entorno |
+| `services/bmc/connection_manager.py` | Singleton JWT: login al arranque, refresh automático en background |
+| `services/bmc/api_client.py` | `BmcClient` — métodos HTTP async por formulario AR; retry 401 automático |
+| `services/bmc/tool_handler.py` | `BaseToolHandler` — write guard, encodificación TOON, carga de adjuntos |
+| `constants/bmc/` | Nombres de campos AR, catálogos de estados, mensajes de error |
+| `commons/bmc/`, `services/bmc/*_operations.py` | Builders (AR query, entry values, multipart) y operaciones multi-paso (WO, incident) |
+| `type_defs/models/bmc/`, `type_defs/enums/` | Modelos Pydantic de entrada/salida, enums de estado, tipos AR |
 
 ### Flujo de autenticación BMC
 
@@ -44,14 +44,14 @@ build_agent()
   `bmc_add_incident_attachment`, `bmc_close_incident`
 
 `bmc_close_work_order` y `bmc_close_incident` aplican guards de negocio antes de
-escribir (`src/bmc/libs/helpers/ticket_guards.py`): rechazan cualquier escritura sobre
+escribir (`src/commons/bmc/ticket_guards.py`): rechazan cualquier escritura sobre
 un ticket ya `Closed`, y el cierre además exige que el `Submitter` del ticket coincida
 con el usuario de servicio BMC configurado. `bmc_add_incident_note`/
 `bmc_add_incident_attachment` escriben contra `HPD:WorkLog` (no `WOI:WorkInfo`).
 
-El esqueleto común de las escrituras con guardas (escritura habilitada → ticket resuelto → no `Closed` → guarda extra opcional → llamadas a BMC con `MCPClientError` convertido en salida fallida) vive en `src/bmc/libs/helpers/guarded_write.py` (`run_guarded_write`); `IncidentOperations` y `WorkOrderOperations` solo aportan los valores, la llamada al cliente y el mensaje. `work_log_fields` y la base `WorkLogInput` (`type_defs/inputs.py`) comparten los campos del work log, y `src/agent/internal_tools/ticket_tool_helpers.py` las piezas comunes de las tools de incidentes y WO.
+El esqueleto común de las escrituras con guardas (escritura habilitada → ticket resuelto → no `Closed` → guarda extra opcional → llamadas a BMC con `MCPClientError` convertido en salida fallida) vive en `src/commons/bmc/guarded_write.py` (`run_guarded_write`); `IncidentOperations` y `WorkOrderOperations` solo aportan los valores, la llamada al cliente y el mensaje. `work_log_fields` y la base `WorkLogInput` (`type_defs/inputs.py`) comparten los campos del work log, y `src/agent/internal_tools/ticket_tool_helpers.py` las piezas comunes de las tools de incidentes y WO.
 
-`src/agent/internal_tools/bmc_staged_files_tools.py` añade `bmc_attach_staged_files`: sube a un Incidente o WO los archivos que otro agente dejó en la carpeta compartida (`BMC_ATTACHMENT_BASE_DIR/<staging_id>/` + `manifest.json`). La lógica vive en `src/bmc/libs/helpers/staged_files.py` (`StagedFilesAttacher`, independiente de LangChain y del tipo de ticket mediante el puerto `TicketWriter`). Los bytes no pasan por el LLM: la tool solo recibe ids. `BaseToolHandler.load_attachment` confina toda lectura a `BMC_ATTACHMENT_BASE_DIR` (resuelve `..` y enlaces simbólicos).
+`src/agent/internal_tools/bmc_staged_files_tools.py` añade `bmc_attach_staged_files`: sube a un Incidente o WO los archivos que otro agente dejó en la carpeta compartida (`BMC_ATTACHMENT_BASE_DIR/<staging_id>/` + `manifest.json`). La lógica vive en `src/services/bmc/staged_files.py` (`StagedFilesAttacher`, independiente de LangChain y del tipo de ticket mediante el puerto `TicketWriter`). Los bytes no pasan por el LLM: la tool solo recibe ids. `BaseToolHandler.load_attachment` confina toda lectura a `BMC_ATTACHMENT_BASE_DIR` (resuelve `..` y enlaces simbólicos).
 
 Todas comparten un `BaseToolHandler` lazy-inicializado y retornan JSON con `{success, message}`.
 
@@ -65,82 +65,153 @@ Todas comparten un `BaseToolHandler` lazy-inicializado y retornan JSON con `{suc
 
 **Carpeta `test/`** (raíz del repo): scripts de diagnóstico que suelen requerir Postgres (`test_runs.py`, `test_chats.py`) y **pytest** opcional tras `uv sync --group dev` — A2A con mocks (`test_a2a_*.py`), settings multi-instancia, catálogo de skills (`test_skill_catalog.py`, `tmp_path`) y flujo LLM determinista con `GenericFakeChatModel` (`test_fake_llm_tool_flow.py`, sin Ollama ni red). Inventario y comandos: [`test/README.md`](../test/README.md).
 
-Paquetes bajo `src/` (estructura plana, sin carpeta intermedia):
+Paquetes bajo `src/` (estructura plana, sin carpeta intermedia). El orden de arriba abajo es el **sentido de dependencia**: un paquete solo importa de los que tiene **antes** en la lista (`type_defs`, `constants` y `exception` son la base; `http_api` es la capa más alta).
 
-- **type_defs/** — todo el tipado del proyecto concentrado aquí (el paquete no se llama `types` para no colisionar con el módulo estándar `types`):
-  - **`type_defs/http/`** — modelos Pydantic (`BaseModel`) para contratos HTTP:
-    - `chat.py`: `ChatRequest`, `ChatResponse`, `ChatMessageResponse`, `ChatSummaryResponse`.
-    - `status.py`: `StatusAgent` (Literal), `StatusResponse`.
-    - `runs.py`: `EventDetail`, `RunDetailResponse`, `RunTokensSummary`, `StatsResponse`.
-  - **`type_defs/dicts/`** — TypedDicts, dataclasses, Protocols y aliases (sin Pydantic):
-    - `domain_literals.py`: aliases `RunStatus`, `TurnStatus`, `StreamDoneStatus`, `MessageType`, `ChatRole` y constantes en runtime (`RUN_STATUS_*`, `MESSAGE_TYPE_*`, `ROLE_*`) compartidas por runner, servicios y modelos.
-    - `event_types.py`: constantes `EVENT_LLM_*`, `EVENT_TOOL_*` y alias `AgentEventType` para trazas LLM/tool.
-    - `agent_turn.py`: `AgentTurnResult`, `TurnContext` (dataclasses del ciclo de vida de un turno; `messages` contiene solo el mensaje nuevo del usuario — el historial lo gestiona el checkpointer).
-    - `chat_stream.py`: eventos SSE del streaming HTTP (`ChatStreamChunkEvent`, `ChatStreamDoneEvent`, `ChatStreamErrorEvent`, `chat_stream_event_to_json_line`).
-    - `protocols.py`: `LogFn` (Protocol para callbacks de logging estructurado; `payload: JsonDict`).
-    - `search_results.py`: `ChatSearchResult` (TypedDict, retorno de `ChatService.search_chats`).
-    - `json_types.py`: `JsonDict = dict[str, object]` — alias para JSONB y payloads de estructura arbitraria.
-    - `event_payloads.py`: TypedDicts de payloads de eventos (`ToolResultLogEntry`, `LlmStartPayload`, `LlmEndPayload`, `LlmErrorPayload`, `ToolStartPayload`, `ToolEndPayload`, `ToolErrorPayload`).
-    - `agent_memory.py`: TypedDicts para la salida de `MemorySerializer` (`AgentRunSummary`, `AgentEventSummary`, `ChatMessageSummary`).
-    - `store.py`: `MemoryFactEntry`, `MemoryFactSearchResult` — tipos del store cross-thread.
-    - `a2a.py`: dataclass `PeerInfo` (peer remoto tras Agent Card).
-    - `a2a_protocol.py`: contratos JSON-RPC / Agent Card A2A (`JsonRpcId`, `JsonRpcErrorEnvelope`, `AgentForgeAgentCard`, `A2AInboundMessageSendSuccess`, partes de mensaje outbound, etc.).
-    - `skill_catalog.py`: `SkillCatalogEntry` (stem y descripción breve del catálogo XML).
-  - `__init__.py` raíz re-exporta todo (`http` + `dicts`) en un solo `__all__`.
-  > Convención: todo el tipado del proyecto vive bajo `type_defs/`; `http/` para contratos Pydantic, `dicts/` para el resto. No existe paquete `schemas/` separado.
-- **exception/** (`AgentError`, `AgentConfigError`, `ToolAgentError`): jerarquía de excepciones de dominio del agente.
-  - `AgentError`: base; toda excepción del agente hereda de aquí.
-  - `AgentConfigError`: errores de configuración (prompt vacío, settings inválidos).
-  - `ToolAgentError`: hereda también `langchain_core.tools.ToolException`; errores lanzados desde tools con `handle_tool_error` activo pasan al LLM como `tool_result`.
-- **config/** (configuración general; no depende de agent ni http_api):
-  - `settings.py`: `Settings` (incluye `asyncpg_url` property para el checkpointer Postgres), `Settings.repo_root()`, `system_prompt_path()`, `skills_dir()`; multi-instancia: `agent_slug`, `agent_display_name`, `agent_card_description`, `system_prompt_env` / `system_prompt_path_env`, `resolved_system_prompt_file()`, `effective_a2a_assistant_id`, `effective_agent_display_name`, `effective_agent_card_description`; LLM: `llm_provider` (`ollama` \| `openai` \| `anthropic`), `openai_*`, `anthropic_*`; Langfuse: `langfuse_public_key`, `langfuse_secret_key`, `langfuse_host`, `langfuse_prompt_name`, `langfuse_prompt_label` (default `latest`), propiedad `langfuse_tracing_ready`; A2A: `a2a_assistant_id`, `a2a_protocol_version`, `a2a_peer_urls` y normalización `normalized_a2a_peer_configs()` (solo entradas `url|assistant_id`).
-  - `logger.py`: `get_logger`, `get_user_logger`.
-  - `skill_catalog.py` (`agent-base`): `discover_skill_entries`, `build_skills_catalog_xml`, `read_skill_guide_json`, validación de stem y lectura dual `*.md` / `*/SKILL.md`.
-- **agent/** (núcleo del agente + CLI):
-  - `__init__.py`: solo exporta `build_agent` (el CLI es `agent.cli:main` para evitar ciclos de importación con `commons.runner`).
-  - `agent.py`: `build_agent` (context manager) — inicializa `CheckpointerManager`, `AgentPostgresStore`, LLM, compila el grafo con checkpointer + store, tools MCP, internas de memoria/skills y **tools A2A remotas** si `normalized_a2a_peer_configs()` devuelve al menos un peer. **Dos variantes según la rama**: en `deep-agent-base` usa `create_deep_agent` (`deepagents`) + `FilesystemBackend` (`virtual_mode=True`) con `skills=["/skills/"]`; en `agent-base` usa `create_agent` (LangChain estándar) + tool `skill_get_guide` + catálogo XML en el system prompt (sin `deepagents`).
-  - `llm.py`, `mcp_tools.py`: fábrica de LLM (`build_llm`: Ollama / OpenAI / Anthropic según `Settings`; OpenAI/Anthropic con prompt caching por `agent_slug`), herramientas MCP (Streamable HTTP; URLs desde `Settings.mcp_urls`). Operación y límites: [`docs/MCP.md`](MCP.md).
-  - `tool_error_policy.py`: `configure_tool_error_handling` — en `build_agent`, antes de `create_agent`, activa `handle_tool_error` en todas las tools; las excepciones de tool deben ser `ToolAgentError` (`ToolException`) para que el mensaje llegue al LLM en el `ToolMessage` sin abortar el turno.
-  - `prompts.py`: `load_system_prompt_for_settings` (precedencia `SYSTEM_PROMPT` → Langfuse `LANGFUSE_PROMPT_NAME` con etiqueta `LANGFUSE_PROMPT_LABEL` en `get_prompt` → archivo `SYSTEM_PROMPT_PATH` o `system.promt.md`), concatena `base.prompt.md` si existe y, en `agent-base`, añade al final el bloque `<skills>` vía `finalize_system_prompt` + `build_skills_catalog_xml` (solo si hay guías; ver `config/skill_catalog.py`).
-  - `cli.py`: REPL por consola; delega turnos a `AgentRunner` (`run_agent_turn` / `stream_agent_turn`); el checkpointer usa `thread_id=str(chat_id)`; si hay peers A2A outbound cargados lista en consola los remotos (no expone servidor A2A).
-  - `a2a_peers.py`: cliente HTTP (`httpx`) hacia Agent Card y `message/send`; clase `A2APeerRegistry` (sin estado global) enlazada al grafo para tools y lectura desde la CLI. Tipos A2A/JSON-RPC: `type_defs/dicts/a2a.py` (`PeerInfo`), `type_defs/dicts/a2a_protocol.py` (TypedDict); JSON arbitrario: `JsonDict`.
-  - `internal_tools/memory_tools.py`: solo las funciones `@tool` y `get_memory_tools`.
-  - `internal_tools/skill_tools.py` (`agent-base`): `skill_get_guide`, `get_skill_tools`.
-  - `internal_tools/a2a_tools.py`: tools `a2a_list_remote_agents` y `a2a_send_to_remote` (solo si tras normalizar `A2A_PEER_URLS` hay al menos un peer al construir el grafo).
-- **http_api/** (servicio FastAPI):
-  - `__init__.py`: vacío a propósito (no importa `app` al cargar el paquete; evita ciclo con `commons.agent_http`). Usar `http_api.app` para la app FastAPI.
-  - `app.py`: crea la app FastAPI, lifespan (`start_agent`/`stop_agent`, `chat_tasks`), **CORS** desde `Settings` (`cors_origins`, `cors_allow_credentials`) e incluye routers `a2a` + `routers/rest_routes`.
-  - `bmc/libs/preflight.py`: autochequeo de arranque (lo llama el lifespan de `app.py`): pide a BMC el campo de estado de `CTM:People` con una dirección ficticia `.invalid` y, si BMC lo rechaza (HTTP 400), deja un warning que remite a `AR_FIELD_PEOPLE_STATUS`; con tiempo límite y sin bloquear el arranque.
-  - `routers/people_routes.py`: `POST /people/verify` (¿el correo existe en `CTM:People` y está habilitado?). Lógica en `bmc/libs/helpers/person_lookup.py` (`verify_person_by_email`, mismo desempate que `resolve_reporter_identity`); protegido con `X-API-Key` frente a `BMC_VERIFY_API_KEY` (comparación en tiempo constante; sin clave configurada responde 503). Sin LLM: lo consume el mailer para validar el remitente antes de atender un correo.
-  - `routers/rest_routes.py`: rutas REST `/status`, `/chat`, `/chat/stream`, `/chats`, `/runs`, `/start`, `/stop`, etc.
-  - `agent_turn_guard.py`: reserva/registro de turno (`DOING_TASK` / restauración `UP` cuando no queda ninguno en curso) compartido por POST `/chat`, SSE `/chat/stream` y A2A JSON-RPC. Por defecto (`HTTP_ALLOW_CONCURRENT_TURNS=1`, `Settings`, fijado en `agent_state` al arrancar) permite varios turnos en paralelo; con `=0` rechaza (`409`) un turno nuevo mientras haya uno en curso.
-  - `chat_handler.py`: `ChatHandler` — registro de `chat_tasks`, guardas (`graph`, `shutdown`) y ejecución del turno contra `AgentRunner`.
-  - `a2a.py`: A2A **inbound** — `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}` (JSON-RPC `message/send`). Constantes de protocolo y URLs auxiliares en `commons/a2a_constants.py`. Parseo en `commons/a2a_inbound_jsonrpc.py`. Mismo `app.state.graph` y `AgentRunner` que `/chat`.
-  - `state.py`: `AgentState` y singleton `agent_state`; la propiedad `status` está tipada como `StatusAgent`.
-- **commons/** (lógica compartida CLI + HTTP):
-  - `__init__.py`: exporta solo `TextUtils` (evita cargar `agent_http`/`runner` al importar submódulos como `a2a_constants`).
-  - `a2a_constants.py`: códigos JSON-RPC con nombre, mensajes de fallo A2A y helpers de URL (`well_known_agent_card_url`, `a2a_jsonrpc_url`).
-  - `langfuse_tracing.py`: `ensure_langfuse_tracing_client` — instancia `Langfuse` una vez por `public_key` para que el callback de LangChain resuelva host/secret vía el gestor interno del SDK.
-  - `last_ai_reply.py`: clase `ReplyExtractor` (instancia) — `from_messages(messages)` extrae la respuesta final visible; helpers privados de instancia (`_try_ai_no_tools`, `_try_ai_any`, `_try_tool_message`, `_tool_message_text`). Uso: `ReplyExtractor().from_messages(...)`.
-  - `utils.py`: `parse_uuid_param` y clase `TextUtils` — `truncate(text, limit_chars)` como método estático público (sin estado).
-  - `serializers/memory_serializer.py`: `MemorySerializer` (presentación de filas de BD para tools `memory_*`).
-  - `interceptor_helpers.py`: clase `InterceptorHelpers` (instancia) — métodos de parseo de mensajes LangChain, conteo de tokens y resumen de tools. Helpers privados de instancia: `_first_generation_info`, `_as_dict`. Uso: `InterceptorHelpers()` o `self._helpers = InterceptorHelpers()`.
-  - `agent_http.py`: `start_agent`, `stop_agent`.
-  - `a2a_inbound_jsonrpc.py`: clase `A2AInboundMessageSendProcessor` — validación JSON-RPC `message/send` y builders (`jsonrpc_error`, `build_message_send_success`, `build_agent_forge_agent_card`); sin FastAPI.
-  - `runner.py`: clase `AgentRunner` (singleton vía `get_agent_runner()`); `MessageConverter` (conversión `ChatMessage → LangChain`); métodos `run_agent_turn`, `stream_agent_turn`, `prepare_turn`, `finish_turn_*`; `build_graph_invoke_config` comparte `config` entre `ainvoke` y `astream` (callbacks de eventos propios + opcional `CallbackHandler` de Langfuse si `langfuse_tracing_ready`); en `agent-base` el mensaje al LLM es el texto del usuario sin prefijos (catálogo de skills en el system prompt); en `deep-agent-base` Deep Agents gestiona el descubrimiento de skills; usa `thread_id=str(chat_id)` en cada invocación del grafo; streaming de texto usa `InterceptorHelpers.llm_message_body_text` sobre `AIMessageChunk.content`.
-- **agent/interceptors/**:
-  - `AgentRunCallbackHandler`: callbacks async para capturar eventos LLM/tools por `agent_run_id`; `build_callbacks` classmethod; guarda `self._helpers = InterceptorHelpers()` para parseo interno.
-- **database/**:
-  - `checkpointer.py`: `CheckpointerManager` — `AsyncPostgresSaver.from_conn_string` (psycopg3) y `setup()` de tablas `langgraph_checkpoint_*`.
-  - `store.py`: `AgentPostgresStore` — `BaseStore` persistido en `agent_memory_facts`; método privado de instancia `_matches` para filtrado de namespaces.
-  - `config.py`: clase `DatabaseConfig` — métodos estáticos públicos `url()`, `url_sync()` (para Alembic), `echo()`; función privada de módulo `_load_settings()` con `@lru_cache`.
-  - `constants.py`: longitudes de columnas (`SHORT_STRING_DB_LEN`, etc.) compartidas por los modelos.
-  - Motor + modelos SQLAlchemy: `Chat`, `ChatMessage`, `AgentRun`, `AgentEvent`, `AgentMemoryFact`.
-- **services/**:
-  - `chat_service.py`: CRUD de chats y mensajes, búsqueda y listado.
-  - `agent_runs_service.py`: escritura del ciclo de vida del run (runner) y lecturas (`get_active_run`, `list_recent_runs`, `get_run_with_events`, `get_last_run_with_events`).
-  - `agent_runs_stats_service.py`: agregaciones de tokens/tiempos (`get_token_and_time_stats`).
-  - `agent_events_service.py`: inserción de eventos de traza.
+### Reglas de estructura
+
+1. **Capas:** `type_defs`/`constants`/`exception` < `commons` < `config` < `database` < `services` < `agent` < `http_api`. Nada importa hacia arriba (hoy hay **0** imports hacia arriba).
+2. **Un archivo, una responsabilidad:** los **tipos** (dataclass, `TypedDict`, `NamedTuple`, `Protocol`, `Enum`, alias `Literal`, modelos Pydantic) viven solo en `type_defs/`; las **constantes públicas** en `constants/` (una por dominio); los **servicios y clases**, solos en su módulo. Las constantes privadas de un módulo (`_X`) y los objetos con comportamiento (`ContextVar`, sesión, `Settings`) se quedan donde se usan.
+3. **Conjuntos cerrados = `StrEnum`** en `type_defs/enums/` (estados de WO/incidente, motivos de archivos omitidos): una sola fuente de verdad; las tuplas de `constants/bmc/tickets.py` se derivan de ellos.
+4. **`commons/` es puro:** nada de `config`, base de datos ni agente. Lo que necesita `Settings`, la base de datos o el agente va en `services/`, `agent/` o `http_api/`.
+5. **Nada suelto:** ni `commons/` ni `services/` acumulan archivos en la raíz; cada archivo va en un subpaquete por dominio (`text`, `a2a`, `bmc`; `persistence`, `bmc`, `startup`).
+6. **Dónde va algo nuevo:** tipo → `type_defs/models/<dominio>/`; contrato entre capas → `type_defs/ports/<dominio>.py`; valor fijo → `constants/<dominio>.py`; lógica sin dependencias → `commons/<dominio>/`; acceso a base de datos → `services/persistence/`; cliente externo → `services/bmc/`; tool del LLM → `agent/internal_tools/`.
+7. **Excepciones documentadas:** `services/bmc/handler_context.py` (`TicketHandlerContext`, un `Protocol` cuyos miembros son tipos de la capa de servicios) vive en `services/`; `constants/bmc/defaults.py` lee el entorno al importarse; `type_defs/enums/bmc_status.py` conserva los validadores pequeños que necesitan los tipos `Annotated` de Pydantic.
+
+### Mapa de módulos (generado de las primeras líneas de cada docstring)
+
+- **`type_defs/`** — tipos, sin lógica: `models/` (TypedDict, dataclasses y modelos Pydantic de BMC por dominio), `enums/` (conjuntos cerrados: `StrEnum`), `ports/` (contratos `Protocol`) y `http/` (modelos Pydantic de la API).
+  - **`type_defs/enums/`** — Conjuntos cerrados de valores.
+    - `bmc.py`: Conjuntos cerrados de valores de BMC: motivos por los que no se sube un archivo de la carpeta compartida.
+    - `bmc_status.py`: BMC ticket status enumerations (selection values sent as ``Status`` in AR API).
+    - `domain_literals.py`: Literales compartidos para estados de runs, mensajes y roles (sin duplicar uniones).
+    - `event_types.py`: Valores de ``event_type`` para trazas (callbacks → ``agent_events``).
+  - **`type_defs/http/`** — Modelos Pydantic para contratos HTTP de AgentForge.
+    - `chat.py`: Schemas Pydantic para los endpoints de chat.
+    - `people.py`: Pydantic schemas for the sender verification endpoint.
+    - `runs.py`: Schemas para endpoints de runs y estadísticas.
+    - `status.py`: Schemas Pydantic para el estado del agente.
+  - **`type_defs/models/a2a/`** — Modelos del protocolo A2A.
+    - `a2a.py`: Tipos de dominio para el cliente A2A (peers remotos).
+    - `a2a_protocol.py`: Tipos estructurados para JSON-RPC A2A (inbound AgentForge y outbound hacia peers).
+    - `inbound.py`: Modelos de la entrada JSON-RPC A2A (``message/send``).
+  - **`type_defs/models/agent/`** — Modelos del agente: turnos, memoria, eventos y skills.
+    - `agent_memory.py`: TypedDicts para los resultados serializados de MemorySerializer.
+    - `agent_turn.py`: Dataclasses que representan el resultado y el contexto de un turno de conversación.
+    - `chat_stream.py`: Eventos de streaming de chat (SSE) — tipos de alambre servidor → cliente.
+    - `event_payloads.py`: TypedDicts para los payloads de eventos que se persisten en agent_events.
+    - `search_results.py`: TypedDicts para los resultados de búsqueda del chat service.
+    - `skill_catalog.py`: TypedDicts para el catálogo de skills locales.
+    - `store.py`: TypedDicts para el store cross-thread de AgentForge (AgentPostgresStore).
+  - **`type_defs/models/bmc/`** — Modelos de BMC Helix: respuestas AR, valores, entradas y salidas de las tools.
+    - `ar_api.py`: Parsed BMC AR REST API response models.
+    - `ar_values.py`: BMC AR API ``values`` payloads (Pydantic; field aliases match AR names).
+    - `inputs.py`: Input validation models for MCP tool parameters.
+    - `json_types.py`: JSON-compatible value types for BMC API payloads (no Any).
+    - `outputs.py`: Output models returned by MCP tools.
+    - `person.py`: Resultados de buscar a una persona en CTM:People.
+    - `staged_outcome.py`: Resultado acumulado de subir los archivos de una carpeta compartida.
+    - `ticket_state.py`: Campos de un ticket leídos de una búsqueda para las guardas de escritura.
+  - **`type_defs/models/common/`** — Modelos genéricos compartidos.
+    - `json_types.py`: Alias de tipos para estructuras JSON arbitrarias.
+  - **`type_defs/ports/`** — Contratos (Protocol) entre capas.
+    - `agent.py`: Protocolos de callable usados en el agente IA.
+    - `bmc.py`: Contratos de BMC: guarda de escritura y escritor de un ticket.
+- **`constants/`** — constantes públicas, un módulo por dominio.
+  - `a2a.py`: Constantes del protocolo A2A (JSON-RPC inbound y rutas HTTP relativas).
+  - `agent.py`: Constantes del agente: prompts, LLM, observabilidad, vistas previas y fechas.
+  - `config.py`: Constantes de configuración: patrones, límites y niveles de log.
+  - `database.py`: Constantes de base de datos: longitudes de columna, separadores y SQL fijo.
+  - `startup.py`: Constantes del autochequeo de arranque.
+  - **`constants/bmc/`** — Constantes de BMC Helix: campos AR, mensajes, API, tickets y valores por defecto.
+    - `api.py`: Rutas, cabeceras, cookies, tiempos y partes multipart de la API REST de BMC.
+    - `defaults.py`: Business-specific default values for BMC ticket creation.
+    - `fields.py`: Nombres de los campos AR de BMC Helix.
+    - `messages.py`: Mensajes de error para el usuario de las herramientas de BMC.
+    - `staged.py`: Constantes de los archivos de adjuntos de la carpeta compartida.
+    - `tickets.py`: Estados, valores por defecto y límites de incidentes y órdenes de trabajo.
+- **`exception/`** — excepciones de dominio (`AgentError`, `ToolAgentError`, errores del cliente BMC/MCP).
+  - `exceptions.py`: Jerarquía de excepciones del agente IA.
+  - `mcp.py`: MCP-related exceptions with actionable error messages.
+- **`commons/`** — lógica **pura** y reutilizable por dominio (`text`, `a2a`, `bmc`); no importa `config`, base de datos, servicios ni agente.
+  - **`commons/a2a/`** — Lógica pura del protocolo A2A.
+    - `reply_text.py`: Extract visible text from A2A ``message/send`` JSON-RPC result payloads.
+  - **`commons/bmc/`** — Lógica pura de BMC Helix: consultas AR, mapeo de valores, multipart, guardas de tickets y codificación TOON.
+    - `ar_query_builder.py`: Build AR System qualification strings for GET entry queries.
+    - `entry_values_mapper.py`: Map Pydantic AR value models to JSON-compatible dicts.
+    - `guarded_write.py`: Shared skeleton of the guarded ticket writes (incidents and work orders).
+    - `multipart_builder.py`: Build multipart form data for ``WOI:WorkInfo`` entries.
+    - `ticket_guards.py`: Pure business-rule guards for ticket write operations (status and ownership).
+    - `toon_encoder.py`: TOON encoding for token-efficient tool responses.
+  - **`commons/text/`** — Utilidades de texto puras.
+    - `utils.py`: Utilidades generales del proyecto.
+- **`config/`** — configuración (`Settings`, `BmcSettings`), logger y catálogo de skills.
+  - `bmc_settings.py`: MCP and BMC configuration via Pydantic Settings.
+  - `logger.py`: Loggers para AgentForge.
+  - `logging_config.py`: Application logging: console plus rotating file under ``logs/``.
+  - `settings.py`: Configuración de AgentForge.
+  - `skill_catalog.py`: Catálogo y lectura segura de skills (guías Markdown bajo `skills/`).
+- **`database/`** — motor, modelos SQLAlchemy, checkpointer y store.
+  - `checkpointer.py`: Gestión del ciclo de vida del checkpointer de LangGraph con Postgres.
+  - `config.py`: Configuración de base de datos para el motor SQLAlchemy y Alembic.
+  - `engine.py`: Motor de la base de datos.
+  - `models.py`: Modelos de la base de datos.
+  - `store.py`: Store persistente en Postgres para memoria cross-thread de LangGraph.
+- **`services/`** — acceso a datos y clientes externos: `persistence/`, `bmc/` (cliente AR, conexión JWT, operaciones de WO/incidente, personas, adjuntos), `startup/`.
+  - **`services/bmc/`** — Cliente de BMC Helix AR, sesión, operaciones sobre tickets y archivos de adjuntos.
+    - `api_client.py`: Async HTTP client for the BMC Helix AR REST API.
+    - `connection_manager.py`: Singleton BMC session: JWT login, cookie jar, and background refresh.
+    - `handler_context.py`: Contrato del manejador de las operaciones sobre tickets.
+    - `incident_operations.py`: Incident write operations shared by agent tools.
+    - `person_lookup.py`: Resolve a ticket reporter's real identity (First/Last Name) via BMC's CTM:People.
+    - `staged_files.py`: Attach to a BMC ticket the files another agent staged in the shared folder.
+    - `tool_handler.py`: Base helpers for MCP tool handlers.
+    - `work_order_operations.py`: Work order write operations shared by agent tools.
+  - **`services/persistence/`** — Servicios de persistencia en Postgres (chats, runs, eventos y memoria).
+    - `agent_events_service.py`: Persistencia de eventos de traza por ejecución (callbacks LLM/tools).
+    - `agent_runs_service.py`: Agent run persistence: lifecycle writes and read queries for tools/API.
+    - `agent_runs_stats_service.py`: Agregaciones y estadísticas sobre ejecuciones del agente (solo lectura).
+    - `chat_service.py`: Servicio para gestión de chats y mensajes de conversación.
+    - `memory_serializer.py`: Serialize DB rows to compact dicts for LLM context (memory tools).
+  - **`services/startup/`** — Autochequeos de arranque.
+    - `preflight.py`: Startup self-check: confirm BMC knows the ``CTM:People`` status field the sender verification relies on.
+- **`agent/`** — agente LangGraph: `runtime/`, `observability/`, `internal_tools/`, `interceptors/`, `llm.py`, `prompts.py`, `cli.py`.
+  - `__main__.py`: Punto de entrada del paquete para ejecutar el CLI con `python -m agent`.
+  - `a2a_peers.py`: Cliente A2A hacia agentes remotos y registro de peers (Agent Card).
+  - `agent.py`: BMC agent LangGraph build context manager.
+  - `cli.py`: CLI para AgentForge.
+  - `llm.py`: LLM factory (Ollama, OpenAI, or Anthropic).
+  - `mcp_tools.py`: MCP tools usando Streamable HTTP.
+  - `prompts.py`: Carga el system prompt desde archivos, Langfuse o variables de entorno.
+  - `tool_error_policy.py`: Central policy: tool failures become ToolMessage content instead of aborting the turn.
+  - **`agent/interceptors/`** — Interceptors/callbacks para instrumentar el agente (LLM + tools/MCP).
+    - `agent_run_callback.py`: Callback handler que instrumenta una ejecución del agente asociada a agent_run_id.
+  - **`agent/internal_tools/`** — Internal agent tools: memory, skills, A2A peers, datetime and BMC Helix.
+    - `a2a_tools.py`: Internal LangChain tools for outbound A2A delegation to remote agents.
+    - `bmc_incident_tools.py`: Incident LangChain tools for agent-bmc.
+    - `bmc_staged_files_tools.py`: LangChain tool that attaches staged files (shared folder) to an Incident or Work Order.
+    - `bmc_tools.py`: BMC LangChain internal tools for agent-bmc: health check and registry.
+    - `bmc_work_order_tools.py`: Work Order LangChain tools for agent-bmc.
+    - `datetime_tools.py`: Internal tool exposing the current date/time, localized to the agent's timezone.
+    - `memory_tools.py`: Internal memory tools for the LLM to query chats, runs and current state.
+    - `skill_tools.py`: Internal tools for reading Markdown skill guides under `skills/`.
+    - `ticket_tool_helpers.py`: Pieces shared by the incident and work order tools.
+  - **`agent/observability/`** — Trazas y callbacks del agente (Langfuse y persistencia de eventos).
+    - `interceptor_helpers.py`: Helpers para los interceptors (callbacks) que persisten eventos del agente.
+    - `langfuse_tracing.py`: Registro del cliente Langfuse para que el callback de LangChain resuelva credenciales.
+  - **`agent/runtime/`** — Ejecución de un turno del agente: runner y respuesta final.
+    - `last_ai_reply.py`: Extracción de la respuesta final visible al usuario desde mensajes de LangGraph.
+    - `runner.py`: AgentRunner: orquesta un turno completo de conversación.
+- **`http_api/`** — servicio FastAPI (app, lifecycle, A2A entrante, routers).
+  - `a2a.py`: Protocolo A2A (JSON-RPC) embebido en la misma app FastAPI que POST /chat.
+  - `a2a_jsonrpc.py`: Validación y utilidades JSON-RPC A2A inbound ``message/send`` (sin FastAPI).
+  - `agent_turn_guard.py`: Reserva/registra el estado DOING_TASK/UP de un turno (HTTP y A2A inbound).
+  - `app.py`: Servicio HTTP de AgentForge (FastAPI).
+  - `chat_handler.py`: Helpers del endpoint HTTP de chat.
+  - `lifecycle.py`: Helpers para el ciclo de vida del agente en el servicio HTTP (FastAPI).
+  - `state.py`: Estado compartido del agente (uso en servicio HTTP).
+  - **`http_api/routers/`** — Routers FastAPI agrupados por dominio.
+    - `people_routes.py`: Sender verification: lets another service check that an email belongs to an enabled BMC person.
+    - `rest_routes.py`: Rutas REST principales: estado, chat, consultas y ciclo de vida del agente.
 
 ## Modelo de datos
 
@@ -200,7 +271,7 @@ erDiagram
 ```mermaid
 sequenceDiagram
     participant Caller as "CLI o HTTP"
-    participant Runner as "commons/runner.py"
+    participant Runner as "agent/runtime/runner.py"
     participant ChatSvc as "ChatService"
     participant RunSvc as "AgentRunsService"
     participant Graph as "LangGraph"
@@ -259,8 +330,8 @@ A2A en AgentForge se divide en **inbound** (este proceso actúa como servidor JS
 | Rol | Ruta | Responsabilidad |
 |-----|------|-----------------|
 | Inbound HTTP | [`src/http_api/a2a.py`](../src/http_api/a2a.py) | Router FastAPI: `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}`; `HTTPException`/`JSONResponse`; reserva el turno en `agent_state` (`try_begin_task`/`restore_agent_up_after_turn`; `409` si está ocupado con `HTTP_ALLOW_CONCURRENT_TURNS=0`); delega parseo a `commons` y turno a `get_agent_runner()`. |
-| Inbound parseo (sin FastAPI) | [`src/commons/a2a_inbound_jsonrpc.py`](../src/commons/a2a_inbound_jsonrpc.py) | `A2AInboundMessageSendProcessor`: validar cuerpo JSON-RPC `message/send` → `A2AInboundMessageSendRequest` o `A2AInboundRpcFailure`; `@staticmethod` `jsonrpc_error`, `extract_text_from_parts`, `build_message_send_success`, `build_agent_forge_agent_card`. |
-| Tipos A2A | [`src/type_defs/dicts/a2a_protocol.py`](../src/type_defs/dicts/a2a_protocol.py), [`src/type_defs/dicts/a2a.py`](../src/type_defs/dicts/a2a.py) | TypedDict / alias JSON-RPC y Agent Card; `PeerInfo`. |
+| Inbound parseo (sin FastAPI) | [`src/http_api/a2a_jsonrpc.py`](../src/commons/a2a_inbound_jsonrpc.py) | `A2AInboundMessageSendProcessor`: validar cuerpo JSON-RPC `message/send` → `A2AInboundMessageSendRequest` o `A2AInboundRpcFailure`; `@staticmethod` `jsonrpc_error`, `extract_text_from_parts`, `build_message_send_success`, `build_agent_forge_agent_card`. |
+| Tipos A2A | [`src/type_defs/models/a2a/a2a_protocol.py`](../src/type_defs/models/a2a/a2a_protocol.py), [`src/type_defs/models/a2a/a2a.py`](../src/type_defs/models/a2a/a2a.py) | TypedDict / alias JSON-RPC y Agent Card; `PeerInfo`. |
 | Outbound cliente | [`src/agent/a2a_peers.py`](../src/agent/a2a_peers.py) | `A2APeerRegistry`, `fetch_agent_card`, `a2a_message_send` (httpx); registro enlazado al grafo (`bind_a2a_registry_to_graph`). |
 | Outbound tools | [`src/agent/internal_tools/a2a_tools.py`](../src/agent/internal_tools/a2a_tools.py) | Tools LangChain `a2a_list_remote_agents`, `a2a_send_to_remote` (cierran sobre `A2APeerRegistry`). |
 | Montaje grafo | [`src/agent/agent.py`](../src/agent/agent.py) | Si `normalized_a2a_peer_configs()` no está vacío, carga registry y añade tools A2A al `create_agent`. |

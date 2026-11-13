@@ -9,18 +9,13 @@ from langfuse import Langfuse
 
 from config import get_logger
 from config.skill_catalog import build_skills_catalog_xml
+from constants.agent import BASE_PROMPT_FILENAME, LANGFUSE_FETCH_TIMEOUT_S
 from exception import AgentConfigError
 
 if TYPE_CHECKING:
     from config.settings import Settings
 
 logger = get_logger()
-
-# Nombre del archivo de extensiones del prompt (instrucciones de memoria/tools internas).
-# Debe vivir en la misma carpeta que el prompt principal (raíz del proyecto).
-BASE_PROMPT_FILENAME = "base.prompt.md"
-
-LANGFUSE_FETCH_TIMEOUT_S = 5
 
 
 def load_system_prompt_for_settings(settings: "Settings") -> str:
