@@ -6,7 +6,7 @@ description: Guía de proceso para decidir Work Order vs Incidente, mapear colum
 # Guía de proceso — creación y cierre de tickets BMC
 
 Esta guía cubre el **procedimiento común** a todas las skills de dominio
-(`categorias-<dominio>`, hoy `categorias-eventos` y `categorias-usuario`): cómo decidir
+(`categorias-<dominio>`, hoy solo `categorias-mail-drive`): cómo decidir
 el tipo de ticket, cómo mapear cualquiera de esas tablas a parámetros de
 `bmc_create_incident`/`bmc_create_work_order`, y los guards de negocio. **Las skills de
 dominio solo aportan la tabla de datos** — no repiten este procedimiento, así que si vas

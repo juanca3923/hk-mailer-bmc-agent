@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — feat: catálogo único de categorización `categorias-mail-drive`
+
+- Las skills `categorias-eventos` y `categorias-usuario` se reemplazan por `categorias-mail-drive`, con la tabla de Requerimientos (con palabras clave para elegir la fila) y la de Incidentes de la mesa de servicio. Sin cambios de código.
+- Los niveles de producto 2 y 3 que la tabla original dejaba vacíos se completaron con combinaciones existentes del catálogo anterior (aproximadas); `Prioridad` y `Escalamiento 1` quedan vacíos y se usan los defaults de la tool. **Pendiente**: confirmar ambos con la mesa de servicio.
+- **Acción operativa**: si el prompt vive en Langfuse, reemplazar allí las referencias a `categorias-eventos`/`categorias-usuario`.
+
+---
+
 ## 2026-11-13 — refactor: tools del LLM en clases y errores siempre visibles
 
 - Cada archivo de `agent/internal_tools/` expone una clase (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`, `DatetimeTools`, `MemoryTools`, `SkillTools`, `A2APeerTools`) con un `get_tools()` estático; `_ALL_BMC_TOOLS` y las funciones `get_*_tools` desaparecen.
