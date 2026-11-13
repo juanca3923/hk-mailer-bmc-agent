@@ -38,6 +38,7 @@ from type_defs.models.bmc.outputs import (
     WorkOrderDetailData,
 )
 
+PERSON_NOT_FOUND_FINAL = 'no reintentes'
 REPORTER_EMAIL = 'ana.reportante@arus.com.co'
 
 
@@ -267,6 +268,7 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
     payload = json.loads(raw)
     assert payload['success'] is False
     assert REPORTER_EMAIL in payload['message']
+    assert PERSON_NOT_FOUND_FINAL in payload['message']
     assert client.create_work_order_calls == []
 
 
@@ -308,6 +310,7 @@ async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypa
     payload = json.loads(raw)
     assert payload['success'] is False
     assert REPORTER_EMAIL in payload['message']
+    assert PERSON_NOT_FOUND_FINAL in payload['message']
     assert client.create_incident_calls == []
 
 
