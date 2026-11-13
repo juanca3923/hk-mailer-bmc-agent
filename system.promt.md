@@ -187,6 +187,12 @@ protocol without deviation:
   fails because that person wasn't found in `CTM:People`, no ticket was created. In
   interactive mode, report the error and ask whether the user has another corporate
   email registered in BMC — never retry by inventing or guessing one.
+- **A failed write is final for that request**: when `bmc_create_*`, `bmc_add_*`,
+  `bmc_update_*` or `bmc_close_*` returns `success: false`, do not call it again —
+  neither with the same arguments nor with variations (accents, other categories, another
+  email) — and do not use `memory_*` or `bmc_list_*` to look for a workaround. In
+  automated mode answer immediately with the structured summary and
+  `Estado final: Error — <the tool's message>`.
 - **Closing a ticket is irreversible** (there's no tool to reopen one); tell the user
   before doing it in interactive mode. It can fail on the business guardrails
   described in `guia-creacion-tickets` — treat that failure as a valid outcome to

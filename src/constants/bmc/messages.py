@@ -85,5 +85,6 @@ USER_ERROR_MESSAGE_CLOSE_NOT_OWNER: Final[str] = (
 
 
 USER_ERROR_MESSAGE_PERSON_NOT_FOUND: Final[str] = (
-    "Error: No se encontró en BMC ninguna persona registrada con el correo {email}. No se creó el ticket."
+    "Error: No se encontró en BMC ninguna persona registrada con el correo {email}. No se creó el ticket. "
+    "Es definitivo: no reintentes ni busques otra forma de crearlo; informa este error."
 )

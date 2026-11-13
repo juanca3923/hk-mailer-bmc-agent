@@ -5,6 +5,13 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — fix: "la persona no existe" es un fallo definitivo
+
+- El mensaje de persona no encontrada en `CTM:People` ahora termina con "Es definitivo: no reintentes ni busques otra forma de crearlo; informa este error." (el JSON `success:false` no cambia). Antes el modelo repetía `bmc_create_work_order` decenas de veces cambiando tildes y consultando `memory_*`.
+- `system.promt.md`: un `success:false` de una tool de escritura es definitivo para esa solicitud; en modo automático se responde de inmediato con `Estado final: Error — <mensaje>`.
+
+---
+
 ## 2026-11-13 — refactor: tools del LLM en clases y errores siempre visibles
 
 - Cada archivo de `agent/internal_tools/` expone una clase (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`, `DatetimeTools`, `MemoryTools`, `SkillTools`, `A2APeerTools`) con un `get_tools()` estático; `_ALL_BMC_TOOLS` y las funciones `get_*_tools` desaparecen.
