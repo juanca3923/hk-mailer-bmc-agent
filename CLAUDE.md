@@ -227,12 +227,14 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters. The
 | `AGENT_SLUG` | `agent_bmc` | Unique identifier (pattern `^[a-z][a-z0-9_]*$`) |
 | `AGENT_TIMEZONE` | `America/Bogota` | IANA timezone (`zoneinfo` name) used by the `get_current_date` tool; independent of the container OS's `TZ` |
 
-### System prompt precedence
+### System prompt layers
 
-1. `SYSTEM_PROMPT` (inline env var) — highest priority
-2. `LANGFUSE_PROMPT_NAME` (if all Langfuse vars are set)
-3. `SYSTEM_PROMPT_PATH` (file path)
-4. `system.promt.md` in the repo root — default (BMC-specific)
+The prompt has two layers, **one source each** (never two sources of the same layer):
+
+1. **system** (golden rules, fixed): `SYSTEM_PROMPT` (inline) or file `SYSTEM_PROMPT_PATH` / default `system.promt.md`. Never from Langfuse.
+2. **base** (behaviour: ticket-creation protocol, automated mode): Langfuse (`LANGFUSE_PROMPT_NAME` + `LANGFUSE_PROMPT_LABEL`, optional; this agent does not use it today) and, if missing or failing, local `base.prompt.md`. If Langfuse provides it, the local file is not read.
+
+Final prompt = system + base + `<skills>` catalog.
 
 ---
 

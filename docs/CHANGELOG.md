@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — fix: el prompt se carga en dos capas con una sola fuente cada una
+
+- `system.promt.md` pasa a ser las reglas de oro fijas (guardrails, estilo de comunicación, memoria, uso de skills) y nunca viene de Langfuse. `base.prompt.md` pasa a ser el comportamiento (protocolo de creación de tickets, modo automático, tools): viene de Langfuse si `LANGFUSE_PROMPT_NAME` está definido y responde; si no, del archivo local. Nunca se suman ambos. El orden final es `system` + `base` + `<skills>` (antes iba `base` primero).
+- Se elimina `system.promt.default.md` (plantilla heredada de Linux) y su `COPY` en los Dockerfiles.
+- Sin cambios de comportamiento: los textos se reubicaron (se fusionó la regla duplicada de memoria con la de IDs de ticket).
+
+---
+
 ## 2026-11-13 — feat: "la persona no existe" es `Estado final: No verificado` y detiene el run
 
 - Que el solicitante no exista en `CTM:People` es un resultado de negocio, no una falla: el mensaje de la tool y el resumen del modo automático dicen `Estado final: No verificado — …` (sin "Error"); `Estado final: Error` queda para fallos reales.

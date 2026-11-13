@@ -11,7 +11,7 @@ RUN useradd -m -u 1000 appuser
 # Incluir uv.lock: sin él, uv re-resuelve desde PyPI y el árbol puede diferir del repo.
 COPY pyproject.toml uv.lock ./
 COPY src ./src
-COPY system.promt.md system.promt.default.md base.prompt.md ./
+COPY system.promt.md base.prompt.md ./
 # Guías locales (catálogo <skills>); sin skills/example/ (solo plantilla en repo).
 COPY skills ./skills
 # Dos RUN a propósito: instalar uv, sincronizar el venv y desinstalar uv en una MISMA capa producía,
