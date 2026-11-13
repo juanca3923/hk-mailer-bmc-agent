@@ -5,6 +5,13 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — feat: topes por run para el modelo y las tools
+
+- Ningún tope limitaba al agente (el default de LangGraph son ~10.000 pasos): ante un fallo persistente el modelo repitió `bmc_create_work_order` 28 veces seguidas (~21k tokens de entrada por vuelta) y siguió corriendo aunque el llamador (el mailer) ya había abandonado por tiempo.
+- Nuevo `agent/middleware/run_limits.py` (`ToolCallLimitMiddleware` y `ModelCallLimitMiddleware` de LangChain), configurable: `AGENT_MAX_MODEL_CALLS_PER_RUN` (20; al superarlo el run termina con error, que el llamador A2A ve como fallo), `AGENT_MAX_TOOL_CALLS_PER_RUN` (15; las sobrantes se bloquean y el modelo responde) y `BMC_MAX_CREATE_CALLS_PER_RUN` (3 para cada `bmc_create_*`). `0` desactiva cada tope.
+
+---
+
 ## 2026-11-13 — fix: tickets abiertos en modo automático y Agent Card con los datos requeridos
 
 - En modo automático (A2A) el agente ya no cierra el ticket: solo lo crea (y agrega la nota) y lo deja abierto; `Estado final: Abierto`. El cierre sigue disponible en modo interactivo.

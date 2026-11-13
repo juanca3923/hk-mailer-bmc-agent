@@ -168,6 +168,9 @@ Copy `.env.example` to `.env` and fill in the required values.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BMC_ALLOW_WRITE` | `true` | Enable CREATE/UPDATE/CLOSE operations |
+| `AGENT_MAX_MODEL_CALLS_PER_RUN` | `20` | Cap on model calls per run (`ModelCallLimitMiddleware`); beyond it the run fails with a visible error. `0` = no cap |
+| `AGENT_MAX_TOOL_CALLS_PER_RUN` | `15` | Cap on tool calls per run (any tool); extra calls are blocked and the model must answer. `0` = no cap |
+| `BMC_MAX_CREATE_CALLS_PER_RUN` | `3` | Cap on `bmc_create_work_order` and, separately, `bmc_create_incident` calls per run. `0` = no cap |
 | `BMC_JWT_TTL_SECONDS` | `3600` | JWT lifetime in seconds |
 | `BMC_JWT_REFRESH_MARGIN_SECONDS` | `300` | Refresh JWT this many seconds before expiry |
 | `BMC_HTTP_TIMEOUT_SECONDS` | `30.0` | HTTP timeout toward BMC |
