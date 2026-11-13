@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — feat: el mailer puede pedir el cierre de un ticket (`Acción: cerrar`) y la Agent Card lo declara
+
+- Modo automático: el mensaje del orquestador empieza con `Acción: crear` (por defecto) o `Acción: cerrar` + `Ticket:`. Solo con `cerrar` el agente cierra, y únicamente ese ticket (`bmc_close_work_order`/`bmc_close_incident`, que ya exigen que el ticket sea del usuario de servicio) y responde `Estado final: Cerrado` o `Error — …`. Al crear, el solicitante es siempre quien envió el correo; si el cuerpo habla de otra persona va en la descripción. `Clasificación: duda` solo añade esa nota.
+- Agent Card: nombre por defecto `Agente BMC Helix` y descripción nueva (crea a nombre del remitente, deja abiertos, cierra solo con `Acción: cerrar`). Se puede seguir sobreescribiendo con `AGENT_DISPLAY_NAME`/`AGENT_CARD_DESCRIPTION`.
+- **Acción operativa**: reconstruir el agente BMC; si `bmc.env` define `AGENT_CARD_DESCRIPTION`, actualizarla.
+
+---
+
 ## 2026-11-13 — fix: el prompt se carga en dos capas con una sola fuente cada una
 
 - `system.promt.md` pasa a ser las reglas de oro fijas (guardrails, estilo de comunicación, memoria, uso de skills) y nunca viene de Langfuse. `base.prompt.md` pasa a ser el comportamiento (protocolo de creación de tickets, modo automático, tools): viene de Langfuse si `LANGFUSE_PROMPT_NAME` está definido y responde; si no, del archivo local. Nunca se suman ambos. El orden final es `system` + `base` + `<skills>` (antes iba `base` primero).

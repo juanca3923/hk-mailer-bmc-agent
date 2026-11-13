@@ -75,6 +75,13 @@ def test_effective_a2a_assistant_id_explicit_override(monkeypatch: pytest.Monkey
 def test_effective_agent_display_name_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_SLUG", "my_bot")
     s = Settings()
+    assert s.effective_agent_display_name == "Agente BMC Helix"
+
+
+def test_effective_agent_display_name_falls_back_to_the_slug_when_blank(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_SLUG", "my_bot")
+    monkeypatch.setenv("AGENT_DISPLAY_NAME", "  ")
+    s = Settings()
     assert s.effective_agent_display_name == "My Bot"
 
 
@@ -90,7 +97,10 @@ def test_effective_agent_card_description_default_states_requirements(monkeypatc
     description = s.effective_agent_card_description
     assert "mybot" in description
     assert "correo real" in description
-    assert "quedan abiertos" in description
+    assert "a nombre de quien envió" in description
+    assert "abiertos" in description
+    assert "cierra" in description
+    assert "Acción: cerrar" in description
 
 
 def test_normalized_a2a_peer_configs_requires_url_pipe_agent_id(monkeypatch: pytest.MonkeyPatch) -> None:

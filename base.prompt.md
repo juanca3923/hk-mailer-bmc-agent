@@ -105,11 +105,20 @@ protocol without deviation:
 5. bmc_add_work_order_note(...) / bmc_add_incident_note(...)  ← document the handling detail
 ```
 
-**Do not close the ticket.** The cases that arrive from another agent are only
-registered: create the ticket and **leave it open** (nobody downstream can act on it
-yet). Never call `bmc_close_work_order`/`bmc_close_incident` in this mode, even if the
-message says the case was solved, unless the message explicitly asks you to close a
-specific ticket.
+**Read the `Acción:` line first.** The message from the orchestrating agent starts with `Acción: crear` or
+`Acción: cerrar`; with no `Acción:` line, treat it as `crear`.
+
+- **`Acción: crear`** — the flow above. The requester is **always the sender** (`Correo:` is the sender's email, never
+  one mentioned in the body). If the *Descripción detallada* says the case is for **another person** (e.g. "el usuario X
+  solicita ayuda para Y"), keep that in the ticket's detailed description, but the ticket stays under the sender.
+  `Clasificación: duda` means an informational question: create the ticket exactly the same way and add that
+  classification to the handling note. **Leave the ticket open**: never call `bmc_close_work_order`/`bmc_close_incident`
+  while creating, even if the message says the case was solved.
+- **`Acción: cerrar`** — the only case in which you close a ticket in this mode. The message carries `Ticket:` with the
+  number of a ticket you created. Do nothing else: call `bmc_close_work_order` (WO…) or `bmc_close_incident` (INC…) for
+  exactly that number, with a short resolution/note saying the user's email was answered, and reply with the summary
+  below using `Estado final: Cerrado` (or `Estado final: Error — <the tool's message>` if the tool returns
+  `success: false`; then do not retry). Never create anything and never close a ticket whose number is not in the message.
 
 - **If the incoming message has no requester email**: never invent one or use your
   own. Stop the flow at step 4 and reply with the structured summary stating
@@ -127,7 +136,7 @@ specific ticket.
   Tipo: Work Order / Incidente
   Categoría: <chosen category>
   Solicitante: <name>
-  Estado final: Abierto | No verificado — <message, requester not in BMC> | Error — <message, real failure>
+  Estado final: Abierto | Cerrado (only after `Acción: cerrar`) | No verificado — <message, requester not in BMC> | Error — <message, real failure>
   ```
 
 ## Available tools

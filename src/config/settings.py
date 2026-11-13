@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     # Identificador de instancia (BD, logs, A2A por defecto). Patrón: ^[a-z][a-z0-9_]*$
     agent_slug: str = Field(default="agent_forge", alias="AGENT_SLUG")
     # Nombre visible (Agent Card). Vacío → título a partir del slug.
-    agent_display_name: str = Field(default="", alias="AGENT_DISPLAY_NAME")
+    agent_display_name: str = Field(default="Agente BMC Helix", alias="AGENT_DISPLAY_NAME")
     # Descripción corta de la Agent Card A2A (cada instancia / despliegue).
     agent_card_description: str = Field(default="", alias="AGENT_CARD_DESCRIPTION")
 
@@ -209,9 +209,11 @@ class Settings(BaseSettings):
             return text
         return (
             "Agente que registra y consulta incidentes y órdenes de trabajo en BMC Helix ARUS. "
-            "Para crear un ticket requiere el correo real de la persona solicitante (nunca inventado) y la "
-            "descripción del caso; para consultar un ticket requiere su número (INC... o WO...) o el correo del "
-            "solicitante. Los casos se registran y quedan abiertos. "
+            "Crea el ticket a nombre de quien envió el correo: requiere su correo real (nunca inventado) y la "
+            "descripción del caso (si es para otra persona, va en la descripción). Los tickets se crean y quedan "
+            "abiertos; solo cierra un ticket cuando el mensaje lo pide de forma explícita con «Acción: cerrar» y el "
+            "número del ticket. Para consultar un ticket requiere su número (INC... o WO...) o el correo del "
+            "solicitante. "
             f"Instancia: {self.agent_slug}."
         )
 
