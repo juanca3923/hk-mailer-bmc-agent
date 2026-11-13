@@ -5,6 +5,12 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — fix: `tool_end` y `tool_error` registran el nombre y la duración de la tool
+
+- Los logs mostraban `tool=None duration=0.000s`: el callback buscaba el nombre por `tool_call_id`, que LangChain solo entrega al iniciar la tool. Ahora se usa el `run_id`, igual en los tres callbacks.
+
+---
+
 ## 2026-11-13 — feat: catálogo único de categorización `categorias-mail-drive`
 
 - Las skills `categorias-eventos` y `categorias-usuario` se reemplazan por `categorias-mail-drive`, con la tabla de Requerimientos (con palabras clave para elegir la fila) y la de Incidentes de la mesa de servicio. Sin cambios de código.

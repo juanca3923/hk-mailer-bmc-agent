@@ -215,9 +215,9 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         tool_name = serialized.get("name") or (sid if isinstance(sid, str) else None)
         input_params = inputs if isinstance(inputs, dict) else None
         tool_call_id = kwargs.get("tool_call_id")
-        if tool_call_id is not None:
-            self._tool_starts[str(tool_call_id)] = time.monotonic()
-            self._tool_names[str(tool_call_id)] = str(tool_name)
+        # LangChain only passes ``tool_call_id`` to ``on_tool_start``; ``run_id`` is the same in the three callbacks.
+        self._tool_starts[str(run_id)] = time.monotonic()
+        self._tool_names[str(run_id)] = str(tool_name)
         payload: ToolStartPayload = {"tool_name": cast("str | None", tool_name), "input": input_params or {}}
         if tool_call_id is not None:
             payload["tool_call_id"] = str(tool_call_id)
@@ -240,12 +240,11 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         tags: object = None,
         **kwargs: Any,  # noqa: ANN401 — firma impuesta por AsyncCallbackHandler
     ) -> None:
-        tool_call_id = kwargs.get("tool_call_id")
         duration_seconds: float | None = None
-        if tool_call_id is not None:
-            start = self._tool_starts.pop(str(tool_call_id), None)
-            if start is not None:
-                duration_seconds = time.monotonic() - start
+        tool_name = self._tool_names.pop(str(run_id), None)
+        start = self._tool_starts.pop(str(run_id), None)
+        if start is not None:
+            duration_seconds = time.monotonic() - start
         result = self._helpers.tool_result_summary(output, self._helpers.RESULT_TRUNCATE_CHARS)
         payload: ToolEndPayload = {
             "result": result,
@@ -254,7 +253,7 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         logger.info(
             "tool_end: run=%s tool=%s duration=%.3fs",
             self.agent_run_id,
-            self._tool_names.pop(str(tool_call_id), None),
+            tool_name,
             duration_seconds or 0.0,
         )
         await self._emit(EVENT_TOOL_END, payload)
@@ -268,12 +267,11 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         tags: object = None,
         **kwargs: Any,  # noqa: ANN401 — firma impuesta por AsyncCallbackHandler
     ) -> None:
-        tool_call_id = kwargs.get("tool_call_id")
         duration_seconds: float | None = None
-        if tool_call_id is not None:
-            start = self._tool_starts.pop(str(tool_call_id), None)
-            if start is not None:
-                duration_seconds = time.monotonic() - start
+        tool_name = self._tool_names.pop(str(run_id), None)
+        start = self._tool_starts.pop(str(run_id), None)
+        if start is not None:
+            duration_seconds = time.monotonic() - start
         err_str = TextUtils.truncate(repr(error), self._helpers.ERROR_TRUNCATE_CHARS)
         payload: ToolErrorPayload = {"error": err_str}
         if duration_seconds is not None:
@@ -281,7 +279,7 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         logger.warning(
             "tool_error: run=%s tool=%s duration=%.3fs error=%s",
             self.agent_run_id,
-            self._tool_names.pop(str(tool_call_id), None),
+            tool_name,
             duration_seconds or 0.0,
             type(error).__name__,
         )
