@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import UUID
 
-from type_defs.dicts.json_types import JsonDict
+from type_defs.models.common.json_types import JsonDict
 
 
 class LogFn(Protocol):

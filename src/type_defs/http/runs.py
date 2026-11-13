@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from type_defs.dicts.json_types import JsonDict
+from type_defs.models.common.json_types import JsonDict
 
 
 class EventDetail(BaseModel):

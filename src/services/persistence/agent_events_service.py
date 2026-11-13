@@ -9,8 +9,8 @@ from config import get_logger
 from database.engine import get_session
 from database.models import AgentEvent
 from exception import AgentError
-from type_defs.dicts.event_types import AgentEventType
-from type_defs.dicts.json_types import JsonDict
+from type_defs.enums.event_types import AgentEventType
+from type_defs.models.common.json_types import JsonDict
 
 
 class AgentEventsService:

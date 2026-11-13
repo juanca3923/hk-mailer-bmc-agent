@@ -11,12 +11,12 @@ from sqlalchemy import select, update
 from config import get_logger
 from database.engine import get_session
 from database.models import Chat, ChatMessage
-from type_defs.dicts.domain_literals import (
+from type_defs.enums.domain_literals import (
     MESSAGE_TYPE_NORMAL,
     ChatRole,
     MessageType,
 )
-from type_defs.dicts.search_results import ChatSearchResult
+from type_defs.models.agent.search_results import ChatSearchResult
 
 SEARCH_PREVIEW_MAX_LEN = 120
 

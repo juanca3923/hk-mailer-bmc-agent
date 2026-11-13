@@ -8,7 +8,7 @@ from uuid import UUID
 
 from langchain_core.messages import BaseMessage
 
-from type_defs.dicts.domain_literals import TurnStatus
+from type_defs.enums.domain_literals import TurnStatus
 
 ErrorKind = Literal["llm_provider", "functional"] | None
 

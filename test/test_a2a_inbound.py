@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from http_api.a2a import router as a2a_router
 from http_api.state import agent_state
-from type_defs.dicts.agent_turn import AgentTurnResult
+from type_defs.models.agent.agent_turn import AgentTurnResult
 
 
 @pytest.fixture(autouse=True)

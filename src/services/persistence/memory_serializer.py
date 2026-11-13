@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 
 from database.models import AgentEvent, AgentRun, ChatMessage
-from type_defs.dicts.agent_memory import AgentEventSummary, AgentRunSummary, ChatMessageSummary
-from type_defs.dicts.json_types import JsonDict
+from type_defs.models.agent.agent_memory import AgentEventSummary, AgentRunSummary, ChatMessageSummary
+from type_defs.models.common.json_types import JsonDict
 
 CONTENT_PREVIEW_CHARS = 400
 

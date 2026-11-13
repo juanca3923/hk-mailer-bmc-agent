@@ -30,19 +30,19 @@ from exception import AgentError
 from services.persistence.agent_events_service import AgentEventsService
 from services.persistence.agent_runs_service import get_agent_runs_service
 from services.persistence.chat_service import get_chat_service
-from type_defs.dicts.agent_turn import AgentTurnResult, ErrorKind, TurnContext
-from type_defs.dicts.chat_stream import (
-    ChatStreamChunkEvent,
-    ChatStreamDoneEvent,
-    ChatStreamErrorEvent,
-    ChatStreamServerEvent,
-)
-from type_defs.dicts.domain_literals import (
+from type_defs.enums.domain_literals import (
     MESSAGE_TYPE_CANCELLED,
     MESSAGE_TYPE_ERROR,
     MESSAGE_TYPE_NORMAL,
     ROLE_ASSISTANT,
     ROLE_USER,
+)
+from type_defs.models.agent.agent_turn import AgentTurnResult, ErrorKind, TurnContext
+from type_defs.models.agent.chat_stream import (
+    ChatStreamChunkEvent,
+    ChatStreamDoneEvent,
+    ChatStreamErrorEvent,
+    ChatStreamServerEvent,
 )
 
 logger = get_logger()

@@ -13,14 +13,14 @@ from sqlalchemy.orm import selectinload
 from config import get_logger
 from database.engine import get_session
 from database.models import AgentEvent, AgentRun
-from type_defs.dicts.domain_literals import (
+from type_defs.enums.domain_literals import (
     RUN_STATUS_CANCELLED,
     RUN_STATUS_ERROR,
     RUN_STATUS_RUNNING,
     RUN_STATUS_SUCCESS,
     TurnStatus,
 )
-from type_defs.dicts.event_types import EVENT_LLM_END
+from type_defs.enums.event_types import EVENT_LLM_END
 
 
 class AgentRunsService:

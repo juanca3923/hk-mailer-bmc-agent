@@ -9,7 +9,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
 
 from commons.text.utils import TextUtils
-from type_defs.dicts.event_payloads import ToolResultLogEntry
+from type_defs.models.agent.event_payloads import ToolResultLogEntry
 
 
 class InterceptorHelpers:

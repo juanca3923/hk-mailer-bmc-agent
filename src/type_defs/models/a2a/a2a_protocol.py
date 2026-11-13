@@ -1,6 +1,6 @@
 """Tipos estructurados para JSON-RPC A2A (inbound AgentForge y outbound hacia peers).
 
-``JsonDict`` (`type_defs.dicts.json_types`) cubre JSON de forma desconocida; aquí se
+``JsonDict`` (`type_defs.models.common.json_types`) cubre JSON de forma desconocida; aquí se
 definen TypedDict donde el contrato A2A / JSON-RPC es estable.
 """
 

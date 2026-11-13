@@ -8,7 +8,7 @@ from pathlib import Path
 
 from config.logger import get_logger
 from config.settings import skills_dir as repo_skills_dir
-from type_defs.dicts.skill_catalog import SkillCatalogEntry
+from type_defs.models.agent.skill_catalog import SkillCatalogEntry
 
 logger = get_logger()
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from type_defs.dicts.json_types import JsonDict
+from type_defs.models.common.json_types import JsonDict
 
 
 def first_stripped_text_from_parts(parts_raw: object) -> str:

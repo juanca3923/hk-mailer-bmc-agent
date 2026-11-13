@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from type_defs.dicts.json_types import JsonDict
+from type_defs.models.common.json_types import JsonDict
 
 
 class MemoryFactEntry(TypedDict):

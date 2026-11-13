@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Literal, TypedDict, cast
 
-from type_defs.dicts.domain_literals import StreamDoneStatus
+from type_defs.enums.domain_literals import StreamDoneStatus
 
 
 class ChatStreamChunkEvent(TypedDict):
