@@ -4,13 +4,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from constants.bmc import (
-    CATEGORIZATION_TIER_1_FIELD,
-    CATEGORIZATION_TIER_2_FIELD,
-    DEFAULT_INCIDENT_STATUS,
-    DEFAULT_WORK_ORDER_STATUS,
-    DETAIL_DESCRIPTION_FIELD,
-)
+from constants.bmc.fields import CATEGORIZATION_TIER_1_FIELD, CATEGORIZATION_TIER_2_FIELD, DETAIL_DESCRIPTION_FIELD
+from constants.bmc.tickets import DEFAULT_INCIDENT_STATUS, DEFAULT_WORK_ORDER_STATUS
 from type_defs.enums.bmc_status import (
     validate_incident_status,
     validate_optional_incident_status,

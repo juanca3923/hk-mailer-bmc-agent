@@ -11,8 +11,8 @@ import httpx
 from commons.bmc.ar_query_builder import ArQueryBuilder
 from commons.bmc.multipart_builder import HttpxMultipartParts, WorkInfoMultipartBody
 from config.bmc_settings import BmcSettings
-from constants.bmc import (
-    API_PATH_ARSYS_ENTRY_PREFIX,
+from constants.bmc.api import API_PATH_ARSYS_ENTRY_PREFIX
+from constants.bmc.fields import (
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_INCIDENT_REPORTER_EMAIL,
     AR_FIELD_PEOPLE_EMAIL,
@@ -24,6 +24,8 @@ from constants.bmc import (
     AR_FIELD_WO_CUSTOMER_EMAIL,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
+)
+from constants.bmc.messages import (
     USER_ERROR_MESSAGE_INVALID_JSON,
     USER_ERROR_MESSAGE_NETWORK,
     USER_ERROR_MESSAGE_TIMEOUT,

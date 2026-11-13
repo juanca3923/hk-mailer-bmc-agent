@@ -40,18 +40,7 @@ from pydantic import Field
 
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
 from commons.bmc.entry_values_mapper import EntryValuesMapper
-from constants.bmc import (
-    AR_FIELD_REQUEST_ID,
-    AR_FIELD_WORK_ORDER_ASGRP,
-    AR_FIELD_WORK_ORDER_ID,
-    AR_FIELD_WORK_ORDER_ID_RESPONSE,
-    DEFAULT_WORK_LOG_TYPE,
-    DEFAULT_WORK_ORDER_STATUS,
-    DEFAULT_WORK_ORDER_UPDATE_STATUS,
-    MAX_TICKETS_BY_EMAIL_RESULTS,
-    WORK_ORDER_STATUSES,
-)
-from constants.bmc_defaults import (
+from constants.bmc.defaults import (
     DEFAULT_COMPANY,
     DEFAULT_CUSTOMER_COMPANY,
     DEFAULT_CUSTOMER_FIRST_NAME,
@@ -59,6 +48,19 @@ from constants.bmc_defaults import (
     DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
     DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
+)
+from constants.bmc.fields import (
+    AR_FIELD_REQUEST_ID,
+    AR_FIELD_WORK_ORDER_ASGRP,
+    AR_FIELD_WORK_ORDER_ID,
+    AR_FIELD_WORK_ORDER_ID_RESPONSE,
+)
+from constants.bmc.tickets import (
+    DEFAULT_WORK_LOG_TYPE,
+    DEFAULT_WORK_ORDER_STATUS,
+    DEFAULT_WORK_ORDER_UPDATE_STATUS,
+    MAX_TICKETS_BY_EMAIL_RESULTS,
+    WORK_ORDER_STATUSES,
 )
 from exception.mcp import MCPClientError
 from services.bmc import tool_handler

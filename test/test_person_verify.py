@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from constants.bmc import AR_FIELD_PEOPLE_LOGIN_ID, AR_FIELD_PEOPLE_STATUS
+from constants.bmc.fields import AR_FIELD_PEOPLE_LOGIN_ID, AR_FIELD_PEOPLE_STATUS
 from exception.mcp import MCPClientError
 from services.bmc.person_lookup import verify_person_by_email
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues

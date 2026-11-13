@@ -1,6 +1,6 @@
 """Unit tests for Work Order business-rule guards (in-progress-to-close, reopen, ownership)."""
 
-from constants.bmc import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
 from services.bmc.work_order_operations import WorkOrderOperations
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import AddWorkOrderNoteInput, CloseWorkOrderInput, UpdateWorkOrderStatusInput

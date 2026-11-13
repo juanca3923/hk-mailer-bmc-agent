@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select, update
 
 from config import get_logger
+from constants.agent import SEARCH_PREVIEW_MAX_LEN
 from database.engine import get_session
 from database.models import Chat, ChatMessage
 from type_defs.enums.domain_literals import (
@@ -17,8 +18,6 @@ from type_defs.enums.domain_literals import (
     MessageType,
 )
 from type_defs.models.agent.search_results import ChatSearchResult
-
-SEARCH_PREVIEW_MAX_LEN = 120
 
 
 class ChatService:

@@ -20,14 +20,11 @@ from langgraph.store.base import (
 from sqlalchemy import delete, select, text, update
 
 from config import get_logger
+from constants.database import NS_SEP
 from database.engine import get_session
 from database.models import AgentMemoryFact
 
 logger = get_logger()
-
-# Separador usado para serializar tuple[str, ...] de namespace a una columna VARCHAR.
-# Unit Separator (ASCII 31), improbable en datos normales
-NS_SEP = "\x1f"
 
 
 def _ns_to_str(namespace: tuple[str, ...]) -> str:

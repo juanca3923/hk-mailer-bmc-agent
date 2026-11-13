@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from constants.bmc import AR_FIELD_PEOPLE_STATUS
+from constants.bmc.fields import AR_FIELD_PEOPLE_STATUS
 from exception.mcp import MCPClientError
 from services.startup import preflight
 from services.startup.preflight import check_people_status_field, run_startup_preflight

@@ -7,7 +7,7 @@ from pathlib import Path
 from commons.bmc.multipart_builder import AttachmentPart
 from commons.bmc.toon_encoder import ToonResponseEncoder
 from config.bmc_settings import BmcSettings
-from constants.bmc import (
+from constants.bmc.messages import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND,

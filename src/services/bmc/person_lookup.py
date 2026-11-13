@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import logging
 
-from constants.bmc import (
+from constants.bmc.fields import (
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
     AR_FIELD_PEOPLE_STATUS,
-    PEOPLE_STATUS_ENABLED,
-    USER_ERROR_MESSAGE_PERSON_NOT_FOUND,
 )
+from constants.bmc.messages import USER_ERROR_MESSAGE_PERSON_NOT_FOUND
+from constants.bmc.tickets import PEOPLE_STATUS_ENABLED
 from exception.mcp import MCPClientError
 from services.bmc.api_client import BmcClient
 from type_defs.models.bmc.ar_api import BmcEntryValues

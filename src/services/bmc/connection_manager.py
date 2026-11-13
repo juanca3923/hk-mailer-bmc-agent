@@ -7,14 +7,14 @@ from typing import ClassVar
 import httpx
 
 from config.bmc_settings import BmcSettings
-from constants.bmc import (
+from constants.bmc.api import (
     API_PATH_JWT_LOGIN,
     HEADER_AUTHORIZATION_PREFIX,
     HEADER_CONTENT_TYPE_JSON,
     HEADER_X_REQUESTED_BY,
     MIN_REFRESH_LOOP_SECONDS,
-    USER_ERROR_MESSAGE_LOGIN_FAILED,
 )
+from constants.bmc.messages import USER_ERROR_MESSAGE_LOGIN_FAILED
 from exception.mcp import MCPLoginError
 
 logger = logging.getLogger(__name__)

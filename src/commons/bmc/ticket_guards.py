@@ -2,14 +2,9 @@
 
 from collections.abc import Awaitable
 
-from constants.bmc import (
-    AR_FIELD_REQUEST_ID,
-    AR_FIELD_STATUS,
-    AR_FIELD_SUBMITTER,
-    TICKET_STATUS_CLOSED,
-    USER_ERROR_MESSAGE_CLOSE_NOT_OWNER,
-    USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED,
-)
+from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from constants.bmc.messages import USER_ERROR_MESSAGE_CLOSE_NOT_OWNER, USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED
+from constants.bmc.tickets import TICKET_STATUS_CLOSED
 from exception.mcp import MCPClientError
 from type_defs.models.bmc.ar_api import BmcEntryListResponse
 from type_defs.models.bmc.outputs import BaseOutput

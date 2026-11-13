@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 
-from constants.bmc import (
+from constants.bmc.messages import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
     USER_ERROR_MESSAGE_STAGING_INVALID_ID,
@@ -20,22 +19,16 @@ from constants.bmc import (
     USER_ERROR_MESSAGE_STAGING_NOT_FOUND,
     USER_ERROR_MESSAGE_WRITE_DISABLED,
 )
+from constants.bmc.staged import BYTES_PER_KB, BYTES_PER_MB, MANIFEST_FILE_NAME, STAGING_ID_PATTERN
+from type_defs.enums.bmc import StagedSkipReason
 from type_defs.models.bmc.outputs import BaseOutput
 from type_defs.models.bmc.staged_outcome import StagedOutcome
 from type_defs.ports.bmc import TicketWriter
 
 logger = logging.getLogger(__name__)
 
-STAGING_ID_PATTERN = re.compile(r'^[A-Za-z0-9_-]{8,64}$')
-MANIFEST_FILE_NAME = 'manifest.json'
-REASON_TOO_LARGE = 'too_large'
-REASON_MISSING = 'missing'
-REASON_INVALID_NAME = 'invalid_name'
-REASON_NOT_ALLOWED = 'not_allowed'
 # Reasons worth telling the ticket reader about; the rest are internal inconsistencies.
-NOTE_REASONS = (REASON_TOO_LARGE, REASON_MISSING)
-BYTES_PER_KB = 1024
-BYTES_PER_MB = 1024 * 1024
+_NOTE_REASONS = (StagedSkipReason.TOO_LARGE, StagedSkipReason.MISSING)
 
 
 def format_size(size: int) -> str:
@@ -174,7 +167,7 @@ class StagedFilesAttacher:
         elif result.message == USER_ERROR_MESSAGE_WRITE_DISABLED:
             return result
         elif result.message == USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE:
-            outcome.skipped.append({'name': name, 'reason': REASON_TOO_LARGE})
+            outcome.skipped.append({'name': name, 'reason': StagedSkipReason.TOO_LARGE})
         else:
             outcome.failed.append({'name': name, 'message': result.message})
         return None
@@ -184,16 +177,16 @@ class StagedFilesAttacher:
         reason: str | None = None
         path = folder / name
         if not is_plain_file_name(name):
-            reason = REASON_INVALID_NAME
+            reason = StagedSkipReason.INVALID_NAME
         elif path.is_symlink() or (path.exists() and not path.resolve().is_relative_to(folder)):
-            reason = REASON_NOT_ALLOWED
+            reason = StagedSkipReason.NOT_ALLOWED
         elif not path.is_file():
-            reason = REASON_MISSING
+            reason = StagedSkipReason.MISSING
         else:
             size = path.stat().st_size
             outcome.sizes[name] = size
             if size > self._max_bytes:
-                reason = REASON_TOO_LARGE
+                reason = StagedSkipReason.TOO_LARGE
         return reason
 
     async def _note_skipped(self, outcome: StagedOutcome) -> None:
@@ -201,7 +194,7 @@ class StagedFilesAttacher:
         lines = [
             f'- {item["name"]}: {self._describe_reason(item["name"], item["reason"], outcome)}'
             for item in outcome.skipped
-            if item['reason'] in NOTE_REASONS
+            if item['reason'] in _NOTE_REASONS
         ]
         if not lines:
             return
@@ -212,7 +205,7 @@ class StagedFilesAttacher:
 
     def _describe_reason(self, name: str, reason: str, outcome: StagedOutcome) -> str:
         """Human-readable reason for the ticket note."""
-        if reason == REASON_TOO_LARGE:
+        if reason == StagedSkipReason.TOO_LARGE:
             size = format_size(outcome.sizes[name]) if name in outcome.sizes else 'tamaño desconocido'
             return f'supera el tamaño máximo permitido ({size}; máximo {format_size(self._max_bytes)})'
         return 'archivo no encontrado en la carpeta compartida'

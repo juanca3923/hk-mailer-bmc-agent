@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 
+from constants.agent import CONTENT_PREVIEW_CHARS
 from database.models import AgentEvent, AgentRun, ChatMessage
 from type_defs.models.agent.agent_memory import AgentEventSummary, AgentRunSummary, ChatMessageSummary
 from type_defs.models.common.json_types import JsonDict
-
-CONTENT_PREVIEW_CHARS = 400
 
 
 class MemorySerializer:

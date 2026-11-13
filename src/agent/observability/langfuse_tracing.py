@@ -14,14 +14,12 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 
 from config import get_logger
 from config.settings import Settings
+from constants.agent import LANGFUSE_CLIENT_TIMEOUT_S
 
 logger = get_logger()
 
 lock = threading.Lock()
 initialized_public_keys: set[str] = set()
-
-# Timeout corto para el cliente HTTP de Langfuse (trazas).
-LANGFUSE_CLIENT_TIMEOUT_S = 5
 
 
 def _build_insecure_span_exporter(

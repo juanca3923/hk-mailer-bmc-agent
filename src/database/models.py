@@ -10,12 +10,11 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from database.constants import EVENT_TYPE_DB_LEN, SHORT_STRING_DB_LEN
+from constants.database import DELETE_CASCADE_SQL, EVENT_TYPE_DB_LEN, SHORT_STRING_DB_LEN
 from type_defs.enums.domain_literals import MESSAGE_TYPE_NORMAL
 from type_defs.models.common.json_types import JsonDict
 
 NOW_SQL = text("now()")
-DELETE_CASCADE_SQL = "all, delete-orphan"
 
 
 class Base(DeclarativeBase):

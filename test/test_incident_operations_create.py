@@ -1,14 +1,16 @@
 """Unit tests for IncidentOperations.create() and the categorization fallback workaround."""
 
-from constants.bmc import (
+from constants.bmc.defaults import DEFAULT_INCIDENT_SUPPORT_COMPANY, DEFAULT_INCIDENT_SUPPORT_ORGANIZATION
+from constants.bmc.fields import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
+)
+from constants.bmc.tickets import (
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_1,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_2,
 )
-from constants.bmc_defaults import DEFAULT_INCIDENT_SUPPORT_COMPANY, DEFAULT_INCIDENT_SUPPORT_ORGANIZATION
 from services.bmc.incident_operations import IncidentOperations
 from type_defs.models.bmc.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import CreateIncidentInput

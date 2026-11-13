@@ -6,12 +6,8 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from commons.bmc.entry_values_mapper import EntryValuesMapper
-from constants.bmc import (
-    MULTIPART_ATTACH_PREFIX,
-    MULTIPART_ENTRY_CONTENT_TYPE,
-    MULTIPART_PART_ENTRY,
-    WORK_LOG_ATTACHMENT_FIELD,
-)
+from constants.bmc.api import MULTIPART_ATTACH_PREFIX, MULTIPART_ENTRY_CONTENT_TYPE, MULTIPART_PART_ENTRY
+from constants.bmc.fields import WORK_LOG_ATTACHMENT_FIELD
 
 # httpx ``files=`` mapping: field name -> (filename, content, content_type)
 HttpxMultipartPart = tuple[str | None, bytes | str, str | None]

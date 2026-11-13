@@ -14,7 +14,7 @@ El paquete `src/bmc/` encapsula toda la lógica de integración con BMC Helix AR
 | `services/bmc/connection_manager.py` | Singleton JWT: login al arranque, refresh automático en background |
 | `services/bmc/api_client.py` | `BmcClient` — métodos HTTP async por formulario AR; retry 401 automático |
 | `services/bmc/tool_handler.py` | `BaseToolHandler` — write guard, encodificación TOON, carga de adjuntos |
-| `constants/bmc.py` | Nombres de campos AR, catálogos de estados, mensajes de error |
+| `constants/bmc/` | Nombres de campos AR, catálogos de estados, mensajes de error |
 | `bmc/libs/helpers/` | Builders (AR query, entry values, multipart) y operaciones multi-paso (WO, incident) |
 | `bmc/type_defs/` | Modelos Pydantic de entrada/salida, enums de estado, tipos AR |
 

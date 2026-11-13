@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from constants.bmc import (
+from constants.bmc.messages import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
     USER_ERROR_MESSAGE_WRITE_DISABLED,

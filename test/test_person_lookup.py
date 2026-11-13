@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from constants.bmc import (
-    AR_FIELD_PEOPLE_FIRST_NAME,
-    AR_FIELD_PEOPLE_LAST_NAME,
-    AR_FIELD_PEOPLE_LOGIN_ID,
-)
+from constants.bmc.fields import AR_FIELD_PEOPLE_FIRST_NAME, AR_FIELD_PEOPLE_LAST_NAME, AR_FIELD_PEOPLE_LOGIN_ID
 from exception.mcp import MCPClientError
 from services.bmc.person_lookup import resolve_reporter_identity
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
 from commons.bmc.guarded_write import run_guarded_write, work_log_fields
 from commons.bmc.ticket_guards import require_submitter
-from constants.bmc import USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED, USER_ERROR_MESSAGE_WRITE_DISABLED
+from constants.bmc.messages import USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED, USER_ERROR_MESSAGE_WRITE_DISABLED
 from exception.mcp import MCPClientError
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import AddIncidentNoteInput, AddWorkOrderNoteInput, WorkLogInput

@@ -10,17 +10,13 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from constants.bmc import AR_FIELD_PEOPLE_STATUS
+from constants.bmc.fields import AR_FIELD_PEOPLE_STATUS
+from constants.startup import DUMMY_ADDRESS, HTTP_BAD_REQUEST, PREFLIGHT_TIMEOUT_SEC
 from exception.mcp import MCPClientError
 from services.bmc import tool_handler
 from services.bmc.api_client import BmcClient
 
 logger = logging.getLogger(__name__)
-
-PREFLIGHT_TIMEOUT_SEC = 60.0
-# Reserved TLD (RFC 2606): the check never looks up a real person.
-DUMMY_ADDRESS = 'autochequeo@arranque.invalid'
-HTTP_BAD_REQUEST = 400
 
 
 def build_people_client() -> BmcClient:

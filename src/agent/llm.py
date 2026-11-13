@@ -23,9 +23,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from config import Settings
-
-# Anthropic prompt caching (system prompt, tools, long prefixes).
-ANTHROPIC_CACHE_CONTROL: dict[str, str] = {"type": "ephemeral"}
+from constants.agent import ANTHROPIC_CACHE_CONTROL
 
 
 @functools.cache

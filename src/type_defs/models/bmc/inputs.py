@@ -4,7 +4,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field
 
-from constants.bmc import (
+from constants.bmc.defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP, DEFAULT_WORK_ORDER_ASSIGNED_GROUP
+from constants.bmc.tickets import (
     DEFAULT_INCIDENT_STATUS,
     DEFAULT_WORK_ORDER_STATUS,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
@@ -13,7 +14,6 @@ from constants.bmc import (
     MAX_TICKETS_BY_EMAIL_RESULTS,
     WORK_ORDER_STATUSES,
 )
-from constants.bmc_defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP, DEFAULT_WORK_ORDER_ASSIGNED_GROUP
 from type_defs.enums.bmc_status import (
     validate_incident_status,
     validate_optional_incident_status,

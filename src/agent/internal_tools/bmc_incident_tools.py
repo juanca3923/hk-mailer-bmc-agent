@@ -20,15 +20,14 @@ from langchain_core.tools import tool
 from pydantic import Field
 
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
-from constants.bmc import (
-    AR_FIELD_INCIDENT_ASSIGNED_GROUP,
-    AR_FIELD_INCIDENT_NUMBER,
+from constants.bmc.defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP
+from constants.bmc.fields import AR_FIELD_INCIDENT_ASSIGNED_GROUP, AR_FIELD_INCIDENT_NUMBER
+from constants.bmc.tickets import (
     DEFAULT_WORK_LOG_TYPE,
     INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     MAX_TICKETS_BY_EMAIL_RESULTS,
 )
-from constants.bmc_defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP
 from exception.mcp import MCPClientError
 from services.bmc import tool_handler
 from services.bmc.incident_operations import IncidentOperations

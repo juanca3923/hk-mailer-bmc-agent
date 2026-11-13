@@ -216,7 +216,7 @@ Copy `.env.example` to `.env` and fill in the required values.
 
 ### Business defaults — BMC tickets
 
-Fixed values injected by `src/constants/bmc_defaults.py` into every `bmc_create_work_order`
+Fixed values injected by `src/constants/bmc/defaults.py` into every `bmc_create_work_order`
 and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
 `First Name`/`Last Name` are **not** in this table — they are resolved per-call from
 `reporter_email` (see "Reporter identity resolution" above), not a fixed default.
@@ -329,7 +329,7 @@ since BMC's result order for a non-unique match is not guaranteed.
 ## Adding New BMC Tools
 
 1. Add input/output models to `src/type_defs/models/bmc/inputs.py` and `outputs.py` if needed.
-2. Add AR field constants to `src/constants/bmc.py` if needed.
+2. Add AR field constants to `src/constants/bmc/` if needed.
 3. Add the HTTP method to `src/services/bmc/api_client.py`.
 4. Add a helper in `src/bmc/libs/helpers/` if the operation has multiple steps.
 5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`

@@ -7,14 +7,16 @@ from commons.bmc.entry_values_mapper import EntryValuesMapper
 from commons.bmc.guarded_write import run_guarded_write, work_log_fields
 from commons.bmc.multipart_builder import MultipartBuilder
 from commons.bmc.ticket_guards import require_submitter, resolve_ticket_state_from_search
-from constants.bmc import (
+from constants.bmc.api import WORK_LOG_ATTACHMENT_MARKER
+from constants.bmc.messages import (
+    USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND,
+    USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
+)
+from constants.bmc.tickets import (
     DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
-    USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND,
-    USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
-    WORK_LOG_ATTACHMENT_MARKER,
 )
 from services.bmc.handler_context import TicketHandlerContext
 from type_defs.models.bmc.ar_values import (

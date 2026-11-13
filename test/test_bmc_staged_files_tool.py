@@ -9,7 +9,7 @@ import pytest
 
 from agent.internal_tools import bmc_tools
 from agent.internal_tools.bmc_staged_files_tools import bmc_attach_staged_files
-from constants.bmc import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
 from services.bmc import tool_handler
 from services.bmc.tool_handler import BaseToolHandler
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues

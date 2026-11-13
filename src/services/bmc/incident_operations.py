@@ -8,11 +8,20 @@ from commons.bmc.guarded_write import run_guarded_write, work_log_fields
 from commons.bmc.multipart_builder import MultipartBuilder
 from commons.bmc.ticket_guards import require_submitter, resolve_ticket_state_from_search
 from commons.bmc.toon_encoder import ToonResponseEncoder
-from constants.bmc import (
+from constants.bmc.api import WORK_LOG_ATTACHMENT_MARKER
+from constants.bmc.defaults import (
+    DEFAULT_COMPANY,
+    DEFAULT_INCIDENT_SUPPORT_COMPANY,
+    DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
+)
+from constants.bmc.fields import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_REQUEST_ID,
+)
+from constants.bmc.messages import USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND, USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING
+from constants.bmc.tickets import (
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_NOTE,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_1,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_2,
@@ -22,14 +31,6 @@ from constants.bmc import (
     DEFAULT_INCIDENT_CLOSE_STATUS_REASON,
     INCIDENT_FIXED_IMPACT,
     INCIDENT_FIXED_URGENCY,
-    USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND,
-    USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING,
-    WORK_LOG_ATTACHMENT_MARKER,
-)
-from constants.bmc_defaults import (
-    DEFAULT_COMPANY,
-    DEFAULT_INCIDENT_SUPPORT_COMPANY,
-    DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
 )
 from exception.mcp import MCPClientError
 from services.bmc.handler_context import TicketHandlerContext

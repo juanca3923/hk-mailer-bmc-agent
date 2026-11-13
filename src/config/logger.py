@@ -10,16 +10,10 @@ import logging
 from pathlib import Path
 
 from config.settings import Settings
+from constants.config import LEVELS
 
 settings = Settings.load()
 
-LEVELS = {
-    "CRITICAL": logging.CRITICAL,
-    "ERROR": logging.ERROR,
-    "WARNING": logging.WARNING,
-    "INFO": logging.INFO,
-    "DEBUG": logging.DEBUG,
-}
 
 level = LEVELS.get(str(settings.log_level).upper(), logging.INFO)
 

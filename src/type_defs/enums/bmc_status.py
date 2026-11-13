@@ -2,8 +2,6 @@
 
 from enum import StrEnum
 
-from constants.bmc import INCIDENT_STATUSES, WORK_ORDER_STATUSES
-
 
 class WorkOrderStatus(StrEnum):
     """Work order ``Status`` catalog (WOI)."""
@@ -31,15 +29,8 @@ class IncidentStatus(StrEnum):
     CANCELLED = "Cancelled"
 
 
-def assert_catalog_matches_enum(enum_cls: type[StrEnum], catalog: tuple[str, ...]) -> None:
-    enum_values = tuple(member.value for member in enum_cls.__members__.values())
-    if enum_values != catalog:
-        msg = f"{enum_cls.__name__} values must match constants catalog"
-        raise ValueError(msg)
-
-
-assert_catalog_matches_enum(WorkOrderStatus, WORK_ORDER_STATUSES)
-assert_catalog_matches_enum(IncidentStatus, INCIDENT_STATUSES)
+WORK_ORDER_STATUSES: tuple[str, ...] = tuple(status.value for status in WorkOrderStatus)
+INCIDENT_STATUSES: tuple[str, ...] = tuple(status.value for status in IncidentStatus)
 
 
 def format_allowed(catalog: tuple[str, ...]) -> str:

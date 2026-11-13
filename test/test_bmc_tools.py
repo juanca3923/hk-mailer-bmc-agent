@@ -8,7 +8,8 @@ import pydantic
 import pytest
 
 from agent.internal_tools import bmc_tools
-from constants.bmc import (
+from constants.bmc.defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
+from constants.bmc.fields import (
     AR_FIELD_INCIDENT_ASSIGNED_GROUP,
     AR_FIELD_INCIDENT_NUMBER,
     AR_FIELD_PEOPLE_FIRST_NAME,
@@ -20,12 +21,13 @@ from constants.bmc import (
     AR_FIELD_WORK_ORDER_ASGRP,
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
+)
+from constants.bmc.tickets import (
     INCIDENT_DESCRIPTION_MAX_LENGTH,
     INCIDENT_STATUSES,
     MAX_TICKETS_BY_EMAIL_RESULTS,
     WORK_ORDER_STATUSES,
 )
-from constants.bmc_defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from services.bmc import tool_handler
 from type_defs.models.bmc.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import CloseIncidentInput, CreateIncidentInput

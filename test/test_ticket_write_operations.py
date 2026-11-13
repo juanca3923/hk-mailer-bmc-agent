@@ -14,10 +14,8 @@ from typing import Any
 import pytest
 
 from commons.bmc.multipart_builder import AttachmentPart
-from constants.bmc import (
-    AR_FIELD_REQUEST_ID,
-    AR_FIELD_STATUS,
-    AR_FIELD_SUBMITTER,
+from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from constants.bmc.messages import (
     USER_ERROR_MESSAGE_INCIDENT_NOT_FOUND,
     USER_ERROR_MESSAGE_INCIDENT_REQUEST_ID_MISSING,
     USER_ERROR_MESSAGE_TICKET_ALREADY_CLOSED,
