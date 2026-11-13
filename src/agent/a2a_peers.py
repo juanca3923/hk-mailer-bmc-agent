@@ -16,8 +16,8 @@ from typing import cast
 
 import httpx
 
-from commons.a2a_constants import a2a_jsonrpc_url, well_known_agent_card_url
 from config import Settings, get_logger
+from constants.a2a import a2a_jsonrpc_url, well_known_agent_card_url
 from type_defs.dicts.a2a import PeerInfo
 from type_defs.dicts.a2a_protocol import (
     A2AJsonRpcMessageSendEnvelope,

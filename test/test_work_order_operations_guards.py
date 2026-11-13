@@ -1,9 +1,9 @@
 """Unit tests for Work Order business-rule guards (in-progress-to-close, reopen, ownership)."""
 
-from bmc.libs.constants import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
-from bmc.libs.helpers.work_order_operations import WorkOrderOperations
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
-from bmc.type_defs.inputs import AddWorkOrderNoteInput, CloseWorkOrderInput, UpdateWorkOrderStatusInput
+from constants.bmc import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.inputs import AddWorkOrderNoteInput, CloseWorkOrderInput, UpdateWorkOrderStatusInput
 
 
 class FakeSettings:

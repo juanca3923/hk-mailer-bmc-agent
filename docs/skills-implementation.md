@@ -46,7 +46,7 @@ example => Skill de ejemplo versionada en el repositorio...
 </skills>
 ```
 
-Si **no** hay skills en disco, **no** se inyecta nada (ni etiquetas vacías). El mensaje del usuario en cada turno va **sin prefijos** (ver [`src/commons/runner.py`](../src/commons/runner.py)).
+Si **no** hay skills en disco, **no** se inyecta nada (ni etiquetas vacías). El mensaje del usuario en cada turno va **sin prefijos** (ver [`src/agent/runtime/runner.py`](../src/commons/runner.py)).
 
 Implementación: [`src/config/skill_catalog.py`](../src/config/skill_catalog.py) (`discover_skill_entries`, `build_skills_catalog_xml`, `read_skill_guide_json`).
 

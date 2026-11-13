@@ -1,6 +1,6 @@
 """LangChain tool that attaches staged files (shared folder) to an Incident or Work Order.
 
-Shares the lazy ``BaseToolHandler`` singleton via ``bmc.libs.tool_handler.get_shared_handler()``,
+Shares the lazy ``BaseToolHandler`` singleton via ``services.bmc.tool_handler.get_shared_handler()``,
 like the other ``bmc_*_tools`` modules. The agent only handles a ``staging_id``: the file bytes are
 read by code from the shared folder and never enter an LLM context.
 """
@@ -13,17 +13,17 @@ from typing import Annotated, Literal
 from langchain_core.tools import tool
 from pydantic import Field
 
-from bmc.libs import tool_handler
-from bmc.libs.helpers.incident_operations import IncidentOperations
-from bmc.libs.helpers.staged_files import StagedFilesAttacher, TicketWriter
-from bmc.libs.helpers.work_order_operations import WorkOrderOperations
-from bmc.type_defs.inputs import (
+from services.bmc import tool_handler
+from services.bmc.incident_operations import IncidentOperations
+from services.bmc.staged_files import StagedFilesAttacher, TicketWriter
+from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.models.bmc.inputs import (
     AddIncidentAttachmentInput,
     AddIncidentNoteInput,
     AddWorkOrderAttachmentInput,
     AddWorkOrderNoteInput,
 )
-from bmc.type_defs.outputs import BaseOutput
+from type_defs.models.bmc.outputs import BaseOutput
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,6 @@
 """Unit tests for IncidentOperations.create() and the categorization fallback workaround."""
 
-from bmc.libs.business_defaults import DEFAULT_INCIDENT_SUPPORT_COMPANY, DEFAULT_INCIDENT_SUPPORT_ORGANIZATION
-from bmc.libs.constants import (
+from constants.bmc import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
     AR_FIELD_INCIDENT_NUMBER,
@@ -9,9 +8,10 @@ from bmc.libs.constants import (
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_1,
     DEFAULT_INCIDENT_CATEGORIZATION_FALLBACK_TIER_2,
 )
-from bmc.libs.helpers.incident_operations import IncidentOperations
-from bmc.type_defs.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
-from bmc.type_defs.inputs import CreateIncidentInput
+from constants.bmc_defaults import DEFAULT_INCIDENT_SUPPORT_COMPANY, DEFAULT_INCIDENT_SUPPORT_ORGANIZATION
+from services.bmc.incident_operations import IncidentOperations
+from type_defs.models.bmc.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.inputs import CreateIncidentInput
 
 
 class FakeClient:

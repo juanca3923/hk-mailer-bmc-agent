@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import HTTPException
 
-from commons.a2a_inbound_jsonrpc import A2AInboundRpcFailure
+from http_api.a2a_jsonrpc import A2AInboundRpcFailure
 from http_api.state import agent_state
 
 

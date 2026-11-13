@@ -8,14 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs.constants import (
+from constants.bmc import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
 )
-from bmc.libs.tool_handler import BaseToolHandler
+from exception.mcp import MCPClientError
+from services.bmc.tool_handler import BaseToolHandler
 
 MAX_BYTES = 1024
 

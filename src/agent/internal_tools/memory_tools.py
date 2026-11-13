@@ -1,7 +1,7 @@
 """Internal memory tools for the LLM to query chats, runs and current state.
 
-All tools are async. Serialization: ``commons.serializers.MemorySerializer``;
-queries: ``services.agent_runs_service.AgentRunsService`` and ``ChatService``.
+All tools are async. Serialization: ``services.persistence.memory_serializer.MemorySerializer``;
+queries: ``services.persistence.agent_runs_service.AgentRunsService`` and ``ChatService``.
 """
 
 from __future__ import annotations
@@ -12,11 +12,11 @@ from typing import Annotated
 from langchain_core.tools import BaseTool, tool
 from pydantic import Field
 
-from commons.serializers import MemorySerializer
-from commons.utils import parse_uuid_param
+from commons.text.utils import parse_uuid_param
 from config import get_logger
-from services.agent_runs_service import get_agent_runs_service
-from services.chat_service import get_chat_service
+from services.persistence.agent_runs_service import get_agent_runs_service
+from services.persistence.chat_service import get_chat_service
+from services.persistence.memory_serializer import MemorySerializer
 
 logger = get_logger()
 

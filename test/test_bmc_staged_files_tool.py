@@ -9,10 +9,10 @@ import pytest
 
 from agent.internal_tools import bmc_tools
 from agent.internal_tools.bmc_staged_files_tools import bmc_attach_staged_files
-from bmc.libs import tool_handler
-from bmc.libs.constants import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
-from bmc.libs.tool_handler import BaseToolHandler
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from constants.bmc import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
+from services.bmc import tool_handler
+from services.bmc.tool_handler import BaseToolHandler
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 
 STAGING_ID = '0b9f2c1e-7a54-4c1d-9d0e-3f6a1b2c4d5e'
 MAX_BYTES = 2048

@@ -7,14 +7,14 @@ from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, HTTPException
 
-from commons.runner import get_agent_runner
+from agent.runtime.runner import get_agent_runner
 from config import get_logger
 from http_api.agent_turn_guard import (
     http_turn_claim_and_restore_after_task,
     restore_agent_up_after_turn,
 )
 from http_api.state import agent_state
-from services.agent_events_service import get_agent_events_service
+from services.persistence.agent_events_service import get_agent_events_service
 from type_defs import ChatRequest, ChatResponse, chat_stream_event_to_json_line
 
 logger = get_logger()

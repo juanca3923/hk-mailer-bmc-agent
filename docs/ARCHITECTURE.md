@@ -10,11 +10,11 @@ El paquete `src/bmc/` encapsula toda la lógica de integración con BMC Helix AR
 
 | Módulo | Responsabilidad |
 |--------|----------------|
-| `bmc/config/settings.py` | `BmcSettings` — lee variables `BMC_*` del entorno |
-| `bmc/libs/connection_manager.py` | Singleton JWT: login al arranque, refresh automático en background |
-| `bmc/libs/api_client.py` | `BmcClient` — métodos HTTP async por formulario AR; retry 401 automático |
-| `bmc/libs/tool_handler.py` | `BaseToolHandler` — write guard, encodificación TOON, carga de adjuntos |
-| `bmc/libs/constants.py` | Nombres de campos AR, catálogos de estados, mensajes de error |
+| `config/bmc_settings.py` | `BmcSettings` — lee variables `BMC_*` del entorno |
+| `services/bmc/connection_manager.py` | Singleton JWT: login al arranque, refresh automático en background |
+| `services/bmc/api_client.py` | `BmcClient` — métodos HTTP async por formulario AR; retry 401 automático |
+| `services/bmc/tool_handler.py` | `BaseToolHandler` — write guard, encodificación TOON, carga de adjuntos |
+| `constants/bmc.py` | Nombres de campos AR, catálogos de estados, mensajes de error |
 | `bmc/libs/helpers/` | Builders (AR query, entry values, multipart) y operaciones multi-paso (WO, incident) |
 | `bmc/type_defs/` | Modelos Pydantic de entrada/salida, enums de estado, tipos AR |
 
@@ -44,14 +44,14 @@ build_agent()
   `bmc_add_incident_attachment`, `bmc_close_incident`
 
 `bmc_close_work_order` y `bmc_close_incident` aplican guards de negocio antes de
-escribir (`src/bmc/libs/helpers/ticket_guards.py`): rechazan cualquier escritura sobre
+escribir (`src/commons/bmc/ticket_guards.py`): rechazan cualquier escritura sobre
 un ticket ya `Closed`, y el cierre además exige que el `Submitter` del ticket coincida
 con el usuario de servicio BMC configurado. `bmc_add_incident_note`/
 `bmc_add_incident_attachment` escriben contra `HPD:WorkLog` (no `WOI:WorkInfo`).
 
-El esqueleto común de las escrituras con guardas (escritura habilitada → ticket resuelto → no `Closed` → guarda extra opcional → llamadas a BMC con `MCPClientError` convertido en salida fallida) vive en `src/bmc/libs/helpers/guarded_write.py` (`run_guarded_write`); `IncidentOperations` y `WorkOrderOperations` solo aportan los valores, la llamada al cliente y el mensaje. `work_log_fields` y la base `WorkLogInput` (`type_defs/inputs.py`) comparten los campos del work log, y `src/agent/internal_tools/ticket_tool_helpers.py` las piezas comunes de las tools de incidentes y WO.
+El esqueleto común de las escrituras con guardas (escritura habilitada → ticket resuelto → no `Closed` → guarda extra opcional → llamadas a BMC con `MCPClientError` convertido en salida fallida) vive en `src/commons/bmc/guarded_write.py` (`run_guarded_write`); `IncidentOperations` y `WorkOrderOperations` solo aportan los valores, la llamada al cliente y el mensaje. `work_log_fields` y la base `WorkLogInput` (`type_defs/inputs.py`) comparten los campos del work log, y `src/agent/internal_tools/ticket_tool_helpers.py` las piezas comunes de las tools de incidentes y WO.
 
-`src/agent/internal_tools/bmc_staged_files_tools.py` añade `bmc_attach_staged_files`: sube a un Incidente o WO los archivos que otro agente dejó en la carpeta compartida (`BMC_ATTACHMENT_BASE_DIR/<staging_id>/` + `manifest.json`). La lógica vive en `src/bmc/libs/helpers/staged_files.py` (`StagedFilesAttacher`, independiente de LangChain y del tipo de ticket mediante el puerto `TicketWriter`). Los bytes no pasan por el LLM: la tool solo recibe ids. `BaseToolHandler.load_attachment` confina toda lectura a `BMC_ATTACHMENT_BASE_DIR` (resuelve `..` y enlaces simbólicos).
+`src/agent/internal_tools/bmc_staged_files_tools.py` añade `bmc_attach_staged_files`: sube a un Incidente o WO los archivos que otro agente dejó en la carpeta compartida (`BMC_ATTACHMENT_BASE_DIR/<staging_id>/` + `manifest.json`). La lógica vive en `src/services/bmc/staged_files.py` (`StagedFilesAttacher`, independiente de LangChain y del tipo de ticket mediante el puerto `TicketWriter`). Los bytes no pasan por el LLM: la tool solo recibe ids. `BaseToolHandler.load_attachment` confina toda lectura a `BMC_ATTACHMENT_BASE_DIR` (resuelve `..` y enlaces simbólicos).
 
 Todas comparten un `BaseToolHandler` lazy-inicializado y retornan JSON con `{success, message}`.
 
@@ -97,7 +97,7 @@ Paquetes bajo `src/` (estructura plana, sin carpeta intermedia):
   - `logger.py`: `get_logger`, `get_user_logger`.
   - `skill_catalog.py` (`agent-base`): `discover_skill_entries`, `build_skills_catalog_xml`, `read_skill_guide_json`, validación de stem y lectura dual `*.md` / `*/SKILL.md`.
 - **agent/** (núcleo del agente + CLI):
-  - `__init__.py`: solo exporta `build_agent` (el CLI es `agent.cli:main` para evitar ciclos de importación con `commons.runner`).
+  - `__init__.py`: solo exporta `build_agent` (el CLI es `agent.cli:main` para evitar ciclos de importación con `agent.runtime.runner`).
   - `agent.py`: `build_agent` (context manager) — inicializa `CheckpointerManager`, `AgentPostgresStore`, LLM, compila el grafo con checkpointer + store, tools MCP, internas de memoria/skills y **tools A2A remotas** si `normalized_a2a_peer_configs()` devuelve al menos un peer. **Dos variantes según la rama**: en `deep-agent-base` usa `create_deep_agent` (`deepagents`) + `FilesystemBackend` (`virtual_mode=True`) con `skills=["/skills/"]`; en `agent-base` usa `create_agent` (LangChain estándar) + tool `skill_get_guide` + catálogo XML en el system prompt (sin `deepagents`).
   - `llm.py`, `mcp_tools.py`: fábrica de LLM (`build_llm`: Ollama / OpenAI / Anthropic según `Settings`; OpenAI/Anthropic con prompt caching por `agent_slug`), herramientas MCP (Streamable HTTP; URLs desde `Settings.mcp_urls`). Operación y límites: [`docs/MCP.md`](MCP.md).
   - `tool_error_policy.py`: `configure_tool_error_handling` — en `build_agent`, antes de `create_agent`, activa `handle_tool_error` en todas las tools; las excepciones de tool deben ser `ToolAgentError` (`ToolException`) para que el mensaje llegue al LLM en el `ToolMessage` sin abortar el turno.
@@ -108,14 +108,14 @@ Paquetes bajo `src/` (estructura plana, sin carpeta intermedia):
   - `internal_tools/skill_tools.py` (`agent-base`): `skill_get_guide`, `get_skill_tools`.
   - `internal_tools/a2a_tools.py`: tools `a2a_list_remote_agents` y `a2a_send_to_remote` (solo si tras normalizar `A2A_PEER_URLS` hay al menos un peer al construir el grafo).
 - **http_api/** (servicio FastAPI):
-  - `__init__.py`: vacío a propósito (no importa `app` al cargar el paquete; evita ciclo con `commons.agent_http`). Usar `http_api.app` para la app FastAPI.
+  - `__init__.py`: vacío a propósito (no importa `app` al cargar el paquete; evita ciclo con `http_api.lifecycle`). Usar `http_api.app` para la app FastAPI.
   - `app.py`: crea la app FastAPI, lifespan (`start_agent`/`stop_agent`, `chat_tasks`), **CORS** desde `Settings` (`cors_origins`, `cors_allow_credentials`) e incluye routers `a2a` + `routers/rest_routes`.
-  - `bmc/libs/preflight.py`: autochequeo de arranque (lo llama el lifespan de `app.py`): pide a BMC el campo de estado de `CTM:People` con una dirección ficticia `.invalid` y, si BMC lo rechaza (HTTP 400), deja un warning que remite a `AR_FIELD_PEOPLE_STATUS`; con tiempo límite y sin bloquear el arranque.
-  - `routers/people_routes.py`: `POST /people/verify` (¿el correo existe en `CTM:People` y está habilitado?). Lógica en `bmc/libs/helpers/person_lookup.py` (`verify_person_by_email`, mismo desempate que `resolve_reporter_identity`); protegido con `X-API-Key` frente a `BMC_VERIFY_API_KEY` (comparación en tiempo constante; sin clave configurada responde 503). Sin LLM: lo consume el mailer para validar el remitente antes de atender un correo.
+  - `services/startup/preflight.py`: autochequeo de arranque (lo llama el lifespan de `app.py`): pide a BMC el campo de estado de `CTM:People` con una dirección ficticia `.invalid` y, si BMC lo rechaza (HTTP 400), deja un warning que remite a `AR_FIELD_PEOPLE_STATUS`; con tiempo límite y sin bloquear el arranque.
+  - `routers/people_routes.py`: `POST /people/verify` (¿el correo existe en `CTM:People` y está habilitado?). Lógica en `services/bmc/person_lookup.py` (`verify_person_by_email`, mismo desempate que `resolve_reporter_identity`); protegido con `X-API-Key` frente a `BMC_VERIFY_API_KEY` (comparación en tiempo constante; sin clave configurada responde 503). Sin LLM: lo consume el mailer para validar el remitente antes de atender un correo.
   - `routers/rest_routes.py`: rutas REST `/status`, `/chat`, `/chat/stream`, `/chats`, `/runs`, `/start`, `/stop`, etc.
   - `agent_turn_guard.py`: reserva/registro de turno (`DOING_TASK` / restauración `UP` cuando no queda ninguno en curso) compartido por POST `/chat`, SSE `/chat/stream` y A2A JSON-RPC. Por defecto (`HTTP_ALLOW_CONCURRENT_TURNS=1`, `Settings`, fijado en `agent_state` al arrancar) permite varios turnos en paralelo; con `=0` rechaza (`409`) un turno nuevo mientras haya uno en curso.
   - `chat_handler.py`: `ChatHandler` — registro de `chat_tasks`, guardas (`graph`, `shutdown`) y ejecución del turno contra `AgentRunner`.
-  - `a2a.py`: A2A **inbound** — `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}` (JSON-RPC `message/send`). Constantes de protocolo y URLs auxiliares en `commons/a2a_constants.py`. Parseo en `commons/a2a_inbound_jsonrpc.py`. Mismo `app.state.graph` y `AgentRunner` que `/chat`.
+  - `a2a.py`: A2A **inbound** — `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}` (JSON-RPC `message/send`). Constantes de protocolo y URLs auxiliares en `constants/a2a.py`. Parseo en `http_api/a2a_jsonrpc.py`. Mismo `app.state.graph` y `AgentRunner` que `/chat`.
   - `state.py`: `AgentState` y singleton `agent_state`; la propiedad `status` está tipada como `StatusAgent`.
 - **commons/** (lógica compartida CLI + HTTP):
   - `__init__.py`: exporta solo `TextUtils` (evita cargar `agent_http`/`runner` al importar submódulos como `a2a_constants`).
@@ -200,7 +200,7 @@ erDiagram
 ```mermaid
 sequenceDiagram
     participant Caller as "CLI o HTTP"
-    participant Runner as "commons/runner.py"
+    participant Runner as "agent/runtime/runner.py"
     participant ChatSvc as "ChatService"
     participant RunSvc as "AgentRunsService"
     participant Graph as "LangGraph"
@@ -259,7 +259,7 @@ A2A en AgentForge se divide en **inbound** (este proceso actúa como servidor JS
 | Rol | Ruta | Responsabilidad |
 |-----|------|-----------------|
 | Inbound HTTP | [`src/http_api/a2a.py`](../src/http_api/a2a.py) | Router FastAPI: `GET /.well-known/agent-card.json`, `POST /a2a/{assistant_id}`; `HTTPException`/`JSONResponse`; reserva el turno en `agent_state` (`try_begin_task`/`restore_agent_up_after_turn`; `409` si está ocupado con `HTTP_ALLOW_CONCURRENT_TURNS=0`); delega parseo a `commons` y turno a `get_agent_runner()`. |
-| Inbound parseo (sin FastAPI) | [`src/commons/a2a_inbound_jsonrpc.py`](../src/commons/a2a_inbound_jsonrpc.py) | `A2AInboundMessageSendProcessor`: validar cuerpo JSON-RPC `message/send` → `A2AInboundMessageSendRequest` o `A2AInboundRpcFailure`; `@staticmethod` `jsonrpc_error`, `extract_text_from_parts`, `build_message_send_success`, `build_agent_forge_agent_card`. |
+| Inbound parseo (sin FastAPI) | [`src/http_api/a2a_jsonrpc.py`](../src/commons/a2a_inbound_jsonrpc.py) | `A2AInboundMessageSendProcessor`: validar cuerpo JSON-RPC `message/send` → `A2AInboundMessageSendRequest` o `A2AInboundRpcFailure`; `@staticmethod` `jsonrpc_error`, `extract_text_from_parts`, `build_message_send_success`, `build_agent_forge_agent_card`. |
 | Tipos A2A | [`src/type_defs/dicts/a2a_protocol.py`](../src/type_defs/dicts/a2a_protocol.py), [`src/type_defs/dicts/a2a.py`](../src/type_defs/dicts/a2a.py) | TypedDict / alias JSON-RPC y Agent Card; `PeerInfo`. |
 | Outbound cliente | [`src/agent/a2a_peers.py`](../src/agent/a2a_peers.py) | `A2APeerRegistry`, `fetch_agent_card`, `a2a_message_send` (httpx); registro enlazado al grafo (`bind_a2a_registry_to_graph`). |
 | Outbound tools | [`src/agent/internal_tools/a2a_tools.py`](../src/agent/internal_tools/a2a_tools.py) | Tools LangChain `a2a_list_remote_agents`, `a2a_send_to_remote` (cierran sobre `A2APeerRegistry`). |

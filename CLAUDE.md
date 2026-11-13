@@ -216,7 +216,7 @@ Copy `.env.example` to `.env` and fill in the required values.
 
 ### Business defaults — BMC tickets
 
-Fixed values injected by `src/bmc/libs/business_defaults.py` into every `bmc_create_work_order`
+Fixed values injected by `src/constants/bmc_defaults.py` into every `bmc_create_work_order`
 and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
 `First Name`/`Last Name` are **not** in this table — they are resolved per-call from
 `reporter_email` (see "Reporter identity resolution" above), not a fixed default.
@@ -278,7 +278,7 @@ The 15 tools are split across `bmc_tools.py` (`bmc_health_check` + the registry)
 `bmc_work_order_tools.py` (Work Orders), `bmc_incident_tools.py` (Incidents) and
 `bmc_staged_files_tools.py` (files staged by another agent) — split
 once the original single file grew past the repo's 1000-line-per-module limit. All four
-share one lazy `BaseToolHandler` singleton via `bmc.libs.tool_handler.get_shared_handler()`,
+share one lazy `BaseToolHandler` singleton via `services.bmc.tool_handler.get_shared_handler()`,
 deliberately *not* imported between the agent-side modules, to avoid a cyclic import
 between the aggregator (`bmc_tools.py`) and the modules it registers.
 
@@ -303,7 +303,7 @@ between the aggregator (`bmc_tools.py`) and the modules it registers.
 All tools return a JSON string with `{"success": bool, "message": "..."}`. On success, `message`
 contains TOON-encoded structured data. On error, `message` contains a user-facing Spanish error.
 
-Business-rule guards (`src/bmc/libs/helpers/ticket_guards.py`) run before any write: `require_not_closed`
+Business-rule guards (`src/commons/bmc/ticket_guards.py`) run before any write: `require_not_closed`
 rejects writes on tickets already `Closed`; `require_submitter` (close only) rejects closing a ticket
 whose `Submitter` does not match `BMC_USERNAME` — adding notes/attachments to such a ticket is still
 allowed. The common write skeleton is `run_guarded_write` in `helpers/guarded_write.py` (both
@@ -313,7 +313,7 @@ allowed. The common write skeleton is `run_guarded_write` in `helpers/guarded_wr
 
 BMC's create forms have no "create from just an email" field — `First Name`/`Last Name`
 (submitter identity, distinct from the fixed `Customer` identity) must be sent as free text.
-`src/bmc/libs/helpers/person_lookup.py` resolves them from the required `reporter_email`
+`src/services/bmc/person_lookup.py` resolves them from the required `reporter_email`
 parameter by querying `CTM:People` (`BmcClient.search_person_by_email`, form
 `BmcSettings.form_people_query`, default `CTM:People`) instead of a fixed persona. If no
 person is found (or the matched record has an incomplete name), the call fails with no
@@ -328,9 +328,9 @@ since BMC's result order for a non-unique match is not guaranteed.
 
 ## Adding New BMC Tools
 
-1. Add input/output models to `src/bmc/type_defs/inputs.py` and `outputs.py` if needed.
-2. Add AR field constants to `src/bmc/libs/constants.py` if needed.
-3. Add the HTTP method to `src/bmc/libs/api_client.py`.
+1. Add input/output models to `src/type_defs/models/bmc/inputs.py` and `outputs.py` if needed.
+2. Add AR field constants to `src/constants/bmc.py` if needed.
+3. Add the HTTP method to `src/services/bmc/api_client.py`.
 4. Add a helper in `src/bmc/libs/helpers/` if the operation has multiple steps.
 5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`
    (whichever ticket type it's for), following the lazy handler pattern

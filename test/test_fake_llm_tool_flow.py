@@ -18,7 +18,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 
 from agent.interceptors.agent_run_callback import AgentRunCallbackHandler
-from services.agent_events_service import AgentEventsService
+from services.persistence.agent_events_service import AgentEventsService
 
 
 def _get_server_status(server_name: str) -> dict[str, object]:

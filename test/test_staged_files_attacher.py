@@ -9,13 +9,13 @@ from pathlib import Path
 
 import pytest
 
-from bmc.libs.constants import (
+from constants.bmc import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
     USER_ERROR_MESSAGE_WRITE_DISABLED,
 )
-from bmc.libs.helpers.staged_files import StagedFilesAttacher
-from bmc.type_defs.outputs import BaseOutput
+from services.bmc.staged_files import StagedFilesAttacher
+from type_defs.models.bmc.outputs import BaseOutput
 
 STAGING_ID = '0b9f2c1e-7a54-4c1d-9d0e-3f6a1b2c4d5e'
 MAX_BYTES = 100

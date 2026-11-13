@@ -19,15 +19,15 @@ from agent.internal_tools import (
 )
 from agent.llm import build_llm
 from agent.mcp_tools import open_mcp_tools_streamable_http
+from agent.observability.langfuse_tracing import ensure_langfuse_tracing_client
 from agent.prompts import load_system_prompt_for_settings
 from agent.tool_error_policy import configure_tool_error_handling
-from bmc.config.settings import BmcSettings
-from bmc.exceptions.mcp import MCPLoginError
-from bmc.libs.connection_manager import BmcConnectionManager
-from commons.langfuse_tracing import ensure_langfuse_tracing_client
 from config import Settings, get_logger
+from config.bmc_settings import BmcSettings
 from database.checkpointer import CheckpointerManager
 from database.store import AgentPostgresStore
+from exception.mcp import MCPLoginError
+from services.bmc.connection_manager import BmcConnectionManager
 
 logger = get_logger()
 

@@ -11,11 +11,11 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
 
-from commons.interceptor_helpers import InterceptorHelpers
-from commons.utils import TextUtils
+from agent.observability.interceptor_helpers import InterceptorHelpers
+from commons.text.utils import TextUtils
 from config import get_logger
 from exception import AgentError
-from services.agent_events_service import AgentEventsService
+from services.persistence.agent_events_service import AgentEventsService
 from type_defs.dicts.event_payloads import (
     LlmEndPayload,
     LlmErrorPayload,

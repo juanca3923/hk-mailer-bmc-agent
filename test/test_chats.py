@@ -36,9 +36,9 @@ from agent.internal_tools.memory_tools import (  # noqa: E402
     memory_get_chat_messages,
     memory_search_chats,
 )
-from commons.runner import MessageConverter  # noqa: E402
+from agent.runtime.runner import MessageConverter  # noqa: E402
 from database.engine import close_engine  # noqa: E402
-from services.chat_service import get_chat_service  # noqa: E402
+from services.persistence.chat_service import get_chat_service  # noqa: E402
 
 _OUTPUT_DIR = Path(__file__).parent / "output"
 

@@ -36,7 +36,7 @@ No se pasa `http_client` personalizado de `httpx` → **no hay autenticación po
 
 1. Actualizar `MCP_URLS` (variable de entorno o `--env-file`).
 2. Asegurarse de que el agente **no** está en `DOING_TASK` (o cancelar turnos según operación).
-3. `POST /stop` → `POST /start` ([`src/commons/agent_http.py`](../src/commons/agent_http.py)).
+3. `POST /stop` → `POST /start` ([`src/http_api/lifecycle.py`](../src/commons/agent_http.py)).
 
 Eso cierra el `AsyncExitStack` del agente y vuelve a ejecutar `build_agent` con la nueva lista de URLs. **No** hace falta reiniciar el proceso uvicorn.
 
@@ -74,4 +74,4 @@ Para extender el código con autorización MCP, la especificación HTTP está en
 | [`src/agent/mcp_tools.py`](../src/agent/mcp_tools.py) | Apertura de sesiones y carga de tools |
 | [`src/agent/agent.py`](../src/agent/agent.py) | Integración en `build_agent` |
 | [`src/http_api/app.py`](../src/http_api/app.py) | Rutas `/start`, `/stop` |
-| [`src/commons/agent_http.py`](../src/commons/agent_http.py) | `start_agent` / `stop_agent` |
+| [`src/http_api/lifecycle.py`](../src/commons/agent_http.py) | `start_agent` / `stop_agent` |

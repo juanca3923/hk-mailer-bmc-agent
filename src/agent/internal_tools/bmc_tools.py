@@ -3,7 +3,7 @@
 The actual Work Order / Incident tool implementations live in
 ``bmc_work_order_tools.py`` / ``bmc_incident_tools.py`` (split out once this module
 grew past the repo's 1000-line-per-module limit). All three modules share one lazy
-``BaseToolHandler`` singleton via ``bmc.libs.tool_handler.get_shared_handler()`` —
+``BaseToolHandler`` singleton via ``services.bmc.tool_handler.get_shared_handler()`` —
 deliberately *not* imported from each other, to avoid a cyclic import between this
 aggregator and the two tool modules it registers.
 """
@@ -33,10 +33,10 @@ from agent.internal_tools.bmc_work_order_tools import (
     bmc_list_work_orders_by_email,
     bmc_update_work_order_status,
 )
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs import tool_handler
-from bmc.libs.tool_handler import BaseToolHandler
-from bmc.type_defs.outputs import BaseOutput
+from exception.mcp import MCPClientError
+from services.bmc import tool_handler
+from services.bmc.tool_handler import BaseToolHandler
+from type_defs.models.bmc.outputs import BaseOutput
 
 logger = logging.getLogger(__name__)
 

@@ -144,7 +144,7 @@ atajo para no pensar en los tipos reales:
    capturar** — un SDK/librería externa cuya propia documentación admite que propaga
    excepciones arbitrarias (ej. `Langfuse.get_prompt()`: *"Raises: Exception: Propagates
    any exceptions..."*), o un punto final de la aplicación después de agotar los tipos
-   específicos conocidos (ver `commons/runner.py`: primero `asyncio.CancelledError`,
+   específicos conocidos (ver `agent/runtime/runner.py`: primero `asyncio.CancelledError`,
    luego `AgentError`, y solo al final el catch-all).
 2. La **recuperación es idéntica sin importar el tipo de fallo** (loguear + degradar
    con gracia — devolver un fallback, cadena vacía, etc.) — no hay rama de manejo
@@ -153,7 +153,7 @@ atajo para no pensar en los tipos reales:
 Si aplica, el comentario junto al `except` debe explicar el **motivo** (por qué no hay un
 tipo más específico y cuál es la recuperación), no solo repetir qué hace el código.
 Ejemplos ya en el repo: `agent/prompts.py` (`fetch_prompt_from_langfuse`) y
-`commons/runner.py` (los dos catch-all de `run_agent_turn`).
+`agent/runtime/runner.py` (los dos catch-all de `run_agent_turn`).
 
 ## Seguridad
 

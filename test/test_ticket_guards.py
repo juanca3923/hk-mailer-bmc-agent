@@ -1,6 +1,6 @@
 """Unit tests for pure ticket write guards (status and ownership)."""
 
-from bmc.libs.helpers.ticket_guards import require_not_closed, require_submitter
+from commons.bmc.ticket_guards import require_not_closed, require_submitter
 
 
 def test_require_not_closed_allows_open_status() -> None:

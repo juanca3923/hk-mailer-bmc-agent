@@ -10,7 +10,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import Field
 
 from agent.a2a_peers import A2APeerRegistry, a2a_message_send
-from commons.a2a_reply_text import extract_a2a_reply_text
+from commons.a2a.reply_text import extract_a2a_reply_text
 from config import get_logger
 from exception import AgentError
 from type_defs.dicts.a2a import PeerInfo

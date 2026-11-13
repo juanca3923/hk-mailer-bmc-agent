@@ -4,10 +4,10 @@ from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs.tool_handler import BaseToolHandler
-from bmc.type_defs.ar_api import ArScalarValue, BmcEntryListResponse
-from bmc.type_defs.outputs import BaseOutput
+from exception.mcp import MCPClientError
+from services.bmc.tool_handler import BaseToolHandler
+from type_defs.models.bmc.ar_api import ArScalarValue, BmcEntryListResponse
+from type_defs.models.bmc.outputs import BaseOutput
 
 
 async def search_detail_json(

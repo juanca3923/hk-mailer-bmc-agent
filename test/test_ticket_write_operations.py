@@ -13,8 +13,8 @@ from typing import Any
 
 import pytest
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs.constants import (
+from commons.bmc.multipart_builder import AttachmentPart
+from constants.bmc import (
     AR_FIELD_REQUEST_ID,
     AR_FIELD_STATUS,
     AR_FIELD_SUBMITTER,
@@ -25,11 +25,11 @@ from bmc.libs.constants import (
     USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
     USER_ERROR_MESSAGE_WRITE_DISABLED,
 )
-from bmc.libs.helpers.incident_operations import IncidentOperations
-from bmc.libs.helpers.multipart_builder import AttachmentPart
-from bmc.libs.helpers.work_order_operations import WorkOrderOperations
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
-from bmc.type_defs.inputs import (
+from exception.mcp import MCPClientError
+from services.bmc.incident_operations import IncidentOperations
+from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.inputs import (
     AddIncidentAttachmentInput,
     AddIncidentNoteInput,
     AddWorkOrderAttachmentInput,
@@ -38,7 +38,7 @@ from bmc.type_defs.inputs import (
     CloseWorkOrderInput,
     UpdateWorkOrderStatusInput,
 )
-from bmc.type_defs.outputs import BaseOutput
+from type_defs.models.bmc.outputs import BaseOutput
 
 TICKET_ID = 'T1'
 USERNAME = 'svc_mosaico'

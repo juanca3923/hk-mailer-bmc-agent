@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs.constants import (
+from constants.bmc import (
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
 )
-from bmc.libs.helpers.person_lookup import ReporterIdentity, resolve_reporter_identity
-from bmc.type_defs.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
-from bmc.type_defs.outputs import BaseOutput
+from exception.mcp import MCPClientError
+from services.bmc.person_lookup import ReporterIdentity, resolve_reporter_identity
+from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
+from type_defs.models.bmc.outputs import BaseOutput
 
 EMAIL = 'juan.londonog@henkia.com'
 

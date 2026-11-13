@@ -2,7 +2,7 @@
 
 La aplicación FastAPI y el punto de entrada Uvicorn están en ``http_api.app``.
 Este ``__init__`` está vacío a propósito: importar ``app`` aquí al cargar el
-paquete provocaba un ciclo con ``commons`` (``commons.agent_http`` importa
+paquete provocaba un ciclo con ``commons`` (``http_api.lifecycle`` importa
 ``http_api.state`` mientras ``commons`` aún se inicializa).
 
 Usar siempre ``from http_api.app import app`` o la ruta de objeto ``http_api.app:app``.

@@ -8,10 +8,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs import tool_handler
-from bmc.libs.helpers.person_lookup import PersonCheck
+from exception.mcp import MCPClientError
 from http_api.routers import people_routes
+from services.bmc import tool_handler
+from services.bmc.person_lookup import PersonCheck
 
 KEY = 'clave-de-prueba'
 EMAIL = 'nia.correo@henkia.com'

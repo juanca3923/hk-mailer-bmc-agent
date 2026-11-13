@@ -7,10 +7,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from bmc.exceptions.mcp import MCPClientError
-from bmc.libs import tool_handler
-from bmc.libs.helpers.person_lookup import verify_person_by_email
 from config import get_logger
+from exception.mcp import MCPClientError
+from services.bmc import tool_handler
+from services.bmc.person_lookup import verify_person_by_email
 from type_defs.http.people import PersonVerifyRequest, PersonVerifyResponse
 
 logger = get_logger()
