@@ -5,6 +5,9 @@ from constants.bmc.fields import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
     AR_FIELD_INCIDENT_NUMBER,
+    AR_FIELD_PEOPLE_EMAIL,
+    AR_FIELD_PEOPLE_FIRST_NAME,
+    AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_REQUEST_ID,
 )
 from constants.bmc.tickets import (
@@ -26,6 +29,16 @@ class FakeClient:
         self.update_calls: list[tuple[str, dict]] = []
         self.post_incident_work_log_calls: list[object] = []
         self.create_incident_calls: list[dict] = []
+
+    async def search_person_by_email(self, email: str) -> BmcEntryListResponse:  # noqa: ARG002
+        values = BmcEntryValues(
+            data={
+                AR_FIELD_PEOPLE_FIRST_NAME: 'Ana',
+                AR_FIELD_PEOPLE_LAST_NAME: 'Perez',
+                AR_FIELD_PEOPLE_EMAIL: 'r@x.com',
+            }
+        )
+        return BmcEntryListResponse(entries=[BmcEntry(values=values)])
 
     async def create_incident_entry(self, json_body: dict) -> BmcCreateEntryResponse:
         self.create_incident_calls.append(json_body)
@@ -72,6 +85,7 @@ class FakeHandler:
 
 def _create_input() -> CreateIncidentInput:
     return CreateIncidentInput(
+        reporter_email='r@x.com',
         description='D',
         detailed_decription='DD',
         categorization_tier_1='T1',
