@@ -7,11 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from agent.internal_tools import bmc_tools
-from agent.internal_tools.bmc_staged_files_tools import bmc_attach_staged_files
 from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
 from services.bmc import tool_handler
 from services.bmc.tool_handler import BaseToolHandler
+from test.tool_lookup import all_bmc_tools, bmc_tool
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 
 STAGING_ID = '0b9f2c1e-7a54-4c1d-9d0e-3f6a1b2c4d5e'
@@ -85,7 +84,7 @@ def use_handler(monkeypatch: pytest.MonkeyPatch, client: FakeClient, settings: F
 
 
 async def run(ticket_type: str, ticket_number: str) -> dict:
-    raw = await bmc_attach_staged_files.ainvoke(
+    raw = await bmc_tool('bmc_attach_staged_files').ainvoke(
         {'ticket_type': ticket_type, 'ticket_number': ticket_number, 'staging_id': STAGING_ID},
     )
     return json.loads(raw)
@@ -161,9 +160,9 @@ async def test_without_base_dir_nothing_is_read(base: Path, monkeypatch: pytest.
 
 
 def test_tool_schema_exposes_only_ids_never_paths_or_content() -> None:
-    assert set(bmc_attach_staged_files.args) == {'ticket_type', 'ticket_number', 'staging_id'}
+    assert set(bmc_tool('bmc_attach_staged_files').args) == {'ticket_type', 'ticket_number', 'staging_id'}
 
 
 def test_tool_is_registered_with_the_other_bmc_tools() -> None:
-    names = {tool.name for tool in bmc_tools._ALL_BMC_TOOLS}  # noqa: SLF001
+    names = {tool.name for tool in all_bmc_tools()}
     assert 'bmc_attach_staged_files' in names

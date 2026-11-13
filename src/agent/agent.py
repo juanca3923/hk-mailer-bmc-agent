@@ -11,11 +11,11 @@ from langchain_core.tools import BaseTool
 
 from agent.a2a_peers import A2APeerRegistry, bind_a2a_registry_to_graph
 from agent.internal_tools import (
-    get_a2a_peer_tools,
-    get_bmc_tools,
-    get_datetime_tools,
-    get_memory_tools,
-    get_skill_tools,
+    A2APeerTools,
+    BmcTools,
+    DatetimeTools,
+    MemoryTools,
+    SkillTools,
 )
 from agent.llm import build_llm
 from agent.mcp_tools import open_mcp_tools_streamable_http
@@ -69,8 +69,8 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
             bmc_manager = None
 
     try:
-        bmc_tools = get_bmc_tools()
-        internal_tools = get_memory_tools() + get_skill_tools() + get_datetime_tools() + bmc_tools
+        bmc_tools = BmcTools.get_tools()
+        internal_tools = MemoryTools.get_tools() + SkillTools.get_tools() + DatetimeTools.get_tools() + bmc_tools
         logger.info("tools internas cargadas: %d (bmc: %d)", len(internal_tools), len(bmc_tools))
 
         # W0135 false positive: @asynccontextmanager + async-with anidados; el cierre se hace al salir del generador.
@@ -88,7 +88,7 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
                 if peer_cfgs:
                     a2a_registry_for_graph = A2APeerRegistry()
                     await a2a_registry_for_graph.load(settings)
-                    a2a_tools = get_a2a_peer_tools(a2a_registry_for_graph)
+                    a2a_tools = A2APeerTools.get_tools(a2a_registry_for_graph)
                     logger.info("tools A2A remotas: %d", len(a2a_tools))
 
                 all_tools = internal_tools + list(mcp_tools) + a2a_tools

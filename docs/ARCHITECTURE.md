@@ -35,7 +35,7 @@ build_agent()
 
 ### Herramientas internas BMC
 
-`src/agent/internal_tools/bmc_tools.py` define 12 herramientas `@tool` (LangChain):
+`src/agent/internal_tools/bmc_tools.py` agrupa las herramientas BMC en clases (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`; cada una expone un `get_tools()` estático y se crean con `ToolSet.build`, de `internal_tools/base.py`):
 
 - **Health**: `bmc_health_check`
 - **Work Orders**: `bmc_create_work_order`, `bmc_get_work_order`, `bmc_add_work_order_note`,

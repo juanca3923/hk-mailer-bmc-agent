@@ -163,6 +163,11 @@ Ejemplos ya en el repo: `agent/prompts.py` (`fetch_prompt_from_langfuse`) y
 - **Dónde va algo nuevo:** tipo → `type_defs/models/<dominio>/`; contrato entre capas → `type_defs/ports/`; valor fijo → `constants/<dominio>/`; lógica sin dependencias → `commons/<dominio>/`; acceso a base de datos → `services/persistence/`; cliente u operación de BMC → `services/bmc/`; tool del LLM → `agent/internal_tools/`.
 - **Nada suelto:** no dejes archivos en la raíz de `commons/` ni de `services/`; usa un subpaquete por dominio. Mapa completo en `docs/ARCHITECTURE.md`.
 
+## Tools del LLM
+
+- Una **clase por archivo** en `agent/internal_tools/`, con las dependencias en el constructor y un `@staticmethod get_tools(...)` que devuelve las tools; nada de closures ni funciones `@tool` sueltas.
+- Cada tool se crea con `ToolSet.build(...)` (`internal_tools/base.py`) y una `description` explícita; los errores no se silencian: las `ToolException` y cualquier excepción inesperada llegan al LLM como mensaje legible.
+
 ## Seguridad
 
 - No registrar datos sensibles (contraseñas, tokens, secretos).

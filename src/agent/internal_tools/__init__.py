@@ -1,15 +1,15 @@
 """Internal agent tools: memory, skills, A2A peers, datetime and BMC Helix."""
 
-from agent.internal_tools.a2a_tools import get_a2a_peer_tools
-from agent.internal_tools.bmc_tools import get_bmc_tools
-from agent.internal_tools.datetime_tools import get_datetime_tools
-from agent.internal_tools.memory_tools import get_memory_tools
-from agent.internal_tools.skill_tools import get_skill_tools
+from agent.internal_tools.a2a_tools import A2APeerTools
+from agent.internal_tools.bmc_tools import BmcTools
+from agent.internal_tools.datetime_tools import DatetimeTools
+from agent.internal_tools.memory_tools import MemoryTools
+from agent.internal_tools.skill_tools import SkillTools
 
 __all__ = [
-    "get_a2a_peer_tools",
-    "get_bmc_tools",
-    "get_datetime_tools",
-    "get_memory_tools",
-    "get_skill_tools",
+    'A2APeerTools',
+    'BmcTools',
+    'DatetimeTools',
+    'MemoryTools',
+    'SkillTools',
 ]

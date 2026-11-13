@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — refactor: tools del LLM en clases y errores siempre visibles
+
+- Cada archivo de `agent/internal_tools/` expone una clase (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`, `DatetimeTools`, `MemoryTools`, `SkillTools`, `A2APeerTools`) con un `get_tools()` estático; `_ALL_BMC_TOOLS` y las funciones `get_*_tools` desaparecen.
+- Nueva base `ToolSet` (`internal_tools/base.py`): exige `description` explícita y convierte cualquier excepción inesperada en un mensaje legible para el LLM (tool, tipo y texto recortado; el traceback queda en el log). Los argumentos inválidos se describen por campo, sin el valor recibido.
+- Sin cambios en nombres, parámetros ni salida de las tools (contrato verificado idéntico).
+
+---
+
 ## 2026-11-13 — refactor: logging para rastreo sin datos sensibles
 
 - Niveles revisados: INFO con hitos (arranque, turno/run/tick con id y duración, llamadas a Graph/BMC/A2A con estado y duración, decisiones sobre correos o tickets) y DEBUG con el detalle (textos recortados a 200 caracteres, tamaños).

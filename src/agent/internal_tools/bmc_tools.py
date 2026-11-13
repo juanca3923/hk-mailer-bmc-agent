@@ -13,26 +13,12 @@ from __future__ import annotations
 import logging
 import os
 
-from langchain_core.tools import BaseTool, tool
+from langchain_core.tools import BaseTool
 
-from agent.internal_tools.bmc_incident_tools import (
-    bmc_add_incident_attachment,
-    bmc_add_incident_note,
-    bmc_close_incident,
-    bmc_create_incident,
-    bmc_get_incident,
-    bmc_list_incidents_by_email,
-)
-from agent.internal_tools.bmc_staged_files_tools import bmc_attach_staged_files
-from agent.internal_tools.bmc_work_order_tools import (
-    bmc_add_work_order_attachment,
-    bmc_add_work_order_note,
-    bmc_close_work_order,
-    bmc_create_work_order,
-    bmc_get_work_order,
-    bmc_list_work_orders_by_email,
-    bmc_update_work_order_status,
-)
+from agent.internal_tools.base import ToolSet
+from agent.internal_tools.bmc_incident_tools import IncidentTools
+from agent.internal_tools.bmc_staged_files_tools import StagedFilesTools
+from agent.internal_tools.bmc_work_order_tools import WorkOrderTools
 from exception.mcp import MCPClientError
 from services.bmc import tool_handler
 from services.bmc.tool_handler import BaseToolHandler
@@ -41,63 +27,55 @@ from type_defs.models.bmc.outputs import BaseOutput
 logger = logging.getLogger(__name__)
 
 
-@tool(
-    description=(
-        "Check whether the BMC session is alive and the API is reachable, without "
-        "creating or modifying anything. Call this first if the user reports connection "
-        "errors."
-    )
-)
-async def bmc_health_check() -> str:
-    """Verify BMC JWT session and API reachability with a lightweight authenticated GET.
+class BmcTools(ToolSet):
+    """Health check tool plus the aggregator of every BMC tool group."""
 
-    Does not create or modify tickets.
+    async def health_check(self) -> str:
+        """Verify BMC JWT session and API reachability with a lightweight authenticated GET.
 
-    Returns
-    -------
-    str
-        JSON with ``success`` and ``message`` fields.
-    """
-    handler = tool_handler.get_shared_handler()
-    try:
-        await handler.client.health_ping()
-    except MCPClientError as exc:
-        logger.warning("bmc_health_check failed: status_code=%s", exc.status_code)
-        return BaseToolHandler.failure(exc).model_dump_json()
-    logger.info("bmc_health_check successful")
-    return BaseOutput(success=True, message="BMC session is healthy.").model_dump_json()
+        Does not create or modify tickets.
 
+        Returns
+        -------
+        str
+            JSON with ``success`` and ``message`` fields.
+        """
+        handler = tool_handler.get_shared_handler()
+        try:
+            await handler.client.health_ping()
+        except MCPClientError as exc:
+            logger.warning('bmc_health_check failed: status_code=%s', exc.status_code)
+            return BaseToolHandler.failure(exc).model_dump_json()
+        logger.info('bmc_health_check successful')
+        return BaseOutput(success=True, message='BMC session is healthy.').model_dump_json()
 
-_ALL_BMC_TOOLS: list[BaseTool] = [
-    bmc_health_check,
-    bmc_create_work_order,
-    bmc_get_work_order,
-    bmc_list_work_orders_by_email,
-    bmc_add_work_order_note,
-    bmc_add_work_order_attachment,
-    bmc_update_work_order_status,
-    bmc_close_work_order,
-    bmc_create_incident,
-    bmc_get_incident,
-    bmc_list_incidents_by_email,
-    bmc_add_incident_note,
-    bmc_add_incident_attachment,
-    bmc_close_incident,
-    bmc_attach_staged_files,
-]
+    @staticmethod
+    def get_tools() -> list[BaseTool]:
+        """Return BMC tools when ``BMC_BASE_URL`` is configured; otherwise empty list.
 
-
-def get_bmc_tools() -> list[BaseTool]:
-    """Return BMC tools when ``BMC_BASE_URL`` is configured; otherwise empty list.
-
-    Returns
-    -------
-    list[BaseTool]
-        All 15 BMC LangChain tools, or ``[]`` when BMC is not configured.
-    """
-    if not os.environ.get("BMC_BASE_URL"):
-        logger.info("BMC_BASE_URL not set — BMC tools disabled")
-        return []
-    tool_handler.get_shared_handler()
-    logger.info("BMC tools loaded: %d", len(_ALL_BMC_TOOLS))
-    return list(_ALL_BMC_TOOLS)
+        Returns
+        -------
+        list[BaseTool]
+            All 15 BMC LangChain tools, or ``[]`` when BMC is not configured.
+        """
+        if not os.environ.get('BMC_BASE_URL'):
+            logger.info('BMC_BASE_URL not set — BMC tools disabled')
+            return []
+        tool_handler.get_shared_handler()
+        health = BmcTools()
+        tools: list[BaseTool] = [
+            health.build(
+                health.health_check,
+                name='bmc_health_check',
+                description=(
+                    'Check whether the BMC session is alive and the API is reachable, without '
+                    'creating or modifying anything. Call this first if the user reports connection '
+                    'errors.'
+                ),
+            ),
+            *WorkOrderTools.get_tools(),
+            *IncidentTools.get_tools(),
+            *StagedFilesTools.get_tools(),
+        ]
+        logger.info('BMC tools loaded: %d', len(tools))
+        return tools
