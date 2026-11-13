@@ -1,7 +1,6 @@
 """Pure business-rule guards for ticket write operations (status and ownership)."""
 
 from collections.abc import Awaitable
-from typing import NamedTuple
 
 from constants.bmc import (
     AR_FIELD_REQUEST_ID,
@@ -14,24 +13,7 @@ from constants.bmc import (
 from exception.mcp import MCPClientError
 from type_defs.models.bmc.ar_api import BmcEntryListResponse
 from type_defs.models.bmc.outputs import BaseOutput
-
-
-class TicketState(NamedTuple):
-    """Fields read from a ticket search needed by the write guards.
-
-    Attributes
-    ----------
-    request_id : str
-        AR Request ID used for subsequent PUTs.
-    status : str
-        Current ``Status`` value.
-    submitter : str
-        Current ``Submitter`` value (who opened the ticket in BMC).
-    """
-
-    request_id: str
-    status: str
-    submitter: str
+from type_defs.models.bmc.ticket_state import TicketState
 
 
 def require_not_closed(status: str) -> BaseOutput | None:

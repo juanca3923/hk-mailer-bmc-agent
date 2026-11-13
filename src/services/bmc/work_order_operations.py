@@ -2,17 +2,11 @@
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Protocol
 
 from commons.bmc.entry_values_mapper import EntryValuesMapper
 from commons.bmc.guarded_write import run_guarded_write, work_log_fields
-from commons.bmc.multipart_builder import AttachmentPart, MultipartBuilder
-from commons.bmc.ticket_guards import (
-    TicketState,
-    require_submitter,
-    resolve_ticket_state_from_search,
-)
-from config.bmc_settings import BmcSettings
+from commons.bmc.multipart_builder import MultipartBuilder
+from commons.bmc.ticket_guards import require_submitter, resolve_ticket_state_from_search
 from constants.bmc import (
     DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
@@ -22,7 +16,7 @@ from constants.bmc import (
     USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
     WORK_LOG_ATTACHMENT_MARKER,
 )
-from services.bmc.api_client import BmcClient
+from services.bmc.handler_context import TicketHandlerContext
 from type_defs.models.bmc.ar_values import (
     CloseWorkOrderValues,
     UpdateWorkOrderStatusValues,
@@ -35,32 +29,15 @@ from type_defs.models.bmc.inputs import (
     UpdateWorkOrderStatusInput,
 )
 from type_defs.models.bmc.outputs import BaseOutput
+from type_defs.models.bmc.ticket_state import TicketState
 
 logger = logging.getLogger(__name__)
-
-
-class WorkOrderHandlerContext(Protocol):
-    """Minimal handler surface used by work order operations."""
-
-    @property
-    def client(self) -> BmcClient:
-        """BMC HTTP client."""
-
-    @property
-    def settings(self) -> BmcSettings:
-        """BMC settings."""
-
-    def ensure_write_allowed(self) -> BaseOutput | None:
-        """Return error output when writes are disabled."""
-
-    def load_attachment(self, file_path: str) -> AttachmentPart:
-        """Load attachment from disk."""
 
 
 class WorkOrderOperations:
     """Resolve work orders and run multi-step BMC write flows."""
 
-    def __init__(self, handler: WorkOrderHandlerContext) -> None:
+    def __init__(self, handler: TicketHandlerContext) -> None:
         self._handler = handler
 
     async def resolve_ticket_state(self, work_order_id: str) -> tuple[TicketState | None, BaseOutput | None]:

@@ -15,7 +15,7 @@ from pydantic import Field
 
 from services.bmc import tool_handler
 from services.bmc.incident_operations import IncidentOperations
-from services.bmc.staged_files import StagedFilesAttacher, TicketWriter
+from services.bmc.staged_files import StagedFilesAttacher
 from services.bmc.work_order_operations import WorkOrderOperations
 from type_defs.models.bmc.inputs import (
     AddIncidentAttachmentInput,
@@ -24,6 +24,7 @@ from type_defs.models.bmc.inputs import (
     AddWorkOrderNoteInput,
 )
 from type_defs.models.bmc.outputs import BaseOutput
+from type_defs.ports.bmc import TicketWriter
 
 logger = logging.getLogger(__name__)
 

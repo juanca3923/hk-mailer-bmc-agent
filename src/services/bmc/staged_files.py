@@ -10,9 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
 
 from constants.bmc import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
@@ -23,6 +21,8 @@ from constants.bmc import (
     USER_ERROR_MESSAGE_WRITE_DISABLED,
 )
 from type_defs.models.bmc.outputs import BaseOutput
+from type_defs.models.bmc.staged_outcome import StagedOutcome
+from type_defs.ports.bmc import TicketWriter
 
 logger = logging.getLogger(__name__)
 
@@ -36,26 +36,6 @@ REASON_NOT_ALLOWED = 'not_allowed'
 NOTE_REASONS = (REASON_TOO_LARGE, REASON_MISSING)
 BYTES_PER_KB = 1024
 BYTES_PER_MB = 1024 * 1024
-
-
-class TicketWriter(Protocol):
-    """Writes to one specific ticket (incident or work order)."""
-
-    async def attach(self, file_path: str, note_text: str) -> BaseOutput:
-        """Upload ``file_path`` as a work log entry with ``note_text``."""
-
-    async def note(self, note_text: str) -> BaseOutput:
-        """Add a work log note without attachment."""
-
-
-@dataclass
-class _Outcome:
-    """Accumulated result of one staging folder."""
-
-    attached: list[str] = field(default_factory=list)
-    skipped: list[dict[str, str]] = field(default_factory=list)
-    failed: list[dict[str, str]] = field(default_factory=list)
-    sizes: dict[str, int] = field(default_factory=dict)
 
 
 def format_size(size: int) -> str:
@@ -132,7 +112,7 @@ class StagedFilesAttacher:
         if isinstance(opened, BaseOutput):
             return opened
         folder, entries = opened
-        outcome = _Outcome()
+        outcome = StagedOutcome()
         for name, description in entries:
             stop = await self._process_entry(folder, name, description, outcome)
             if stop is not None:
@@ -180,7 +160,9 @@ class StagedFilesAttacher:
             entries.append((name, text or name))
         return entries
 
-    async def _process_entry(self, folder: Path, name: str, description: str, outcome: _Outcome) -> BaseOutput | None:
+    async def _process_entry(
+        self, folder: Path, name: str, description: str, outcome: StagedOutcome
+    ) -> BaseOutput | None:
         """Upload one file; return a ``BaseOutput`` only when the whole run must stop."""
         reason = self._skip_reason(folder, name, outcome)
         if reason is not None:
@@ -197,7 +179,7 @@ class StagedFilesAttacher:
             outcome.failed.append({'name': name, 'message': result.message})
         return None
 
-    def _skip_reason(self, folder: Path, name: str, outcome: _Outcome) -> str | None:
+    def _skip_reason(self, folder: Path, name: str, outcome: StagedOutcome) -> str | None:
         """Return why ``name`` must not be uploaded, or ``None`` when it can be."""
         reason: str | None = None
         path = folder / name
@@ -214,7 +196,7 @@ class StagedFilesAttacher:
                 reason = REASON_TOO_LARGE
         return reason
 
-    async def _note_skipped(self, outcome: _Outcome) -> None:
+    async def _note_skipped(self, outcome: StagedOutcome) -> None:
         """Leave one ticket note listing the files that could not be attached."""
         lines = [
             f'- {item["name"]}: {self._describe_reason(item["name"], item["reason"], outcome)}'
@@ -228,7 +210,7 @@ class StagedFilesAttacher:
         if not result.success:
             logger.warning('No se pudo dejar la nota de adjuntos omitidos: %s', result.message)
 
-    def _describe_reason(self, name: str, reason: str, outcome: _Outcome) -> str:
+    def _describe_reason(self, name: str, reason: str, outcome: StagedOutcome) -> str:
         """Human-readable reason for the ticket note."""
         if reason == REASON_TOO_LARGE:
             size = format_size(outcome.sizes[name]) if name in outcome.sizes else 'tamaño desconocido'

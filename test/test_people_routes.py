@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from exception.mcp import MCPClientError
 from http_api.routers import people_routes
 from services.bmc import tool_handler
-from services.bmc.person_lookup import PersonCheck
+from type_defs.models.bmc.person import PersonCheck
 
 KEY = 'clave-de-prueba'
 EMAIL = 'nia.correo@henkia.com'

@@ -2,18 +2,12 @@
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Protocol
 
 from commons.bmc.entry_values_mapper import EntryValuesMapper
 from commons.bmc.guarded_write import run_guarded_write, work_log_fields
-from commons.bmc.multipart_builder import AttachmentPart, MultipartBuilder
-from commons.bmc.ticket_guards import (
-    TicketState,
-    require_submitter,
-    resolve_ticket_state_from_search,
-)
+from commons.bmc.multipart_builder import MultipartBuilder
+from commons.bmc.ticket_guards import require_submitter, resolve_ticket_state_from_search
 from commons.bmc.toon_encoder import ToonResponseEncoder
-from config.bmc_settings import BmcSettings
 from constants.bmc import (
     AR_FIELD_CATEGORIZATION_TIER_1,
     AR_FIELD_CATEGORIZATION_TIER_2,
@@ -38,7 +32,7 @@ from constants.bmc_defaults import (
     DEFAULT_INCIDENT_SUPPORT_ORGANIZATION,
 )
 from exception.mcp import MCPClientError
-from services.bmc.api_client import BmcClient
+from services.bmc.handler_context import TicketHandlerContext
 from services.bmc.person_lookup import resolve_reporter_identity
 from type_defs.models.bmc.ar_api import BmcEntryListResponse
 from type_defs.models.bmc.ar_values import (
@@ -55,32 +49,15 @@ from type_defs.models.bmc.inputs import (
     CreateIncidentInput,
 )
 from type_defs.models.bmc.outputs import BaseOutput, IncidentCreatedData
+from type_defs.models.bmc.ticket_state import TicketState
 
 logger = logging.getLogger(__name__)
-
-
-class IncidentHandlerContext(Protocol):
-    """Minimal handler surface used by incident operations."""
-
-    @property
-    def client(self) -> BmcClient:
-        """BMC HTTP client."""
-
-    @property
-    def settings(self) -> BmcSettings:
-        """BMC settings."""
-
-    def ensure_write_allowed(self) -> BaseOutput | None:
-        """Return error output when writes are disabled."""
-
-    def load_attachment(self, file_path: str) -> AttachmentPart:
-        """Load attachment from disk."""
 
 
 class IncidentOperations:
     """Resolve incidents and run multi-step BMC write flows."""
 
-    def __init__(self, handler: IncidentHandlerContext) -> None:
+    def __init__(self, handler: TicketHandlerContext) -> None:
         self._handler = handler
 
     async def resolve_ticket_state(self, incident_number: str) -> tuple[TicketState | None, BaseOutput | None]:

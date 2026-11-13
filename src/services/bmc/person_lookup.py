@@ -11,7 +11,6 @@ person can be confidently identified.
 from __future__ import annotations
 
 import logging
-from typing import NamedTuple
 
 from constants.bmc import (
     AR_FIELD_PEOPLE_FIRST_NAME,
@@ -25,15 +24,9 @@ from exception.mcp import MCPClientError
 from services.bmc.api_client import BmcClient
 from type_defs.models.bmc.ar_api import BmcEntryValues
 from type_defs.models.bmc.outputs import BaseOutput
+from type_defs.models.bmc.person import PersonCheck, ReporterIdentity
 
 logger = logging.getLogger(__name__)
-
-
-class ReporterIdentity(NamedTuple):
-    """First/Last Name resolved from a single ``CTM:People`` match."""
-
-    first_name: str
-    last_name: str
 
 
 def _pick_entry(candidates: list[BmcEntryValues], email: str) -> BmcEntryValues:
@@ -127,13 +120,6 @@ async def resolve_reporter_identity(client: BmcClient, email: str) -> ReporterId
             message=USER_ERROR_MESSAGE_PERSON_NOT_FOUND.format(email=normalized_email),
         )
     return ReporterIdentity(first_name=first_name, last_name=last_name)
-
-
-class PersonCheck(NamedTuple):
-    """Result of looking an email up in ``CTM:People`` to decide whether it is a valid origin."""
-
-    exists: bool
-    enabled: bool
 
 
 async def verify_person_by_email(client: BmcClient, email: str) -> PersonCheck:

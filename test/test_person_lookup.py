@@ -8,9 +8,10 @@ from constants.bmc import (
     AR_FIELD_PEOPLE_LOGIN_ID,
 )
 from exception.mcp import MCPClientError
-from services.bmc.person_lookup import ReporterIdentity, resolve_reporter_identity
+from services.bmc.person_lookup import resolve_reporter_identity
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.outputs import BaseOutput
+from type_defs.models.bmc.person import ReporterIdentity
 
 EMAIL = 'juan.londonog@henkia.com'
 

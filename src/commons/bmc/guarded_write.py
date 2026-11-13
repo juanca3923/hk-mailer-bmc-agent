@@ -1,19 +1,13 @@
 """Shared skeleton of the guarded ticket writes (incidents and work orders)."""
 
 from collections.abc import Awaitable, Callable
-from typing import Protocol
 
-from commons.bmc.ticket_guards import TicketState, require_not_closed
+from commons.bmc.ticket_guards import require_not_closed
 from exception.mcp import MCPClientError
 from type_defs.models.bmc.inputs import WorkLogInput
 from type_defs.models.bmc.outputs import BaseOutput
-
-
-class WriteGate(Protocol):
-    """Handler surface needed to check that writes are enabled."""
-
-    def ensure_write_allowed(self) -> BaseOutput | None:
-        """Return error output when writes are disabled."""
+from type_defs.models.bmc.ticket_state import TicketState
+from type_defs.ports.bmc import WriteGate
 
 
 async def run_guarded_write(
