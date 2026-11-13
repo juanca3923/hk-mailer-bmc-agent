@@ -36,8 +36,10 @@ def require_verify_key(x_api_key: Annotated[str | None, Header()] = None) -> Non
     """
     expected = tool_handler.get_shared_handler().settings.verify_api_key
     if not expected:
+        logger.error('people/verify: rejected, verify API key is not configured')
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail='Verificación de personas no configurada')
     if not x_api_key or not hmac.compare_digest(x_api_key.encode(), expected.encode()):
+        logger.warning('people/verify: rejected, X-API-Key header %s', 'invalid' if x_api_key else 'missing')
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Clave inválida')
 
 
@@ -50,4 +52,5 @@ async def verify_person(body: PersonVerifyRequest) -> PersonVerifyResponse:
     except MCPClientError as exc:
         logger.error('people/verify: BMC lookup failed status=%s', exc.status_code)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail='No se pudo consultar BMC') from exc
+    logger.info('people/verify: exists=%s enabled=%s', check.exists, check.enabled)
     return PersonVerifyResponse(exists=check.exists, enabled=check.enabled)

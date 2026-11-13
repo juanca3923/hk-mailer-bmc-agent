@@ -32,15 +32,16 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(override=False)
 
-from agent.internal_tools.memory_tools import (  # noqa: E402
-    memory_get_chat_messages,
-    memory_search_chats,
-)
+from agent.internal_tools.memory_tools import MemoryTools  # noqa: E402
 from agent.runtime.runner import MessageConverter  # noqa: E402
 from database.engine import close_engine  # noqa: E402
 from services.persistence.chat_service import get_chat_service  # noqa: E402
 
 _OUTPUT_DIR = Path(__file__).parent / "output"
+
+
+def _memory_tool(name: str):  # noqa: ANN202
+    return next(tool for tool in MemoryTools.get_tools() if tool.name == name)
 
 
 def _section(title: str) -> str:
@@ -103,7 +104,7 @@ async def run(query: str, chat_id: str | None, limit: int) -> str:
 
     # ------------------------------------------------------------------ [1]
     lines.append(_section(f'[1] BÚSQUEDA DE CHATS — memory_search_chats(query="{query}")'))
-    result_search = await memory_search_chats.ainvoke({"query": query})
+    result_search = await _memory_tool("memory_search_chats").ainvoke({"query": query})
     lines.append(_pretty(result_search))
 
     # Determina el chat_id a usar para [2] y [3]
@@ -124,7 +125,7 @@ async def run(query: str, chat_id: str | None, limit: int) -> str:
                 f"[2] MENSAJES DEL CHAT — memory_get_chat_messages(chat_id={target_chat_id}, limit={limit})"
             )
         )
-        result_messages = await memory_get_chat_messages.ainvoke(
+        result_messages = await _memory_tool("memory_get_chat_messages").ainvoke(
             {"chat_id": target_chat_id, "limit": limit}
         )
         lines.append(_pretty(result_messages))

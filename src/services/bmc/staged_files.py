@@ -111,6 +111,13 @@ class StagedFilesAttacher:
             if stop is not None:
                 return stop
         await self._note_skipped(outcome)
+        logger.info(
+            'staged files %s: attached=%d skipped=%d failed=%d',
+            staging_id,
+            len(outcome.attached),
+            len(outcome.skipped),
+            len(outcome.failed),
+        )
         report = {'attached': outcome.attached, 'skipped': outcome.skipped, 'failed': outcome.failed}
         return BaseOutput(success=not outcome.failed, message=json.dumps(report, ensure_ascii=False))
 
@@ -119,17 +126,22 @@ class StagedFilesAttacher:
         failure: BaseOutput | None = None
         folder = Path()
         if self._base_dir is None:
+            logger.warning('staged files rejected: BMC_ATTACHMENT_BASE_DIR is not configured')
             failure = BaseOutput(success=False, message=USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED)
         elif not STAGING_ID_PATTERN.fullmatch(staging_id):
+            logger.warning('staged files rejected: staging_id has an invalid format (len=%d)', len(staging_id))
             failure = BaseOutput(success=False, message=USER_ERROR_MESSAGE_STAGING_INVALID_ID)
         else:
             folder = (self._base_dir / staging_id).resolve()
             if not folder.is_dir() or not folder.is_relative_to(self._base_dir.resolve()):
+                logger.warning('staged files rejected: folder %s not found or outside the base dir', staging_id)
                 failure = BaseOutput(success=False, message=USER_ERROR_MESSAGE_STAGING_NOT_FOUND)
         if failure is not None:
             return failure
         entries = self._read_manifest(folder)
+        logger.debug('staged files %s: manifest entries=%s', staging_id, None if entries is None else len(entries))
         if entries is None:
+            logger.warning('staged files rejected: manifest of %s is missing or invalid', staging_id)
             return BaseOutput(success=False, message=USER_ERROR_MESSAGE_STAGING_INVALID_MANIFEST)
         return folder, entries
 
@@ -159,16 +171,19 @@ class StagedFilesAttacher:
         """Upload one file; return a ``BaseOutput`` only when the whole run must stop."""
         reason = self._skip_reason(folder, name, outcome)
         if reason is not None:
+            logger.info('staged file skipped: name=%s reason=%s size=%s', name, reason, outcome.sizes.get(name))
             outcome.skipped.append({'name': name, 'reason': reason})
             return None
         result = await self._writer.attach(str(folder / name), description)
         if result.success:
+            logger.debug('staged file attached: name=%s size=%s', name, outcome.sizes.get(name))
             outcome.attached.append(name)
         elif result.message == USER_ERROR_MESSAGE_WRITE_DISABLED:
             return result
         elif result.message == USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE:
             outcome.skipped.append({'name': name, 'reason': StagedSkipReason.TOO_LARGE})
         else:
+            logger.warning('staged file upload failed: name=%s size=%s', name, outcome.sizes.get(name))
             outcome.failed.append({'name': name, 'message': result.message})
         return None
 
@@ -201,7 +216,7 @@ class StagedFilesAttacher:
         text = f'No se adjuntaron {len(lines)} archivo(s) del correo:\n' + '\n'.join(lines)
         result = await self._writer.note(text)
         if not result.success:
-            logger.warning('No se pudo dejar la nota de adjuntos omitidos: %s', result.message)
+            logger.warning('No se pudo dejar la nota de adjuntos omitidos (%d archivos)', len(lines))
 
     def _describe_reason(self, name: str, reason: str, outcome: StagedOutcome) -> str:
         """Human-readable reason for the ticket note."""

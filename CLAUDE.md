@@ -92,7 +92,7 @@ BmcClient ──► BmcConnectionManager (JWT singleton, auto-refresh)
 
 `build_agent()` in `src/agent/agent.py`:
 1. If `BMC_BASE_URL` is set → instantiate `BmcConnectionManager`, call `start()` (login + refresh loop).
-2. Call `get_bmc_tools()` → lazy `BaseToolHandler` initialization.
+2. Call `BmcTools.get_tools()` → lazy `BaseToolHandler` initialization.
 3. Build LangGraph with all tools.
 4. On exit → `BmcConnectionManager.stop()` cancels the refresh task and closes the HTTP client.
 
@@ -293,13 +293,13 @@ since BMC's result order for a non-unique match is not guaranteed.
 2. Add AR field constants to `src/constants/bmc/` if needed.
 3. Add the HTTP method to `src/services/bmc/api_client.py`.
 4. Add a helper in `src/commons/bmc/` (pure builders) or `src/services/bmc/` (multi-step operations) if the operation has multiple steps.
-5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`
-   (whichever ticket type it's for), following the lazy handler pattern
-   (`handler = tool_handler.get_shared_handler()`). Pass an explicit, concise
-   `@tool(description=...)` for the LLM — see "Docstring de humanos vs. descripción de
-   tool para el LLM" in `.claude/rules/estandar-python.md`; don't rely on the bare
-   `@tool` decorator falling back to the (human-facing) docstring.
-6. Register it in the `_ALL_BMC_TOOLS` list and import it, both in `bmc_tools.py`.
+5. Add a method to `WorkOrderTools` (`bmc_work_order_tools.py`) or `IncidentTools` (`bmc_incident_tools.py`),
+   following the lazy handler pattern (`handler = tool_handler.get_shared_handler()`), and register it in that
+   class's `get_tools()` with `build(self.method, name=..., description=...)` (`ToolSet.build`, in
+   `internal_tools/base.py`). The description is explicit and concise for the LLM — see "Docstring de humanos vs.
+   descripción de tool para el LLM" in `.claude/rules/estandar-python.md`; never rely on the docstring.
+   Errors the tool does not handle reach the LLM as a readable `ToolException` (see `agent/tool_error_policy.py`).
+6. `BmcTools.get_tools()` (`bmc_tools.py`) already aggregates the classes; add a new class there only for a new group.
 7. Document it in this file and in `README.md`.
 
 ---

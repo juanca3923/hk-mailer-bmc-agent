@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from typing import Literal
 from uuid import UUID
 
@@ -27,6 +28,8 @@ class TurnContext:
     run_id: UUID
     # HumanMessage del turno (texto del usuario sin prefijos)
     messages: list[BaseMessage]
+    # Monotonic clock reading at turn start, used only to log the turn duration.
+    started_at: float = field(default_factory=time.monotonic)
 
 
 @dataclass

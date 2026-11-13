@@ -11,8 +11,10 @@ pasar el mensaje nuevo al grafo con el thread_id del chat.
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import AsyncIterator
 from functools import lru_cache
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from langchain_core.callbacks import AsyncCallbackHandler, BaseCallbackHandler
@@ -23,6 +25,7 @@ from agent.interceptors.agent_run_callback import AgentRunCallbackHandler
 from agent.observability.interceptor_helpers import InterceptorHelpers
 from agent.observability.langfuse_tracing import ensure_langfuse_tracing_client
 from agent.runtime.last_ai_reply import ReplyExtractor
+from commons.text.utils import TextUtils
 from config import get_logger
 from config.settings import Settings
 from database.models import ChatMessage
@@ -101,8 +104,7 @@ class AgentRunner:
         runs_svc = get_agent_runs_service()
 
         chat = await chat_svc.get_or_create_chat(chat_id)
-        logger.info("turno iniciado: chat=%s", chat.id)
-        logger.debug("prepare_turn: user_message_len=%d", len(user_message))
+        logger.debug("prepare_turn: chat=%s user_message_len=%d", chat.id, len(user_message))
 
         await chat_svc.save_message(
             chat_id=chat.id,
@@ -117,7 +119,7 @@ class AgentRunner:
             user_message=user_message,
             chat_id=chat.id,
         )
-        logger.info("run creado: id=%s chat=%s", run_id, chat.id)
+        logger.info("turno iniciado: run=%s chat=%s message_len=%d", run_id, chat.id, len(user_message))
 
         return TurnContext(
             chat_id=chat.id,
@@ -139,7 +141,13 @@ class AgentRunner:
             message_type=MESSAGE_TYPE_NORMAL,
             agent_run_id=ctx.run_id,
         )
-        logger.info("turno éxito: run=%s reply_len=%d", ctx.run_id, len(reply))
+        logger.info(
+            "turno éxito: run=%s chat=%s reply_len=%d duración=%.1fs",
+            ctx.run_id,
+            ctx.chat_id,
+            len(reply),
+            time.monotonic() - ctx.started_at,
+        )
         return AgentTurnResult(reply=reply, chat_id=ctx.chat_id, run_id=ctx.run_id, status="success")
 
     async def finish_turn_cancelled(self, *, ctx: TurnContext) -> AgentTurnResult:
@@ -155,7 +163,12 @@ class AgentRunner:
             message_type=MESSAGE_TYPE_CANCELLED,
             agent_run_id=ctx.run_id,
         )
-        logger.info("turno cancelado: run=%s", ctx.run_id)
+        logger.info(
+            "turno cancelado: run=%s chat=%s duración=%.1fs",
+            ctx.run_id,
+            ctx.chat_id,
+            time.monotonic() - ctx.started_at,
+        )
         return AgentTurnResult(
             reply=self.MSG_CANCELLED,
             chat_id=ctx.chat_id,
@@ -183,7 +196,14 @@ class AgentRunner:
             message_type=MESSAGE_TYPE_ERROR,
             agent_run_id=ctx.run_id,
         )
-        logger.error("turno error: run=%s detail=%s", ctx.run_id, error_detail)
+        logger.error(
+            "turno error: run=%s chat=%s kind=%s duración=%.1fs detail=%s",
+            ctx.run_id,
+            ctx.chat_id,
+            error_kind,
+            time.monotonic() - ctx.started_at,
+            TextUtils.truncate(error_detail, 200),
+        )
         return AgentTurnResult(
             reply=error_content,
             chat_id=ctx.chat_id,
@@ -383,6 +403,8 @@ class AgentRunner:
         else:
             model = settings.ollama_model
             endpoint = settings.ollama_base_url
+        # Only the host is logged: a configured URL may embed credentials.
+        endpoint = (urlsplit(endpoint).hostname or "(unknown)") if "://" in endpoint else endpoint
         stream = settings.stream
         status = getattr(exc, "status_code", None)
         logger.exception(
@@ -396,7 +418,7 @@ class AgentRunner:
             stream,
             len(ctx.messages),
             status,
-            str(exc),
+            TextUtils.truncate(str(exc), 200),
         )
 
 

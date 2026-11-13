@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from agent.internal_tools import datetime_tools
+from agent.internal_tools.datetime_tools import DatetimeTools
+from test.tool_lookup import tool_by_name
 
 
 class FakeSettings:
@@ -38,7 +40,7 @@ def test_get_current_date_formats_known_wednesday(monkeypatch: pytest.MonkeyPatc
     fixed = datetime(2026, 10, 7, 9, 30, tzinfo=timezone(timedelta(hours=-5)))
     _patch_now(monkeypatch, fixed)
 
-    result = json.loads(datetime_tools.get_current_date.invoke({}))
+    result = json.loads(tool_by_name(DatetimeTools.get_tools(), "get_current_date").invoke({}))
 
     assert result["date"] == "07/10/2026"
     assert result["day"] == fixed.day
@@ -54,12 +56,12 @@ def test_get_current_date_falls_back_to_utc_on_invalid_timezone(monkeypatch: pyt
     """An unknown/invalid ``AGENT_TIMEZONE`` must not crash the tool — fall back to UTC."""
     _patch_settings(monkeypatch, "Not/AZone")
 
-    result = json.loads(datetime_tools.get_current_date.invoke({}))
+    result = json.loads(tool_by_name(DatetimeTools.get_tools(), "get_current_date").invoke({}))
 
     assert result["timezone"] == "UTC"
 
 
 def test_get_datetime_tools_returns_get_current_date() -> None:
-    tools = datetime_tools.get_datetime_tools()
+    tools = DatetimeTools.get_tools()
 
     assert [t.name for t in tools] == ["get_current_date"]

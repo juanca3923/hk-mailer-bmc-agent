@@ -34,7 +34,7 @@ class CheckpointerManager:
             settings: Configuración del proyecto (necesita asyncpg_url con formato postgresql://).
         """
         conn_string = settings.asyncpg_url
-        logger.info("checkpointer: abriendo conexión psycopg3 url=%r", conn_string)
+        logger.info("checkpointer: abriendo conexión psycopg3")
         # W0135 false positive: asynccontextmanager unwinds inner async-with on generator close.
         # pylint: disable=contextmanager-generator-missing-cleanup
         async with AsyncPostgresSaver.from_conn_string(conn_string) as saver:

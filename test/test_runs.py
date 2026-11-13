@@ -28,14 +28,14 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(override=False)
 
-from agent.internal_tools.memory_tools import (  # noqa: E402
-    memory_get_current_task,
-    memory_get_run_events,
-    memory_list_recent_runs,
-)
+from agent.internal_tools.memory_tools import MemoryTools  # noqa: E402
 from database.engine import close_engine  # noqa: E402
 
 _OUTPUT_DIR = Path(__file__).parent / "output"
+
+
+def _memory_tool(name: str):  # noqa: ANN202
+    return next(tool for tool in MemoryTools.get_tools() if tool.name == name)
 
 
 def _section(title: str) -> str:
@@ -59,12 +59,12 @@ async def run(limit: int, run_id: str | None) -> str:
 
     # ------------------------------------------------------------------ [1]
     lines.append(_section("[1] TAREA ACTIVA — memory_get_current_task()"))
-    result_current = await memory_get_current_task.ainvoke({})
+    result_current = await _memory_tool("memory_get_current_task").ainvoke({})
     lines.append(_pretty(result_current))
 
     # ------------------------------------------------------------------ [2]
     lines.append(_section(f"[2] ÚLTIMAS RUNS — memory_list_recent_runs(limit={limit})"))
-    result_runs = await memory_list_recent_runs.ainvoke({"limit": limit})
+    result_runs = await _memory_tool("memory_list_recent_runs").ainvoke({"limit": limit})
     lines.append(_pretty(result_runs))
 
     # Determina el run_id a usar para la sección [3]
@@ -81,7 +81,7 @@ async def run(limit: int, run_id: str | None) -> str:
     # ------------------------------------------------------------------ [3]
     if target_run_id:
         lines.append(_section(f"[3] EVENTOS DE RUN — memory_get_run_events(run_id={target_run_id})"))
-        result_events = await memory_get_run_events.ainvoke({"run_id": target_run_id})
+        result_events = await _memory_tool("memory_get_run_events").ainvoke({"run_id": target_run_id})
         lines.append(_pretty(result_events))
     else:
         lines.append(_section("[3] EVENTOS DE RUN"))

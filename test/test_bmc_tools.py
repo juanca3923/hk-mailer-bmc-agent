@@ -7,7 +7,6 @@ import json
 import pydantic
 import pytest
 
-from agent.internal_tools import bmc_tools
 from constants.bmc.defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
 from constants.bmc.fields import (
     AR_FIELD_INCIDENT_ASSIGNED_GROUP,
@@ -29,6 +28,7 @@ from constants.bmc.tickets import (
     WORK_ORDER_STATUSES,
 )
 from services.bmc import tool_handler
+from test.tool_lookup import all_bmc_tools, bmc_tool
 from type_defs.models.bmc.ar_api import BmcCreateEntryResponse, BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import CloseIncidentInput, CreateIncidentInput
 from type_defs.models.bmc.outputs import (
@@ -161,7 +161,7 @@ async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.M
     client = FakeClient(status='Closed', submitter='svc_mosaico')
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_close_work_order.ainvoke({'work_order_id': 'WO1'})
+    raw = await bmc_tool('bmc_close_work_order').ainvoke({'work_order_id': 'WO1'})
 
     payload = json.loads(raw)
     assert payload['success'] is False
@@ -172,7 +172,7 @@ async def test_bmc_close_incident_reflects_guard_failure(monkeypatch: pytest.Mon
     client = FakeClient(status='In Progress', submitter='otro_usuario')
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_close_incident.ainvoke({'incident_number': 'INC1', 'description': 'cierre'})
+    raw = await bmc_tool('bmc_close_incident').ainvoke({'incident_number': 'INC1', 'description': 'cierre'})
 
     payload = json.loads(raw)
     assert payload['success'] is False
@@ -184,7 +184,7 @@ async def test_bmc_add_incident_note_uses_work_log_not_work_info(monkeypatch: py
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_add_incident_note.ainvoke({'incident_number': 'INC1', 'note_text': 'hola'})
+    raw = await bmc_tool('bmc_add_incident_note').ainvoke({'incident_number': 'INC1', 'note_text': 'hola'})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -192,7 +192,7 @@ async def test_bmc_add_incident_note_uses_work_log_not_work_info(monkeypatch: py
 
 
 def test_bmc_create_incident_has_no_impact_urgency_params_but_has_assigned_group() -> None:
-    schema_keys = set(bmc_tools.bmc_create_incident.args.keys())
+    schema_keys = set(bmc_tool('bmc_create_incident').args.keys())
     assert 'impact' not in schema_keys
     assert 'urgency' not in schema_keys
     assert 'assigned_support_company' not in schema_keys
@@ -201,21 +201,21 @@ def test_bmc_create_incident_has_no_impact_urgency_params_but_has_assigned_group
 
 
 def test_bmc_close_work_order_has_no_obsolete_status_params() -> None:
-    schema_keys = set(bmc_tools.bmc_close_work_order.args.keys())
+    schema_keys = set(bmc_tool('bmc_close_work_order').args.keys())
     assert 'status_reason' not in schema_keys
     assert 'final_status' not in schema_keys
     assert 'description' not in schema_keys
 
 
 def test_bmc_close_incident_has_no_obsolete_status_params() -> None:
-    schema_keys = set(bmc_tools.bmc_close_incident.args.keys())
+    schema_keys = set(bmc_tool('bmc_close_incident').args.keys())
     assert 'status_reason' not in schema_keys
     assert 'intermediate_status' not in schema_keys
     assert 'final_status' not in schema_keys
 
 
 def test_bmc_create_work_order_has_no_support_company_organization_params_but_has_assigned_group() -> None:
-    schema_keys = set(bmc_tools.bmc_create_work_order.args.keys())
+    schema_keys = set(bmc_tool('bmc_create_work_order').args.keys())
     assert 'support_company' not in schema_keys
     assert 'support_organization' not in schema_keys
     assert 'assigned_group' in schema_keys
@@ -225,7 +225,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     client = FakeClient()
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_create_work_order.ainvoke({
+    raw = await bmc_tool('bmc_create_work_order').ainvoke({
         'summary': 'S',
         'detailed_description': 'DD',
         'reporter_email': REPORTER_EMAIL,
@@ -253,7 +253,7 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
     client = FakeClient(person_entries=[])
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_create_work_order.ainvoke({
+    raw = await bmc_tool('bmc_create_work_order').ainvoke({
         'summary': 'S',
         'detailed_description': 'DD',
         'reporter_email': REPORTER_EMAIL,
@@ -274,7 +274,7 @@ async def test_bmc_create_incident_uses_looked_up_reporter_identity(monkeypatch:
     client = FakeClient()
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_create_incident.ainvoke({
+    raw = await bmc_tool('bmc_create_incident').ainvoke({
         'description': 'D',
         'detailed_decription': 'DD',
         'reporter_email': REPORTER_EMAIL,
@@ -296,7 +296,7 @@ async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypa
     client = FakeClient(person_entries=[])
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_create_incident.ainvoke({
+    raw = await bmc_tool('bmc_create_incident').ainvoke({
         'description': 'D',
         'detailed_decription': 'DD',
         'reporter_email': REPORTER_EMAIL,
@@ -313,15 +313,15 @@ async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypa
 
 def test_status_params_expose_enum_to_the_model() -> None:
     for tool_fn, statuses in (
-        (bmc_tools.bmc_create_work_order, WORK_ORDER_STATUSES),
-        (bmc_tools.bmc_update_work_order_status, WORK_ORDER_STATUSES),
-        (bmc_tools.bmc_create_incident, INCIDENT_STATUSES),
+        (bmc_tool('bmc_create_work_order'), WORK_ORDER_STATUSES),
+        (bmc_tool('bmc_update_work_order_status'), WORK_ORDER_STATUSES),
+        (bmc_tool('bmc_create_incident'), INCIDENT_STATUSES),
     ):
         assert set(tool_fn.args['status'].get('enum', [])) == set(statuses)
 
 
 def test_all_bmc_tools_are_prefixed() -> None:
-    for t in bmc_tools._ALL_BMC_TOOLS:  # noqa: SLF001
+    for t in all_bmc_tools():
         assert t.name.startswith('bmc_')
 
 
@@ -329,8 +329,8 @@ def test_incident_description_fields_expose_100_char_limit_to_the_model() -> Non
     """BMC rejects the whole request (not a truncation) above 100 chars on this
     AR field — regression for 'Value does not fall within the limits specified
     for the field... Maximum length -100'."""
-    assert bmc_tools.bmc_create_incident.args['description']['maxLength'] == INCIDENT_DESCRIPTION_MAX_LENGTH
-    assert bmc_tools.bmc_close_incident.args['description']['maxLength'] == INCIDENT_DESCRIPTION_MAX_LENGTH
+    assert bmc_tool('bmc_create_incident').args['description']['maxLength'] == INCIDENT_DESCRIPTION_MAX_LENGTH
+    assert bmc_tool('bmc_close_incident').args['description']['maxLength'] == INCIDENT_DESCRIPTION_MAX_LENGTH
 
 
 def test_create_incident_input_rejects_description_over_100_chars() -> None:
@@ -354,7 +354,7 @@ def test_bmc_create_work_order_requires_categorization_params_explicitly() -> No
     """No code-level catch-all: the LLM must always pass these five, sourced from a
     domain skill row or from guia-creacion-tickets' documented catch-all values —
     editable by the service desk without redeploying the agent."""
-    schema = bmc_tools.bmc_create_work_order.args_schema
+    schema = bmc_tool('bmc_create_work_order').args_schema
     for field_name in (
         'categorization_tier_1',
         'categorization_tier_2',
@@ -368,7 +368,7 @@ def test_bmc_create_work_order_requires_categorization_params_explicitly() -> No
 def test_all_bmc_tool_params_expose_a_description() -> None:
     """Regression for the tool-calling standard: every parameter must carry its own
     description in the JSON schema the model sees, not only in the function docstring."""
-    for t in bmc_tools._ALL_BMC_TOOLS:  # noqa: SLF001
+    for t in all_bmc_tools():
         schema = t.args_schema.model_json_schema() if t.args_schema else {'properties': {}}
         for name, prop in schema.get('properties', {}).items():
             assert 'description' in prop, f'{t.name}.{name} missing description'
@@ -394,7 +394,7 @@ async def test_bmc_list_work_orders_by_email_returns_rows_and_flags_truncation(
     client.email_search_result = BmcEntryListResponse(entries=entries)
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_list_work_orders_by_email.ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
+    raw = await bmc_tool('bmc_list_work_orders_by_email').ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -410,7 +410,7 @@ async def test_bmc_list_work_orders_by_email_empty_result(monkeypatch: pytest.Mo
     client = FakeClient()
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_list_work_orders_by_email.ainvoke({'email': REPORTER_EMAIL})
+    raw = await bmc_tool('bmc_list_work_orders_by_email').ainvoke({'email': REPORTER_EMAIL})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -436,7 +436,7 @@ async def test_bmc_list_incidents_by_email_returns_rows_and_flags_truncation(
     client.email_search_result = BmcEntryListResponse(entries=entries)
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_list_incidents_by_email.ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
+    raw = await bmc_tool('bmc_list_incidents_by_email').ainvoke({'email': REPORTER_EMAIL, 'limit': 2})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -453,7 +453,7 @@ async def test_bmc_get_work_order_summary_comes_from_description_field(
     client = FakeClient()
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_get_work_order.ainvoke({'work_order_id': 'WO1'})
+    raw = await bmc_tool('bmc_get_work_order').ainvoke({'work_order_id': 'WO1'})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -470,7 +470,7 @@ async def test_bmc_get_incident_returns_description_and_assigned_group(
     client = FakeClient()
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tools.bmc_get_incident.ainvoke({'incident_number': 'INC1'})
+    raw = await bmc_tool('bmc_get_incident').ainvoke({'incident_number': 'INC1'})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -489,5 +489,5 @@ def test_ticket_info_tools_never_expose_raw_values_or_request_id() -> None:
 
 
 def test_tickets_by_email_limit_is_capped_at_the_schema_level() -> None:
-    assert bmc_tools.bmc_list_work_orders_by_email.args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
-    assert bmc_tools.bmc_list_incidents_by_email.args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
+    assert bmc_tool('bmc_list_work_orders_by_email').args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
+    assert bmc_tool('bmc_list_incidents_by_email').args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS

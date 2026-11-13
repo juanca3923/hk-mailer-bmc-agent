@@ -10,9 +10,10 @@ from __future__ import annotations
 import logging
 from typing import Annotated, Literal
 
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool
 from pydantic import Field
 
+from agent.internal_tools.base import ToolSet
 from services.bmc import tool_handler
 from services.bmc.incident_operations import IncidentOperations
 from services.bmc.staged_files import StagedFilesAttacher
@@ -69,57 +70,78 @@ class WorkOrderTicketWriter:
         )
 
 
-@tool(
-    description=(
-        "Attach to an existing Incident or Work Order the files staged for it by the email agent "
-        "(the original email as .eml plus evidence files). Each file becomes its own entry in the "
-        "ticket's activity log; files over the size limit are skipped and listed in a ticket note. "
-        "Returns a JSON report of what was attached, skipped or failed. Fails if the ticket is "
-        "already closed or writes are disabled."
-    )
-)
-async def bmc_attach_staged_files(
-    ticket_type: Annotated[
-        Literal["incident", "work_order"],
-        Field(description="Kind of ticket the files belong to."),
-    ],
-    ticket_number: Annotated[
-        str,
-        Field(
-            min_length=1,
-            description=(
-                "Incident Number (e.g. INC000000002106) or Work Order ID (e.g. WO0000000000228), "
-                "matching ticket_type."
-            ),
-        ),
-    ],
-    staging_id: Annotated[
-        str,
-        Field(
-            min_length=1,
-            description="Identifier of the staged files, exactly as given in the request that asked to attach them.",
-        ),
-    ],
-) -> str:
-    """Attach the files staged under ``staging_id`` to an Incident or Work Order.
+class StagedFilesTools(ToolSet):
+    """Tool that attaches the files staged by the email agent to a ticket."""
 
-    Returns
-    -------
-    str
-        JSON with ``success`` and ``message`` (a JSON report with ``attached``, ``skipped`` and
-        ``failed`` on success, or the error text).
-    """
-    handler = tool_handler.get_shared_handler()
-    writer: TicketWriter
-    if ticket_type == "incident":
-        writer = IncidentTicketWriter(IncidentOperations(handler), ticket_number)
-    else:
-        writer = WorkOrderTicketWriter(WorkOrderOperations(handler), ticket_number)
-    attacher = StagedFilesAttacher(
-        writer,
-        base_dir=handler.settings.attachment_base_dir,
-        max_bytes=handler.settings.max_attachment_bytes,
-    )
-    result = await attacher.attach(staging_id)
-    logger.info("bmc_attach_staged_files %s success=%s", ticket_type, result.success)
-    return result.model_dump_json()
+    async def attach_staged_files(
+        self,
+        ticket_type: Annotated[
+            Literal['incident', 'work_order'],
+            Field(description='Kind of ticket the files belong to.'),
+        ],
+        ticket_number: Annotated[
+            str,
+            Field(
+                min_length=1,
+                description=(
+                    'Incident Number (e.g. INC000000002106) or Work Order ID (e.g. WO0000000000228), '
+                    'matching ticket_type.'
+                ),
+            ),
+        ],
+        staging_id: Annotated[
+            str,
+            Field(
+                min_length=1,
+                description=(
+                    'Identifier of the staged files, exactly as given in the request that asked to attach them.'
+                ),
+            ),
+        ],
+    ) -> str:
+        """Attach the files staged under ``staging_id`` to an Incident or Work Order.
+
+        Returns
+        -------
+        str
+            JSON with ``success`` and ``message`` (a JSON report with ``attached``, ``skipped`` and
+            ``failed`` on success, or the error text).
+        """
+        handler = tool_handler.get_shared_handler()
+        writer: TicketWriter
+        if ticket_type == 'incident':
+            writer = IncidentTicketWriter(IncidentOperations(handler), ticket_number)
+        else:
+            writer = WorkOrderTicketWriter(WorkOrderOperations(handler), ticket_number)
+        attacher = StagedFilesAttacher(
+            writer,
+            base_dir=handler.settings.attachment_base_dir,
+            max_bytes=handler.settings.max_attachment_bytes,
+        )
+        result = await attacher.attach(staging_id)
+        logger.info(
+            'bmc_attach_staged_files %s %s staging=%s success=%s',
+            ticket_type,
+            ticket_number,
+            staging_id,
+            result.success,
+        )
+        return result.model_dump_json()
+
+    @staticmethod
+    def get_tools() -> list[BaseTool]:
+        """Return the tools of this group, ready to register on the agent."""
+        tools = StagedFilesTools()
+        return [
+            tools.build(
+                tools.attach_staged_files,
+                name='bmc_attach_staged_files',
+                description=(
+                    'Attach to an existing Incident or Work Order the files staged for it by the email agent '
+                    '(the original email as .eml plus evidence files). Each file becomes its own entry in the '
+                    "ticket's activity log; files over the size limit are skipped and listed in a ticket note. "
+                    'Returns a JSON report of what was attached, skipped or failed. Fails if the ticket is '
+                    'already closed or writes are disabled.'
+                ),
+            ),
+        ]

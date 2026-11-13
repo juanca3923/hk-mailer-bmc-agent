@@ -34,6 +34,11 @@ root_logger = logging.getLogger()
 root_logger.setLevel(level)
 root_logger.addHandler(file_handler)
 
+# httpx/httpcore log the full request URL at INFO (query string included: BMC qualifications carry
+# email addresses), so they stay at WARNING whatever the application level is.
+for _noisy_logger in ("httpx", "httpcore"):
+    logging.getLogger(_noisy_logger).setLevel(logging.WARNING)
+
 core_logger = logging.getLogger("agent_forge")
 core_logger.setLevel(logging.DEBUG)
 core_console_handler = logging.StreamHandler()

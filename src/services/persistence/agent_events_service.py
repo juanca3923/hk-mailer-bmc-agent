@@ -38,7 +38,9 @@ class AgentEventsService:
                 )
                 await session.commit()
         except AgentError as error:
-            self.logger.error("Error al insertar evento: %s", error)
+            self.logger.error(
+                "Error al insertar evento %s (run=%s): %s", event_type, agent_run_id, type(error).__name__
+            )
 
 
 @lru_cache(maxsize=1)

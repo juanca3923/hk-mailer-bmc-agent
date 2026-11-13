@@ -30,7 +30,7 @@ async def open_mcp_tools_streamable_http(urls: list[str]) -> AsyncIterator[list[
             await session.initialize()
             server_tools = await load_mcp_tools(session)
             for tool in server_tools:
-                _logger.info("Tool: %s", tool.name)
+                _logger.debug("Tool: %s", tool.name)
             tools.extend(server_tools)
 
         yield tools

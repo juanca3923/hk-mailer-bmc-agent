@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Mapping
 from typing import Any, cast
@@ -60,6 +61,7 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         self._events_service = events_service
         self._log_fn = log_fn
         self._tool_starts: dict[str, float] = {}
+        self._tool_names: dict[str, str] = {}
         self._helpers = InterceptorHelpers()
 
     @classmethod
@@ -91,7 +93,7 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
                     payload=payload,
                 )
             except AgentError as error:
-                logger.error("Error insertando evento %s: %s", event_type, error)
+                logger.error("Error insertando evento %s: %s", event_type, type(error).__name__)
                 return
 
         if self._log_fn is not None:
@@ -144,13 +146,26 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
     ) -> None:
         input_tokens, output_tokens = self._helpers.extract_usage_tokens(response)
         logger.info(
-            "%s",
+            "run=%s %s",
+            self.agent_run_id,
             self._helpers.summarize_llm_end_for_logging(
                 response,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
+                preview_limit=0,
             ),
         )
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "run=%s %s",
+                self.agent_run_id,
+                self._helpers.summarize_llm_end_for_logging(
+                    response,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    preview_limit=200,
+                ),
+            )
         if self._helpers.llm_result_has_suspicious_empty_message(response):
             logger.warning(
                 "LLM devolvió content vacío y tool_calls=[] (run %s); el grafo puede no terminar o devolver fallback",
@@ -175,7 +190,8 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         **kwargs: Any,  # noqa: ANN401 — firma impuesta por AsyncCallbackHandler
     ) -> None:
         err_str = TextUtils.truncate(repr(error), self._helpers.ERROR_TRUNCATE_CHARS)
-        logger.info("llm_error: run=%s error=%s", self.agent_run_id, error)
+        logger.error("llm_error: run=%s error=%s", self.agent_run_id, type(error).__name__)
+        logger.debug("llm_error: run=%s detail=%s", self.agent_run_id, TextUtils.truncate(err_str, 200))
         payload: LlmErrorPayload = {"error": err_str}
         await self._emit(EVENT_LLM_ERROR, payload)
 
@@ -201,10 +217,18 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         tool_call_id = kwargs.get("tool_call_id")
         if tool_call_id is not None:
             self._tool_starts[str(tool_call_id)] = time.monotonic()
+            self._tool_names[str(tool_call_id)] = str(tool_name)
         payload: ToolStartPayload = {"tool_name": cast("str | None", tool_name), "input": input_params or {}}
         if tool_call_id is not None:
             payload["tool_call_id"] = str(tool_call_id)
-        logger.info("tool_start: run=%s tool=%r input_str=%r", self.agent_run_id, tool_name, input_str)
+        # Tool arguments carry emails and free text: INFO only gets the argument names and sizes.
+        logger.info(
+            "tool_start: run=%s tool=%s args=%s",
+            self.agent_run_id,
+            tool_name,
+            sorted(input_params) if input_params else [],
+        )
+        logger.debug("tool_start: run=%s tool=%s input_chars=%d", self.agent_run_id, tool_name, len(input_str))
         await self._emit(EVENT_TOOL_START, payload)
 
     async def on_tool_end(
@@ -228,8 +252,9 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
             "duration_seconds": duration_seconds,
         }
         logger.info(
-            "tool_end: run=%s duration=%.3fs",
+            "tool_end: run=%s tool=%s duration=%.3fs",
             self.agent_run_id,
+            self._tool_names.pop(str(tool_call_id), None),
             duration_seconds or 0.0,
         )
         await self._emit(EVENT_TOOL_END, payload)
@@ -253,5 +278,12 @@ class AgentRunCallbackHandler(AsyncCallbackHandler):
         payload: ToolErrorPayload = {"error": err_str}
         if duration_seconds is not None:
             payload["duration_seconds"] = duration_seconds
-        logger.info("tool_error: run=%s error=%s", self.agent_run_id, error)
+        logger.warning(
+            "tool_error: run=%s tool=%s duration=%.3fs error=%s",
+            self.agent_run_id,
+            self._tool_names.pop(str(tool_call_id), None),
+            duration_seconds or 0.0,
+            type(error).__name__,
+        )
+        logger.debug("tool_error: run=%s detail=%s", self.agent_run_id, TextUtils.truncate(err_str, 200))
         await self._emit(EVENT_TOOL_ERROR, payload)

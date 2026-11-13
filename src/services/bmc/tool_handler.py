@@ -72,6 +72,7 @@ class BaseToolHandler:
             Error ``BaseOutput`` when ``allow_write`` is false; otherwise ``None``.
         """
         if not self._settings.allow_write:
+            self._logger.warning("Write tool blocked: writes are disabled")
             return BaseOutput(success=False, message=USER_ERROR_MESSAGE_WRITE_DISABLED)
         return None
 
@@ -138,17 +139,26 @@ class BaseToolHandler:
         """
         base_dir = self._settings.attachment_base_dir
         if base_dir is None:
+            self._logger.warning("Attachment rejected: BMC_ATTACHMENT_BASE_DIR is not configured")
             raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED, status_code=None)
         path = Path(file_path).resolve()
         if not path.is_relative_to(base_dir.resolve()):
-            self._logger.warning("Attachment rejected, outside base dir: %s", file_path)
+            self._logger.warning("Attachment rejected, outside base dir: name=%s", Path(file_path).name)
             raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED, status_code=None)
         if not path.is_file():
+            self._logger.warning("Attachment rejected, file not found: name=%s", path.name)
             msg = USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND
             raise MCPClientError(msg, status_code=None)
         size = path.stat().st_size
         if size > self._settings.max_attachment_bytes:
+            self._logger.warning(
+                "Attachment rejected, too large: name=%s size=%d max=%d",
+                path.name,
+                size,
+                self._settings.max_attachment_bytes,
+            )
             raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE, status_code=None)
+        self._logger.debug("Attachment accepted: name=%s size=%d", path.name, size)
         return AttachmentPart.from_path(path)
 
 

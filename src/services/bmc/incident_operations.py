@@ -165,7 +165,7 @@ class IncidentOperations:
         try:
             created = await self._handler.client.create_incident_entry(EntryValuesMapper.wrap_entry_body(values))
         except MCPClientError as exc:
-            logger.info("create_incident failed")
+            logger.warning("create_incident failed status_code=%s", exc.status_code)
             return BaseOutput(success=False, message=exc.message)
         incident_number = created.values.get_str(AR_FIELD_INCIDENT_NUMBER)
         fallback_applied = await self._apply_categorization_fallback(incident_number)

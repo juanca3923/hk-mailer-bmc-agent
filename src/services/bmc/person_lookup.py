@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 
+from commons.text.masking import mask_email
 from constants.bmc.fields import (
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
@@ -57,7 +58,7 @@ def _pick_entry(candidates: list[BmcEntryValues], email: str) -> BmcEntryValues:
         'varias con Remedy Login ID con forma de correo; se usa la primera devuelta por '
         'BMC (orden no garantizado por la API) — la identidad asignada puede ser incorrecta',
         len(candidates),
-        email,
+        mask_email(email),
     )
     return candidates[0]
 
