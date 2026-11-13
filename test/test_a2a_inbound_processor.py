@@ -9,11 +9,8 @@ from http import HTTPStatus
 import pytest
 
 from config import Settings
-from http_api.a2a_jsonrpc import (
-    A2AInboundMessageSendProcessor,
-    A2AInboundMessageSendRequest,
-    A2AInboundRpcFailure,
-)
+from http_api.a2a_jsonrpc import A2AInboundMessageSendProcessor
+from type_defs.models.a2a.inbound import A2AInboundMessageSendRequest, A2AInboundRpcFailure
 
 JSONRPC_PARSE_ERROR = -32700
 JSONRPC_INVALID_REQUEST = -32600

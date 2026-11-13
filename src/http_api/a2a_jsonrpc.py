@@ -6,7 +6,6 @@ El servicio HTTP monta ``JSONResponse`` a partir de :class:`A2AInboundRpcFailure
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
 
@@ -39,24 +38,8 @@ from type_defs.models.a2a.a2a_protocol import (
     JsonRpcErrorEnvelope,
     JsonRpcId,
 )
+from type_defs.models.a2a.inbound import A2AInboundMessageSendRequest, A2AInboundRpcFailure
 from type_defs.models.common.json_types import JsonDict
-
-
-@dataclass(frozen=True, slots=True)
-class A2AInboundRpcFailure:
-    """Respuesta de error lista para serializar como JSON + código HTTP."""
-
-    envelope: JsonRpcErrorEnvelope
-    http_status: int
-
-
-@dataclass(frozen=True, slots=True)
-class A2AInboundMessageSendRequest:
-    """Entrada validada para ejecutar un turno ``message/send``."""
-
-    req_id: JsonRpcId
-    user_text: str
-    chat_id: UUID | None
 
 
 class A2AInboundMessageSendProcessor:

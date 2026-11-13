@@ -16,14 +16,11 @@ from fastapi.responses import JSONResponse
 
 from agent.runtime.runner import get_agent_runner
 from config import Settings, get_logger
-from http_api.a2a_jsonrpc import (
-    A2AInboundMessageSendProcessor,
-    A2AInboundMessageSendRequest,
-    A2AInboundRpcFailure,
-)
+from http_api.a2a_jsonrpc import A2AInboundMessageSendProcessor
 from http_api.agent_turn_guard import a2a_reserve_turn_or_busy, restore_agent_up_after_turn
 from http_api.state import agent_state
 from services.persistence.agent_events_service import get_agent_events_service
+from type_defs.models.a2a.inbound import A2AInboundMessageSendRequest, A2AInboundRpcFailure
 
 logger = get_logger()
 
