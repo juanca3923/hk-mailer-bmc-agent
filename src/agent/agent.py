@@ -19,6 +19,7 @@ from agent.internal_tools import (
 )
 from agent.llm import build_llm
 from agent.mcp_tools import open_mcp_tools_streamable_http
+from agent.middleware.not_verified_stop import NotVerifiedStop
 from agent.middleware.run_limits import build_run_limit_middleware
 from agent.observability.langfuse_tracing import ensure_langfuse_tracing_client
 from agent.prompts import load_system_prompt_for_settings
@@ -107,14 +108,17 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
                     system_prompt=system_prompt_text,
                     checkpointer=checkpointer,
                     store=store,
-                    middleware=build_run_limit_middleware(
-                        max_model_calls=settings.agent_max_model_calls_per_run,
-                        max_tool_calls=settings.agent_max_tool_calls_per_run,
-                        per_tool={
-                            "bmc_create_work_order": settings.bmc_max_create_calls_per_run,
-                            "bmc_create_incident": settings.bmc_max_create_calls_per_run,
-                        },
-                    ),
+                    middleware=[
+                        NotVerifiedStop(),
+                        *build_run_limit_middleware(
+                            max_model_calls=settings.agent_max_model_calls_per_run,
+                            max_tool_calls=settings.agent_max_tool_calls_per_run,
+                            per_tool={
+                                "bmc_create_work_order": settings.bmc_max_create_calls_per_run,
+                                "bmc_create_incident": settings.bmc_max_create_calls_per_run,
+                            },
+                        ),
+                    ],
                 )
                 if a2a_registry_for_graph is not None:
                     bind_a2a_registry_to_graph(graph, a2a_registry_for_graph)

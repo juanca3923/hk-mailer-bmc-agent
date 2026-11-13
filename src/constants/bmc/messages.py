@@ -84,7 +84,10 @@ USER_ERROR_MESSAGE_CLOSE_NOT_OWNER: Final[str] = (
 )
 
 
+NOT_VERIFIED_MARKER: Final[str] = "Estado final: No verificado"
+
+
 USER_ERROR_MESSAGE_PERSON_NOT_FOUND: Final[str] = (
-    "Error: No se encontró en BMC ninguna persona registrada con el correo {email}. No se creó el ticket. "
-    "Es definitivo: no reintentes ni busques otra forma de crearlo; informa este error."
+    NOT_VERIFIED_MARKER + " — no hay ninguna persona registrada en BMC con el correo {email}. "
+    "No se creó el ticket. Es definitivo: no reintentes ni busques otra forma de crearlo."
 )

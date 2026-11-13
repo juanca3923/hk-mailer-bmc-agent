@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — feat: "la persona no existe" es `Estado final: No verificado` y detiene el run
+
+- Que el solicitante no exista en `CTM:People` es un resultado de negocio, no una falla: el mensaje de la tool y el resumen del modo automático dicen `Estado final: No verificado — …` (sin "Error"); `Estado final: Error` queda para fallos reales.
+- Nuevo middleware `agent/middleware/not_verified_stop.py`: si el último resultado de tool trae ese marcador, el run termina con el resumen estructurado sin volver a llamar al modelo (en la prueba el modelo ignoraba la instrucción de parar y gastaba 20 vueltas). Los topes por run siguen como red de seguridad.
+- Sin cambios en `POST /people/verify` (decide por entradas vacías, no por el texto).
+
+---
+
 ## 2026-11-13 — feat: topes por run para el modelo y las tools
 
 - Ningún tope limitaba al agente (el default de LangGraph son ~10.000 pasos): ante un fallo persistente el modelo repitió `bmc_create_work_order` 28 veces seguidas (~21k tokens de entrada por vuelta) y siguió corriendo aunque el llamador (el mailer) ya había abandonado por tiempo.
