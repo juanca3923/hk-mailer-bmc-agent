@@ -34,6 +34,11 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 - El mensaje de persona no encontrada en `CTM:People` ahora termina con "Es definitivo: no reintentes ni busques otra forma de crearlo; informa este error." (el JSON `success:false` no cambia). Antes el modelo repetía `bmc_create_work_order` decenas de veces cambiando tildes y consultando `memory_*`.
 - `system.promt.md`: un `success:false` de una tool de escritura es definitivo para esa solicitud; en modo automático se responde de inmediato con `Estado final: Error — <mensaje>`.
+## 2026-11-13 — feat: trazas de Langfuse con nombre, sesión y tags; sesión compartida con el mailer
+
+- Los traces salían todos como `LangGraph`, sin sesión ni tags. Ahora cada turno se ejecuta dentro de `propagate_attributes` (nuevo `trace_attributes` en `agent/observability/langfuse_tracing.py`): nombre `<slug>:<origen>` (`chat` o `a2a`), sesión, tags y metadata (`agent_run_id`, `own_chat_id`). El `CallbackHandler` sigue dando los spans internos y `AgentRunCallbackHandler` no cambia.
+- A2A entrante: se lee `message.metadata` (`caller_agent`, `caller_chat_id`, `caller_run_id`; solo esas claves, ≤64 caracteres, lo inválido se ignora sin fallar). Si llega `caller_chat_id`, es la sesión del trace: el chat del mailer agrupa los traces de ambos agentes.
+- Nuevo `docs/LANGFUSE_TRAZAS.md`.
 
 ---
 

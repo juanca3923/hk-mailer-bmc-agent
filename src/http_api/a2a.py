@@ -99,6 +99,8 @@ async def a2a_jsonrpc(
             graph=graph,
             chat_id=req.chat_id,
             events_service=get_agent_events_service(),
+            origin="a2a",
+            caller=req.caller,
         )
     finally:
         restore_agent_up_after_turn()

@@ -10,6 +10,10 @@ JSONRPC_INVALID_PARAMS = -32602
 JSONRPC_INTERNAL_ERROR = -32603
 JSONRPC_SERVER_BUSY = -32000
 
+# Metadata del agente llamante en ``message.metadata`` (une las trazas de Langfuse de ambos agentes)
+CALLER_METADATA_KEYS = ('caller_agent', 'caller_chat_id', 'caller_run_id')
+CALLER_METADATA_MAX_CHARS = 64
+
 # Mensajes de error visibles (español)
 MSG_PARSE_ERROR = "Parse error"
 MSG_INVALID_REQUEST = "Invalid Request"
