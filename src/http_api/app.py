@@ -9,10 +9,12 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from bmc.libs.preflight import run_startup_preflight
 from commons.agent_http import start_agent, stop_agent
 from config import Settings
 from database.engine import close_engine, ensure_schema
 from http_api.a2a import router as a2a_router
+from http_api.routers.people_routes import router as people_router
 from http_api.routers.rest_routes import router as rest_router
 
 _http_settings = Settings.load()
@@ -25,6 +27,7 @@ async def lifespan(fast_app: FastAPI) -> AsyncIterator[None]:
     async with AsyncExitStack() as stack:
         await ensure_schema()
         await start_agent(fast_app, stack)
+        await run_startup_preflight()
         try:
             yield
         finally:
@@ -48,6 +51,7 @@ app.add_middleware(
 
 app.include_router(a2a_router)
 app.include_router(rest_router)
+app.include_router(people_router)
 
 
 def run() -> None:

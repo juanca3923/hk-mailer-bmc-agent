@@ -136,6 +136,14 @@ class BmcSettings(BaseSettings):
         ),
     )
 
+    verify_api_key: str = Field(
+        default='',
+        description=(
+            'Shared key (header X-API-Key) required by POST /people/verify (BMC_VERIFY_API_KEY). '
+            'Empty keeps the endpoint closed (503).'
+        ),
+    )
+
     form_incident_create: str = Field(default='HPD:IncidentInterface_Create')
     form_incident_query: str = Field(default='HPD:IncidentInterface')
     form_wo_create: str = Field(default='WOI:WorkOrderInterface_Create')

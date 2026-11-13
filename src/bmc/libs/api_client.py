@@ -19,6 +19,7 @@ from bmc.libs.constants import (
     AR_FIELD_PEOPLE_FIRST_NAME,
     AR_FIELD_PEOPLE_LAST_NAME,
     AR_FIELD_PEOPLE_LOGIN_ID,
+    AR_FIELD_PEOPLE_STATUS,
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WO_CUSTOMER_EMAIL,
     AR_FIELD_WORK_ORDER_ID,
@@ -506,7 +507,7 @@ class BmcClient:
         path = self.entry_path(self._settings.form_people_query)
         fields = (
             f"values({AR_FIELD_PEOPLE_LOGIN_ID},{AR_FIELD_PEOPLE_FIRST_NAME},"
-            f"{AR_FIELD_PEOPLE_LAST_NAME},{AR_FIELD_PEOPLE_EMAIL})"
+            f"{AR_FIELD_PEOPLE_LAST_NAME},{AR_FIELD_PEOPLE_EMAIL},{AR_FIELD_PEOPLE_STATUS})"
         )
         payload = await self.get_json(path, params={"q": qualification, "fields": fields})
         return parse_entry_list(payload)
