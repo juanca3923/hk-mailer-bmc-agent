@@ -20,6 +20,7 @@ from langchain_core.tools import tool
 from pydantic import Field
 
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
+from commons.text.masking import mask_email
 from constants.bmc.defaults import DEFAULT_INCIDENT_ASSIGNED_GROUP
 from constants.bmc.fields import AR_FIELD_INCIDENT_ASSIGNED_GROUP, AR_FIELD_INCIDENT_NUMBER
 from constants.bmc.tickets import (
@@ -292,7 +293,7 @@ async def bmc_list_incidents_by_email(
         truncated=total > len(rows),
         incidents=rows,
     )
-    logger.info("bmc_list_incidents_by_email ok email=%s total_found=%d", data.email, total)
+    logger.info("bmc_list_incidents_by_email ok email=%s total_found=%d", mask_email(data.email), total)
     return BaseToolHandler.success_toon(out).model_dump_json()
 
 

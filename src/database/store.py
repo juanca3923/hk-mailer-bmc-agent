@@ -175,9 +175,9 @@ class AgentPostgresStore(BaseStore):
             rows = list((await session.execute(stmt)).scalars().all())
 
         logger.debug(
-            "store.asearch: ns_prefix=%r query=%r limit=%d → %d resultados",
+            "store.asearch: ns_prefix=%r query_len=%d limit=%d → %d resultados",
             ns_prefix,
-            op.query,
+            len(op.query or ""),
             op.limit,
             len(rows),
         )

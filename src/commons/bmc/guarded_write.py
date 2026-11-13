@@ -1,5 +1,6 @@
 """Shared skeleton of the guarded ticket writes (incidents and work orders)."""
 
+import logging
 from collections.abc import Awaitable, Callable
 
 from commons.bmc.ticket_guards import require_not_closed
@@ -8,6 +9,8 @@ from type_defs.models.bmc.inputs import WorkLogInput
 from type_defs.models.bmc.outputs import BaseOutput
 from type_defs.models.bmc.ticket_state import TicketState
 from type_defs.ports.bmc import WriteGate
+
+logger = logging.getLogger(__name__)
 
 
 async def run_guarded_write(
@@ -44,21 +47,25 @@ async def run_guarded_write(
     """
     blocked = handler.ensure_write_allowed()
     if blocked is not None:
+        logger.warning('write rejected: writes are disabled (BMC_ALLOW_WRITE)')
         return blocked
 
     state, error = await resolve()
     if error is not None or state is None:
+        logger.warning('write rejected: ticket could not be resolved')
         return error or BaseOutput(success=False, message=missing_message)
 
     rejection = require_not_closed(state.status)
     if rejection is None and extra_guard is not None:
         rejection = extra_guard(state)
     if rejection is not None:
+        logger.warning('write rejected by guard: status=%s', state.status)
         return rejection
 
     try:
         return await action(state)
     except MCPClientError as exc:
+        logger.warning('write failed in BMC: status_code=%s', exc.status_code)
         return BaseOutput(success=False, message=exc.message)
 
 

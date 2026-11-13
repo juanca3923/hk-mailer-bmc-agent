@@ -62,7 +62,7 @@ async def bmc_health_check() -> str:
     try:
         await handler.client.health_ping()
     except MCPClientError as exc:
-        logger.warning("bmc_health_check failed: %s", exc.message)
+        logger.warning("bmc_health_check failed: status_code=%s", exc.status_code)
         return BaseToolHandler.failure(exc).model_dump_json()
     logger.info("bmc_health_check successful")
     return BaseOutput(success=True, message="BMC session is healthy.").model_dump_json()

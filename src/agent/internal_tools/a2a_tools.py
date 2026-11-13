@@ -157,7 +157,7 @@ class A2APeerTools:
                     context_id=context_id,
                 )
         except AgentError as exc:
-            logger.exception("a2a_send_to_remote falló peer=%s", peer.index)
+            logger.error("a2a_send_to_remote falló peer=%s: %s", peer.index, type(exc).__name__)
             return f"Error al contactar al peer {peer.name}: {exc!s}"
 
     @staticmethod

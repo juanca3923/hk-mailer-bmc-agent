@@ -122,7 +122,8 @@ class BmcConnectionManager:
                 )
                 response.raise_for_status()
             except httpx.HTTPError as exc:
-                logger.error('BMC login failed: %s', type(exc).__name__)
+                status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+                logger.error('BMC login failed: %s status=%s', type(exc).__name__, status)
                 raise MCPLoginError(USER_ERROR_MESSAGE_LOGIN_FAILED) from exc
 
             token = response.text.strip()
@@ -131,7 +132,11 @@ class BmcConnectionManager:
                 raise MCPLoginError(USER_ERROR_MESSAGE_LOGIN_FAILED)
 
             self._token = token
-            logger.info('BMC JWT session refreshed successfully')
+            logger.info(
+                'BMC JWT session refreshed (ttl=%ss, next refresh in ~%ss)',
+                self._settings.jwt_ttl_seconds,
+                self._refresh_interval_seconds(),
+            )
 
     async def _refresh_loop(self) -> None:
         interval = self._refresh_interval_seconds()
@@ -145,9 +150,9 @@ class BmcConnectionManager:
             except asyncio.CancelledError:
                 break
             except MCPLoginError:
-                logger.exception('Background BMC JWT refresh failed')
-            except httpx.HTTPError:
-                logger.exception('Background BMC JWT refresh HTTP error')
+                logger.error('Background BMC JWT refresh failed; the previous session stays in use until the next try')
+            except httpx.HTTPError as exc:
+                logger.error('Background BMC JWT refresh HTTP error: %s', type(exc).__name__)
 
     def _refresh_interval_seconds(self) -> int:
         fixed = self._settings.jwt_refresh_interval_seconds
@@ -211,5 +216,5 @@ class BmcConnectionManager:
         MCPLoginError
             When refresh login fails.
         """
-        logger.warning('BMC session invalidated; refreshing JWT')
+        logger.warning('BMC answered 401; session invalidated, refreshing JWT')
         await self.refresh_session()

@@ -78,7 +78,7 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
         async with CheckpointerManager.build(settings) as checkpointer:
             store = AgentPostgresStore()
             logger.info("store postgres inicializado")
-            logger.info("conectado ha: %s", settings.llm_provider)
+            logger.info("LLM configurado: provider=%s", settings.llm_provider)
             async with open_mcp_tools_streamable_http(settings.normalized_mcp_urls()) as mcp_tools:
                 logger.info("tools MCP cargadas: %d", len(mcp_tools))
 
@@ -93,7 +93,8 @@ async def build_agent(settings: Settings) -> AsyncIterator[object]:
 
                 all_tools = internal_tools + list(mcp_tools) + a2a_tools
                 configure_tool_error_handling(all_tools)
-                logger.info("system prompt: <system_prompt>\n%s\n</system_prompt>", system_prompt_text)
+                logger.info("system prompt final: %d chars", len(system_prompt_text))
+                logger.debug("system prompt: <system_prompt>\n%s\n</system_prompt>", system_prompt_text)
                 logger.info(
                     "total tools disponibles: <tools>\n%s\n</tools>",
                     "\n".join([tool.name for tool in all_tools]),

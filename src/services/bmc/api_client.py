@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from http import HTTPStatus
 from typing import cast
 from urllib.parse import quote
@@ -143,16 +144,25 @@ class BmcClient:
                 headers=headers,
             )
 
+        started = time.monotonic()
+        retried = False
         response = await _do_request()
         if response.status_code == HTTPStatus.UNAUTHORIZED:
+            logger.warning('BMC %s %s -> 401; refreshing the JWT and retrying once', method, path)
             await self._manager.invalidate_and_refresh()
+            retried = True
             response = await _do_request()
-        logger.debug("BMC response status %s for %s %s", response.status_code, method, path)
-        if logger.isEnabledFor(logging.DEBUG) and response.content:
-            body_text = self.format_http_response_body(response)
-            if body_text:
-                snippet = body_text[:512]
-                logger.debug("BMC response body (truncated): %s", snippet)
+        logger.log(
+            logging.INFO if response.is_success else logging.WARNING,
+            'BMC %s %s -> %s in %.0f ms%s',
+            method,
+            path,
+            response.status_code,
+            (time.monotonic() - started) * 1000,
+            ' (after 401 retry)' if retried else '',
+        )
+        # Bodies can carry personal data (people, tickets): only their size is logged, never the content.
+        logger.debug('BMC %s %s response_bytes=%d', method, path, len(response.content))
         response.raise_for_status()
         return response
 
@@ -236,7 +246,6 @@ class BmcClient:
         """
         if isinstance(exc, httpx.HTTPStatusError):
             code = exc.response.status_code
-            logger.debug("BMC HTTP error %s %s -> %s", method, path, code)
             raise MCPClientError(
                 self.message_for_http_error(exc.response),
                 status_code=code,
@@ -270,7 +279,6 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug("BMC GET %s", path)
         try:
             response = await self._request_with_retry("GET", path, params=params)
             return cast("JsonValue", response.json())
@@ -306,7 +314,6 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug("BMC POST %s", path)
         try:
             response = await self._request_with_retry(
                 "POST",
@@ -345,7 +352,6 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug("BMC PUT %s", path)
         try:
             response = await self._request_with_retry("PUT", path, json_body=json_body)
             if not response.content:
@@ -380,7 +386,6 @@ class BmcClient:
         MCPClientError
             On HTTP, network, timeout, or JSON errors.
         """
-        logger.debug("BMC POST multipart %s", path)
         try:
             response = await self._request_with_retry(
                 "POST",
@@ -591,7 +596,6 @@ class BmcClient:
             On HTTP errors.
         """
         path = self.entry_path(self._settings.form_wo_update, request_id)
-        logger.info("json_body: %s", json_body)
         return await self.put_json(path, json_body=json_body)
 
     async def update_incident(

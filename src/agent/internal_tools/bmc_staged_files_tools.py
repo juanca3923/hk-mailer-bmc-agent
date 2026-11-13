@@ -121,5 +121,7 @@ async def bmc_attach_staged_files(
         max_bytes=handler.settings.max_attachment_bytes,
     )
     result = await attacher.attach(staging_id)
-    logger.info("bmc_attach_staged_files %s success=%s", ticket_type, result.success)
+    logger.info(
+        "bmc_attach_staged_files %s %s staging=%s success=%s", ticket_type, ticket_number, staging_id, result.success
+    )
     return result.model_dump_json()

@@ -11,8 +11,10 @@ El estado del registro vive en una instancia de :class:`A2APeerRegistry`
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from typing import cast
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -96,7 +98,9 @@ async def fetch_agent_card(client: httpx.AsyncClient, base_url: str, assistant_i
         data = resp.json()
         return cast(JsonDict, data) if isinstance(data, dict) else {}
     except (httpx.HTTPError, json.JSONDecodeError) as e:
-        logger.warning("a2a Agent Card falló base=%s assistant=%s: %s", base_url, assistant_id, e)
+        logger.warning(
+            "a2a Agent Card falló host=%s assistant=%s: %s", urlsplit(base_url).hostname, assistant_id, type(e).__name__
+        )
         return {}
 
 
@@ -125,7 +129,16 @@ async def a2a_message_send(
         "method": "message/send",
         "params": {"message": message},
     }
+    started = time.monotonic()
     resp = await client.post(rpc_url, json=payload, headers={"Accept": "application/json"})
+    logger.info(
+        "a2a message/send saliente: host=%s assistant=%s status=%s duración=%.1fs text_len=%d",
+        urlsplit(base_url).hostname,
+        assistant_id,
+        resp.status_code,
+        time.monotonic() - started,
+        len(user_text),
+    )
     resp.raise_for_status()
     body = resp.json()
     if not isinstance(body, dict):

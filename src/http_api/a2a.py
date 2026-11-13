@@ -92,7 +92,7 @@ async def a2a_jsonrpc(
     req = ready
 
     try:
-        logger.info("a2a message/send: texto_len=%d chat_id=%s", len(req.user_text), req.chat_id)
+        logger.info("a2a message/send: recibido texto_len=%d chat_id=%s", len(req.user_text), req.chat_id)
         runner = get_agent_runner()
         result = await runner.run_agent_turn(
             user_message=req.user_text,
@@ -103,6 +103,13 @@ async def a2a_jsonrpc(
     finally:
         restore_agent_up_after_turn()
 
+    logger.info(
+        "a2a message/send: completado run=%s chat=%s status=%s reply_len=%d",
+        result.run_id,
+        result.chat_id,
+        result.status,
+        len(result.reply),
+    )
     payload = A2AInboundMessageSendProcessor.build_message_send_success(
         request_id=req.req_id,
         reply=result.reply,

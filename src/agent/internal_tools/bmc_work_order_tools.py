@@ -40,6 +40,7 @@ from pydantic import Field
 
 from agent.internal_tools.ticket_tool_helpers import search_detail_json, work_log_options
 from commons.bmc.entry_values_mapper import EntryValuesMapper
+from commons.text.masking import mask_email
 from constants.bmc.defaults import (
     DEFAULT_COMPANY,
     DEFAULT_CUSTOMER_COMPANY,
@@ -127,7 +128,7 @@ async def _create_work_order_entry(handler: BaseToolHandler, values: CreateWorkO
     try:
         created = await handler.client.create_work_order_entry(EntryValuesMapper.wrap_entry_body(values))
     except MCPClientError as exc:
-        logger.info("bmc_create_work_order failed")
+        logger.warning("bmc_create_work_order failed status_code=%s", exc.status_code)
         return BaseToolHandler.failure(exc)
     wo_id = created.values.get_str(AR_FIELD_WORK_ORDER_ID_RESPONSE) or created.values.get_str(AR_FIELD_WORK_ORDER_ID)
     out = WorkOrderCreatedData(
@@ -388,7 +389,7 @@ async def bmc_list_work_orders_by_email(
         truncated=total > len(rows),
         work_orders=rows,
     )
-    logger.info("bmc_list_work_orders_by_email ok email=%s total_found=%d", data.email, total)
+    logger.info("bmc_list_work_orders_by_email ok email=%s total_found=%d", mask_email(data.email), total)
     return BaseToolHandler.success_toon(out).model_dump_json()
 
 

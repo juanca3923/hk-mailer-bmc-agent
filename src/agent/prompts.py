@@ -30,20 +30,26 @@ def load_system_prompt_for_settings(settings: "Settings") -> str:
     """
     inline = (settings.system_prompt_env or "").strip()
     if inline:
-        logger.info("Usando prompt inline: %s", inline)
+        logger.info("system prompt: origen=inline (SYSTEM_PROMPT) chars=%d", len(inline))
         return finalize_system_prompt(append_base_fragment(inline, settings.repo_root()))
 
     lf_name = (settings.langfuse_prompt_name or "").strip()
     if lf_name:
         fetched = fetch_prompt_from_langfuse(settings, lf_name)
         if fetched.strip():
-            logger.info("Usando prompt desde Langfuse: %s", fetched.strip())
+            logger.info(
+                "system prompt: origen=Langfuse name=%s label=%s chars=%d",
+                lf_name,
+                settings.langfuse_prompt_label,
+                len(fetched.strip()),
+            )
             return finalize_system_prompt(append_base_fragment(fetched.strip(), settings.repo_root()))
 
     path = settings.resolved_system_prompt_file()
     if path.exists():
         try:
             main_text = read_required(path)
+            logger.info("system prompt: origen=archivo name=%s chars=%d", path.name, len(main_text))
             return finalize_system_prompt(append_base_fragment(main_text, path.parent))
         except AgentConfigError as err:
             detail_file = str(err)
@@ -75,12 +81,18 @@ def fetch_prompt_from_langfuse(settings: "Settings", prompt_name: str) -> str:
             host=settings.langfuse_host.strip(),
             timeout=LANGFUSE_FETCH_TIMEOUT_S,
         )
-        logger.info("Cargando prompt %s desde Langfuse con label %s", prompt_name, settings.langfuse_prompt_label)
+        logger.debug("Cargando prompt %s desde Langfuse con label %s", prompt_name, settings.langfuse_prompt_label)
         prompt = client.get_prompt(
             prompt_name,
             type="text",
             label=settings.langfuse_prompt_label,
             fetch_timeout_seconds=LANGFUSE_FETCH_TIMEOUT_S,
+        )
+        logger.info(
+            "Langfuse prompt obtenido: name=%s label=%s version=%s",
+            prompt_name,
+            settings.langfuse_prompt_label,
+            getattr(prompt, "version", None),
         )
         compiled = prompt.compile()
         if isinstance(compiled, str):
@@ -94,7 +106,7 @@ def fetch_prompt_from_langfuse(settings: "Settings", prompt_name: str) -> str:
         logger.warning(
             "No se pudo cargar el prompt desde Langfuse (name=%r): %s",
             prompt_name,
-            exc,
+            type(exc).__name__,
         )
         return ""
 
@@ -104,7 +116,7 @@ def finalize_system_prompt(combined: str) -> str:
     skills_block = build_skills_catalog_xml()
     if not skills_block:
         return combined
-    logger.info("system prompt: catálogo skills inyectado (%d chars)", len(skills_block))
+    logger.debug("system prompt: catálogo skills inyectado (%d chars)", len(skills_block))
     return f"{combined.rstrip()}\n\n{skills_block}"
 
 
@@ -140,5 +152,5 @@ def read_optional(path: Path) -> str:
         logger.debug("fragmento de prompt no encontrado (opcional): %s", path)
         return ""
     text = path.read_text(encoding="utf-8")
-    logger.info("fragmento de prompt cargado: %s (%d chars)", path.name, len(text))
+    logger.debug("fragmento de prompt cargado: %s (%d chars)", path.name, len(text))
     return text

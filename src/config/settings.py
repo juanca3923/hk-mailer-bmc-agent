@@ -274,14 +274,14 @@ class Settings(BaseSettings):
         """
         seen: dict[tuple[str, str], None] = {}
         out: list[tuple[str, str]] = []
-        for raw in str(self.a2a_peer_urls).split(","):
+        for position, raw in enumerate(str(self.a2a_peer_urls).split(","), start=1):
             segment = raw.strip()
             if not segment:
                 continue
             if "|" not in segment:
                 logger.warning(
-                    "A2A_PEER_URLS: entrada omitida (se requiere formato 'url|agent_id'): %r",
-                    segment,
+                    "A2A_PEER_URLS: entrada #%d omitida (se requiere formato 'url|agent_id')",
+                    position,
                 )
                 continue
             base_part, aid_part = segment.split("|", 1)
@@ -289,8 +289,8 @@ class Settings(BaseSettings):
             peer_aid = aid_part.strip()
             if not base_url or not peer_aid:
                 logger.warning(
-                    "A2A_PEER_URLS: entrada omitida (url y agent_id no vacíos): %r",
-                    segment,
+                    "A2A_PEER_URLS: entrada #%d omitida (url y agent_id no vacíos)",
+                    position,
                 )
                 continue
             key = (base_url, peer_aid)

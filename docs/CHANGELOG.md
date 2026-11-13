@@ -5,6 +5,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — refactor: logging para rastreo sin datos sensibles
+
+- Niveles revisados: INFO con hitos (arranque, turno/run/tick con id y duración, llamadas a Graph/BMC/A2A con estado y duración, decisiones sobre correos o tickets) y DEBUG con el detalle (textos recortados a 200 caracteres, tamaños).
+- El system prompt ya no sale dos veces a INFO: INFO muestra origen, nombre, label/versión y longitud; el texto completo va una sola vez en DEBUG.
+- Se corrigieron fugas: URL de Postgres con contraseña en el checkpointer, entradas de tools y previews del LLM a INFO, cuerpos de BMC, URLs de peers A2A y consultas de búsqueda. `httpx` y `httpcore` quedan en WARNING porque registran la URL completa (con correos en la query de BMC). Las direcciones de terceros se enmascaran (`mask_email`).
+- **Acción operativa**: ninguna; con `LOG_LEVEL=DEBUG` se obtiene el detalle de diagnóstico.
+
+---
+
 ## 2026-11-13 — refactor: reorganización del repositorio por capas
 
 - `src/bmc/` desaparece y su contenido se reparte por capas: `config/bmc_settings.py`, `constants/bmc/` (campos, mensajes, API, tickets, adjuntos, defaults), `type_defs/models/bmc/`, `type_defs/ports/`, `type_defs/enums/` (`StrEnum` de estados de WO/incidente y `StagedSkipReason`), `commons/bmc/` (lógica pura), `services/bmc/`, `services/startup/preflight.py`, `agent/runtime/`, `agent/observability/` y `http_api/`.

@@ -207,7 +207,7 @@ class ChatService:
                 )
 
         results = list(seen_chats.values())
-        self.logger.debug("search_chats: query=%r encontrados=%d", query, len(results))
+        self.logger.debug("search_chats: query_len=%d encontrados=%d", len(query), len(results))
         return results
 
     async def list_recent_chats(self, limit: int = 20) -> list[Chat]:

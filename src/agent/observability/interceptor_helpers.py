@@ -204,14 +204,13 @@ class InterceptorHelpers:
         output_tokens: int,
         preview_limit: int = 280,
     ) -> str:
-        """Una línea legible para logs a partir de LLMResult."""
+        """Una línea legible para logs a partir de LLMResult (``preview_limit=0`` omite el texto del LLM)."""
         msgs = list(self.iter_llm_result_ai_messages(response))
         if not msgs:
             return "llm_end: (sin mensajes)"
 
         model, done_reason = self._llm_end_model_and_done_reason(msgs[0], response)
         tool_calls_total, reasoning_lens = self.llm_end_tool_calls_and_reasoning_lens(msgs)
-        preview_fmt = self._llm_end_preview_repr(response, preview_limit)
 
         parts = [
             f"model={model!r}",
@@ -225,7 +224,8 @@ class InterceptorHelpers:
             parts.append(reasoning_part)
         if done_reason is not None:
             parts.append(f"done_reason={done_reason!r}")
-        parts.append(f"preview={preview_fmt}")
+        if preview_limit > 0:
+            parts.append(f"preview={self._llm_end_preview_repr(response, preview_limit)}")
 
         return "llm_end: " + " ".join(parts)
 

@@ -78,7 +78,7 @@ async def memory_search_chats(
     only to answer the user's own explicit question about past activity, after they
     confirm they mean a previous conversation.
     """
-    logger.info("memory_search_chats: query=%r", query)
+    logger.info("memory_search_chats: query_len=%d", len(query))
     results = await get_chat_service().search_chats(query, limit=10)
 
     if not results:
