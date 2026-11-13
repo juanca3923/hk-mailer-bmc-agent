@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — feat: trazas de Langfuse con nombre, sesión y tags; sesión compartida con el mailer
+
+- Los traces salían todos como `LangGraph`, sin sesión ni tags. Ahora cada turno se ejecuta dentro de `propagate_attributes` (nuevo `trace_attributes` en `agent/observability/langfuse_tracing.py`): nombre `<slug>:<origen>` (`chat` o `a2a`), sesión, tags y metadata (`agent_run_id`, `own_chat_id`). El `CallbackHandler` sigue dando los spans internos y `AgentRunCallbackHandler` no cambia.
+- A2A entrante: se lee `message.metadata` (`caller_agent`, `caller_chat_id`, `caller_run_id`; solo esas claves, ≤64 caracteres, lo inválido se ignora sin fallar). Si llega `caller_chat_id`, es la sesión del trace: el chat del mailer agrupa los traces de ambos agentes.
+- Nuevo `docs/LANGFUSE_TRAZAS.md`.
+
+---
+
 ## 2026-11-13 — refactor: tools del LLM en clases y errores siempre visibles
 
 - Cada archivo de `agent/internal_tools/` expone una clase (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`, `DatetimeTools`, `MemoryTools`, `SkillTools`, `A2APeerTools`) con un `get_tools()` estático; `_ALL_BMC_TOOLS` y las funciones `get_*_tools` desaparecen.
