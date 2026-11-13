@@ -202,7 +202,13 @@ class Settings(BaseSettings):
         text = (self.agent_card_description or "").strip()
         if text:
             return text
-        return f"Agente operativo Linux (Deep Agents + MCP); mismo grafo que POST /chat. Instancia: {self.agent_slug}."
+        return (
+            "Agente que registra y consulta incidentes y órdenes de trabajo en BMC Helix ARUS. "
+            "Para crear un ticket requiere el correo real de la persona solicitante (nunca inventado) y la "
+            "descripción del caso; para consultar un ticket requiere su número (INC... o WO...) o el correo del "
+            "solicitante. Los casos se registran y quedan abiertos. "
+            f"Instancia: {self.agent_slug}."
+        )
 
     @property
     def langfuse_tracing_ready(self) -> bool:

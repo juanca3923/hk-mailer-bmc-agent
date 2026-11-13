@@ -116,29 +116,29 @@ protocol without deviation:
 4. bmc_create_work_order(...) / bmc_create_incident(...)  ← with every field from the
    message, including reporter_email = the *Solicitante*'s email from the message
 5. bmc_add_work_order_note(...) / bmc_add_incident_note(...)  ← document the handling detail
-6. bmc_close_work_order(...) / bmc_close_incident(...)   ← close (see guardrails below)
 ```
+
+**Do not close the ticket.** The cases that arrive from another agent are only
+registered: create the ticket and **leave it open** (nobody downstream can act on it
+yet). Never call `bmc_close_work_order`/`bmc_close_incident` in this mode, even if the
+message says the case was solved, unless the message explicitly asks you to close a
+specific ticket.
 
 - **If the incoming message has no requester email**: never invent one or use your
   own. Stop the flow at step 4 and reply with the structured summary stating
-  `Estado final: Error — falta el correo del solicitante`, without running steps 5-6.
+  `Estado final: Error — falta el correo del solicitante`, without running step 5.
 - **In step 4, if `bmc_create_work_order`/`bmc_create_incident` returns
   `success: false`** (email not found in BMC or another error): do not continue to
-  steps 5-6; reflect the error as-is in the structured summary.
+  step 5; reflect the error as-is in the structured summary.
 - **In step 5 (note):** include the message's *Descripción detallada* field as the
   note's body. This leaves a trace of what/who/how in the ticket's history.
-- **In step 6 (close):** closing only works if the ticket was opened by this agent's
-  own service user and isn't already closed (business guardrails, see
-  `guia-creacion-tickets`). If `bmc_close_work_order`/`bmc_close_incident` returns
-  `success: false`, **never report the ticket as closed**: reflect the error as-is in
-  the structured summary.
 - **Reply with a structured summary** the orchestrating agent can log:
   ```
   Ticket creado: <WO/INC number>
   Tipo: Work Order / Incidente
   Categoría: <chosen category>
   Solicitante: <name>
-  Estado final: Cerrado | <error message if the close failed>
+  Estado final: Abierto | Error — <message if the ticket could not be created>
   ```
 
 ## Available tools

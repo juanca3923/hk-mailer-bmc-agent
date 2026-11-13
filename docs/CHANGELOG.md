@@ -5,6 +5,13 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — fix: tickets abiertos en modo automático y Agent Card con los datos requeridos
+
+- En modo automático (A2A) el agente ya no cierra el ticket: solo lo crea (y agrega la nota) y lo deja abierto; `Estado final: Abierto`. El cierre sigue disponible en modo interactivo.
+- La descripción por defecto de la Agent Card (antes "Agente operativo Linux…") dice qué necesita el agente: el correo real del solicitante y la descripción del caso para crear, y el número del ticket o el correo para consultar; y que los casos quedan abiertos. `AGENT_CARD_DESCRIPTION` sigue pudiendo sobrescribirla.
+
+---
+
 ## 2026-11-13 — fix: `tool_end` y `tool_error` registran el nombre y la duración de la tool
 
 - Los logs mostraban `tool=None duration=0.000s`: el callback buscaba el nombre por `tool_call_id`, que LangChain solo entrega al iniciar la tool. Ahora se usa el `run_id`, igual en los tres callbacks.
