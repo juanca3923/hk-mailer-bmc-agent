@@ -19,3 +19,12 @@ Todos son ASCII de hasta 200 caracteres; nunca se envían correos, asuntos ni te
 
 ## Unión mailer ↔ BMC
 El mailer envía en `message.metadata` del mensaje A2A `caller_agent`, `caller_chat_id` y `caller_run_id`. Aquí (`http_api/a2a_jsonrpc.py`) solo se aceptan esas tres claves, como texto de hasta 64 caracteres; cualquier otra cosa se ignora sin fallar el mensaje. Si llega `caller_chat_id`, es la sesión del trace del BMC, así que el chat del mailer muestra los traces de los dos agentes; cada uno conserva sus propios traces y su propio chat. Sin llamante (chat directo o A2A sin metadata) la sesión es el `chat_id` del BMC.
+
+## Costos
+Los **tokens** siempre se acumulan, pero el **costo** (`$`) solo aparece si, al ingestar la observación, existe una definición de modelo con precios cuyo patrón coincide con el nombre del modelo. Langfuse trae precios de OpenAI, Anthropic y Google; no de modelos como `meta-llama/Llama-3.3-70B-Instruct` (servido por Hugging Face), por eso se ven tokens con `$0.00`.
+
+**Cómo habilitarlo** (Project Settings > Models > *Add model definition*):
+- *Match pattern*: `(?i)^meta-llama/Llama-3\.3-70B-Instruct$` (el nombre exacto que muestra la observación).
+- Precios de entrada (`input`) y salida (`output`) según el proveedor; confirma en pantalla si la unidad es por token o por millón. También por API: `POST /api/public/models` con `modelName`, `matchPattern`, `unit: "TOKENS"`, `inputPrice` y `outputPrice`.
+
+**Límites**: la definición **no es retroactiva**; lo ya ingestado queda en `$0`. El gasto anterior se estima a mano: `tokens_entrada × precio_entrada + tokens_salida × precio_salida`. Desde que se crea, los dashboards *Model costs* acumulan el gasto.
