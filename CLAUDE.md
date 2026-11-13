@@ -41,66 +41,27 @@ AR REST API directly (no MCP server required).
 
 ## Project Structure
 
-```
-agent-bmc/
-├── src/
-│   ├── agent/                        # LangGraph agent core
-│   │   ├── agent.py                  # build_agent(): BMC lifecycle + graph compilation
-│   │   ├── llm.py                    # LLM factory (Ollama / OpenAI / Anthropic)
-│   │   ├── mcp_tools.py              # Optional extra MCP tools via MCP_URLS
-│   │   ├── cli.py                    # Interactive REPL
-│   │   ├── prompts.py                # System prompt loader (Langfuse / file)
-│   │   ├── a2a_peers.py              # Outbound A2A client
-│   │   ├── tool_error_policy.py      # Global tool error handling
-│   │   ├── interceptors/             # LLM/tool event callbacks
-│   │   └── internal_tools/
-│   │       ├── bmc_tools.py          # bmc_health_check + registry (get_bmc_tools(), _ALL_BMC_TOOLS)
-│   │       ├── bmc_work_order_tools.py  # 7 Work Order @tool functions
-│   │       ├── bmc_incident_tools.py    # 6 Incident @tool functions
-│   │       ├── memory_tools.py       # memory_* tools (chat/run history)
-│   │       ├── skill_tools.py        # skill_get_guide
-│   │       ├── datetime_tools.py     # get_current_date (system clock, AGENT_TIMEZONE)
-│   │       └── a2a_tools.py          # a2a_list_remote_agents, a2a_send_to_remote
-│   ├── bmc/                          # BMC Helix client layer
-│   │   ├── config/settings.py        # BmcSettings (BMC_BASE_URL, BMC_USERNAME, …)
-│   │   ├── exceptions/mcp.py         # MCPClientError, MCPLoginError, MCPValidationError
-│   │   ├── libs/
-│   │   │   ├── connection_manager.py # Singleton JWT session + auto-refresh
-│   │   │   ├── api_client.py         # BmcClient: async HTTP methods per AR form
-│   │   │   ├── tool_handler.py       # BaseToolHandler: shared write guard + TOON encode
-│   │   │   ├── constants.py          # AR field names, status catalogs, error messages
-│   │   │   ├── toon_encoder.py       # TOON response encoder
-│   │   │   └── helpers/
-│   │   │       ├── ar_query_builder.py
-│   │   │       ├── entry_values_mapper.py
-│   │   │       ├── guarded_write.py       # run_guarded_write: shared guard skeleton for ticket writes
-│   │   │       ├── multipart_builder.py
-│   │   │       ├── work_order_operations.py
-│   │   │       ├── incident_operations.py
-│   │   │       └── person_lookup.py       # CTM:People reporter identity resolution
-│   │   └── type_defs/                # Pydantic models for BMC inputs/outputs
-│   │       ├── inputs.py             # CreateWorkOrderInput, CreateIncidentInput, …
-│   │       ├── outputs.py            # BaseOutput, WorkOrderCreatedData, …
-│   │       ├── ar_values.py          # AR field aliases (CreateWorkOrderValues, …)
-│   │       ├── ar_api.py             # BmcEntryListResponse, BmcCreateEntryResponse
-│   │       ├── ticket_status.py      # WorkOrderStatus, IncidentStatus enums
-│   │       └── json_types.py         # JsonValue alias
-│   ├── config/                       # Agent settings (LLM, DB, A2A, Langfuse)
-│   ├── http_api/                     # FastAPI service
-│   ├── commons/                      # Shared runner, A2A inbound, utils
-│   ├── database/                     # Checkpointer, store, models
-│   ├── services/                     # Chat, run and event services
-│   ├── exception/                    # Domain exceptions
-│   └── type_defs/                    # HTTP contract types (Pydantic + TypedDict)
-├── skills/                           # Local Markdown skill guides
-├── docs/                             # Technical documentation
-├── test/                             # Tests (pytest + integration)
-├── alembic/                          # DB migrations
-├── pyproject.toml
-├── .env.example
-├── system.promt.md                   # BMC-specific system prompt
-└── base.prompt.md                    # Memory and skills base prompt
-```
+All source code is in `src/`, flat (no nested `src/src/`): packages are imported as `from agent import ...`, `from services.bmc import ...`, etc. The full, generated module map is in `docs/ARCHITECTURE.md` (section "Estructura del paquete").
+
+**Layers (a package only imports from the ones before it; nothing imports upward):**
+
+| Layer | Package | What lives there |
+|---|---|---|
+| base | `type_defs/` | Types only, no logic: `models/<domain>/` (TypedDict, dataclasses, BMC Pydantic models), `enums/` (closed sets as `StrEnum`), `ports/` (`Protocol` contracts), `http/` (Pydantic API models) |
+| base | `constants/` | Public constants, one module per domain (`bmc/fields.py`, `bmc/messages.py`, `bmc/api.py`, `bmc/tickets.py`, ...) |
+| base | `exception/` | Domain exceptions (`AgentError`, `ToolAgentError`, BMC/MCP client errors) |
+| 1 | `commons/` | **Pure** logic by domain: `text/`, `a2a/`, `bmc/` (AR query builder, entry values, multipart, ticket guards, guarded write, TOON). Never imports `config`, `database`, `services`, `agent` or `http_api` |
+| 2 | `config/` | `Settings`, `BmcSettings`, logger, skill catalog |
+| 3 | `database/` | Engine, SQLAlchemy models, checkpointer, store |
+| 4 | `services/` | `persistence/` (DB services), `bmc/` (AR client, JWT connection, tool handler, WO/incident operations, people lookup, staged files), `startup/` (preflight) |
+| 5 | `agent/` | LangGraph agent: `runtime/`, `observability/`, `internal_tools/` (BMC tools), `interceptors/`, `llm.py`, `prompts.py`, `cli.py` |
+| 6 | `http_api/` | FastAPI service (app, lifecycle, A2A inbound, routers) |
+
+**One file, one responsibility:** types only in `type_defs/`; public constants only in `constants/` (private `_X` constants and behavioural objects stay where they are used); services and classes alone in their module; closed sets of values are `StrEnum` in `type_defs/enums/`.
+
+**Where does new code go?** type -> `type_defs/models/<domain>/`; contract between layers -> `type_defs/ports/`; fixed value -> `constants/<domain>/`; dependency-free logic -> `commons/<domain>/`; database access -> `services/persistence/`; BMC client or operation -> `services/bmc/`; LLM tool -> `agent/internal_tools/`. Do not leave files loose at the root of `commons/` or `services/`.
+
+Documented exceptions: `TicketHandlerContext` (a `Protocol` over services-layer types) lives in `services/bmc/handler_context.py`; `constants/bmc/defaults.py` reads the environment at import; `type_defs/enums/bmc_status.py` keeps the small validators needed by Pydantic `Annotated` types.
 
 ---
 
@@ -331,7 +292,7 @@ since BMC's result order for a non-unique match is not guaranteed.
 1. Add input/output models to `src/type_defs/models/bmc/inputs.py` and `outputs.py` if needed.
 2. Add AR field constants to `src/constants/bmc/` if needed.
 3. Add the HTTP method to `src/services/bmc/api_client.py`.
-4. Add a helper in `src/bmc/libs/helpers/` if the operation has multiple steps.
+4. Add a helper in `src/commons/bmc/` (pure builders) or `src/services/bmc/` (multi-step operations) if the operation has multiple steps.
 5. Add the `@tool` function to `bmc_work_order_tools.py` or `bmc_incident_tools.py`
    (whichever ticket type it's for), following the lazy handler pattern
    (`handler = tool_handler.get_shared_handler()`). Pass an explicit, concise

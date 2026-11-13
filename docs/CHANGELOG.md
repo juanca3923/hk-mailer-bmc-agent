@@ -5,6 +5,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-13 — refactor: reorganización del repositorio por capas
+
+- `src/bmc/` desaparece y su contenido se reparte por capas: `config/bmc_settings.py`, `constants/bmc/` (campos, mensajes, API, tickets, adjuntos, defaults), `type_defs/models/bmc/`, `type_defs/ports/`, `type_defs/enums/` (`StrEnum` de estados de WO/incidente y `StagedSkipReason`), `commons/bmc/` (lógica pura), `services/bmc/`, `services/startup/preflight.py`, `agent/runtime/`, `agent/observability/` y `http_api/`.
+- Reglas nuevas (capas sin imports hacia arriba, un archivo una responsabilidad, nada suelto en `commons/` ni `services/`) en `docs/ARCHITECTURE.md`, `CLAUDE.md` y las reglas de `.claude/` y `.cursor/`.
+- Sin cambios de comportamiento ni de contrato HTTP. Los paquetes de `pyproject.toml` y `mypy.ini` cambian (`src/bmc` → `src/constants`).
+- **Acción operativa**: ninguna; las rutas de importación internas cambiaron.
+
+---
+
 ## 2026-11-12 — fix: `Dockerfile.dev` no pierde `/bin/sh` al crear `appuser`
 
 - **`Dockerfile.dev`**: `useradd` pasa al inicio de la imagen, y `uv sync` y `pip uninstall` quedan en capas distintas (`--link-mode copy`). En una sola capa, el image store containerd de Docker la guardaba vacía y el `RUN useradd` siguiente fallaba con `stat /bin/sh: no such file or directory`. También crea `/app/data/ticket_files` y `/app/logs` con dueño `appuser`.
