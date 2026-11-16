@@ -101,6 +101,7 @@ def test_effective_agent_card_description_default_states_requirements(monkeypatc
     assert "abiertos" in description
     assert "cierra" in description
     assert "Acción: cerrar" in description
+    assert "Acción: nota" in description
 
 
 def test_normalized_a2a_peer_configs_requires_url_pipe_agent_id(monkeypatch: pytest.MonkeyPatch) -> None:

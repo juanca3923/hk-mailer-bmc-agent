@@ -211,9 +211,9 @@ class Settings(BaseSettings):
             "Agente que registra y consulta incidentes y órdenes de trabajo en BMC Helix ARUS. "
             "Crea el ticket a nombre de quien envió el correo: requiere su correo real (nunca inventado) y la "
             "descripción del caso (si es para otra persona, va en la descripción). Los tickets se crean y quedan "
-            "abiertos; solo cierra un ticket cuando el mensaje lo pide de forma explícita con «Acción: cerrar» y el "
-            "número del ticket. Para consultar un ticket requiere su número (INC... o WO...) o el correo del "
-            "solicitante. "
+            "abiertos; solo cierra un ticket («Acción: cerrar») o le agrega una nota («Acción: nota») cuando el "
+            "mensaje lo pide de forma explícita con el número del ticket. Para consultar un ticket requiere su "
+            "número (INC... o WO...) o el correo del solicitante. "
             f"Instancia: {self.agent_slug}."
         )
 

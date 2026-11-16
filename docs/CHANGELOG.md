@@ -13,6 +13,13 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-16 — feat: `Acción: nota` para documentar un ticket que el mailer no pudo cerrar
+
+- Modo automático: además de `crear` y `cerrar`, el mensaje del orquestador puede ser `Acción: nota` con `Ticket:` y `Texto:`. El agente solo agrega esa nota al ticket indicado (`bmc_add_work_order_note`/`bmc_add_incident_note`) y responde `Estado final: Nota agregada` o `Error — …`. El mailer lo usa cuando respondió una duda pero el cierre falló, para no dejar un caso sin documentar.
+- Agent Card actualizada. **Acción operativa**: reconstruir el agente BMC.
+
+---
+
 ## 2026-11-13 — fix: el prompt se carga en dos capas con una sola fuente cada una
 
 - `system.promt.md` pasa a ser las reglas de oro fijas (guardrails, estilo de comunicación, memoria, uso de skills) y nunca viene de Langfuse. `base.prompt.md` pasa a ser el comportamiento (protocolo de creación de tickets, modo automático, tools): viene de Langfuse si `LANGFUSE_PROMPT_NAME` está definido y responde; si no, del archivo local. Nunca se suman ambos. El orden final es `system` + `base` + `<skills>` (antes iba `base` primero).
