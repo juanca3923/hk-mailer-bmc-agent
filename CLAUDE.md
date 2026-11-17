@@ -9,6 +9,12 @@ AR REST API directly (no MCP server required).
 
 ---
 
+## Code review
+
+Code is reviewed file by file with the `review-file` skill (`.claude/skills/review-file/SKILL.md`, mirrored in `.cursor/skills/`): numbered findings with evidence, nothing changes without approval, TDD and small commits. Its criteria (≤3 returns, ≤5 parameters, constants on top, one variable per line, no single-letter names, enums instead of `Literal`/`str`, no silenced alerts, read pylint's exit code, refactors never change logic) live in the "Revisión de código" section of `.claude/rules/estandar-python.md`.
+
+---
+
 ## Table of Contents
 
 1. [Purpose](#purpose)

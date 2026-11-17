@@ -186,6 +186,21 @@ catch-all de `run_agent_turn`).
 - Validar entradas externas; fallar con claridad; evitar `except` silenciosos y capturas genéricas innecesarias.
 - Logging en rutas críticas sin datos sensibles.
 
+## Revisión de código (criterios que se aplican al revisar y al escribir)
+
+Vienen de la revisión archivo por archivo de `hk-quality-backend` (skill `review-file`). Cada uno es un hallazgo mecánico: se corrige sin pedir permiso punto por punto.
+
+- **Los límites de la sección anterior se cumplen de verdad**: ≤3 `return`, ≤5 parámetros y ≤15 variables locales por función. Lo que viaja junto se agrupa en una clase de `type_defs/` antes de subir un límite; una salida temprana se resuelve con guardas combinadas o funciones auxiliares, no con más `return`.
+- **Las constantes de módulo van arriba, justo después de los imports**; la excepción es la que se DERIVA de algo definido en el mismo módulo, que va después de esa definición. Las constantes públicas viven en `constants/<dominio>.py`, **una sola vez**: si una regla, un número o un texto aparece en dos sitios, se unifica (comparando antes las copias: pueden haber divergido y esconder un bug).
+- **Cero variables de una letra** (índices de bucle, comprensiones y lambdas incluidos) y sin dígitos en los nombres. Un mismo concepto se llama igual en todas las capas.
+- **Una variable por línea:** nada de `a, b = f(x), g(y)` con valores sin relación. Desempaquetar lo que devuelve una función (`ancho, alto = medir()`) sí está bien.
+- **Un texto que solo admite unos pocos valores es un `StrEnum`** (en `type_defs/enums/`), no un `Literal` ni un `str`; el estado, los puertos y los modelos se tipan con el enum y se acaban los `str(Enum)` y las comparaciones con texto suelto.
+- **Un identificador que es un UUID** se tipa `uuid.UUID` en todas las capas; el texto es solo la forma de transporte.
+- **No se silencian alertas del analizador** (`# noqa`, `# NOSONAR`, `# type: ignore` sin necesidad real, `# pylint: disable`): se corrige la causa. Única excepción: los `except Exception` de barrera de aislamiento (y los «degradar, nunca lanzar») y los registros de datos con muchos campos, con `# pylint: disable-next=<regla>` justo encima de la línea y su fila con el motivo en `docs/LINT_EXCEPTIONS.md`; nunca un `# pylint: disable=` (apagaría la regla hasta el final del bloque).
+- **`pylint` se lee por su código de salida, no por el puntaje:** `10.00/10` puede traer salida distinta de 0 (`duplicate-code`, `too-many-lines`). Se corre sin tubería (`pylint --rcfile=.pylintrc src > salida; echo $?`) y debe dar 0.
+- **Una consulta trae solo las columnas que usa**: quien solo comprueba un estado no carga un JSON ni un texto largo.
+- **Un refactor no cambia la lógica:** antes de tocar una función se miden sus ramas y se fijan con pruebas de caracterización; después, mismas pruebas con las mismas aserciones. Si un cambio de firma obliga a editar una prueba, solo cambia cómo se construye la llamada.
+
 ## Disciplina de cambio y salida
 
 - Cambios mínimos y acotados; reutilizar utilidades y patrones del repo.
