@@ -1,6 +1,6 @@
 """Loggers para AgentForge.
 
-`core_logger`: logs de aplicación (DEBUG..ERROR) hacia archivo y consola.
+`core_logger`: logs de aplicación (DEBUG..ERROR); propaga al logger raíz, que escribe a archivo y consola.
 `user_logger`: mensajes pensados para el usuario, hacia consola (formato mínimo).
 """
 
@@ -30,9 +30,16 @@ file_handler = logging.FileHandler(log_file, encoding="utf-8")
 file_handler.setLevel(level)
 file_handler.setFormatter(file_formatter)
 
+# File and console handlers live on the root logger so that modules using ``logging.getLogger(__name__)``
+# (commons, services, tools) reach the console too, not only the file; ``agent_forge`` propagates to it.
+root_console_handler = logging.StreamHandler()
+root_console_handler.setLevel(level)
+root_console_handler.setFormatter(file_formatter)
+
 root_logger = logging.getLogger()
 root_logger.setLevel(level)
 root_logger.addHandler(file_handler)
+root_logger.addHandler(root_console_handler)
 
 # httpx/httpcore log the full request URL at INFO (query string included: BMC qualifications carry
 # email addresses), so they stay at WARNING whatever the application level is.
@@ -41,10 +48,6 @@ for _noisy_logger in ("httpx", "httpcore"):
 
 core_logger = logging.getLogger("agent_forge")
 core_logger.setLevel(logging.DEBUG)
-core_console_handler = logging.StreamHandler()
-core_console_handler.setLevel(level)
-core_console_handler.setFormatter(file_formatter)
-core_logger.addHandler(core_console_handler)
 core_logger.propagate = True
 
 user_logger = logging.getLogger("agent_forge.user")

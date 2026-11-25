@@ -153,14 +153,6 @@ class BmcSettings(BaseSettings):
     form_incident_work_log: str = Field(default='HPD:WorkLog')
     form_people_query: str = Field(default='CTM:People')
 
-    default_first_name: str = Field(
-        default='Mosaico',
-        description='Nombre fijo del solicitante/cliente en Work Order e Incidente creados por este agente',
-    )
-    default_last_name: str = Field(
-        default='WebServices',
-        description='Apellido fijo del solicitante/cliente en Work Order e Incidente creados por este agente',
-    )
     default_wo_company: str = Field(default='ARUS')
 
     @field_validator('attachment_base_dir', mode='before')

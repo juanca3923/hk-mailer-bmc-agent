@@ -6,7 +6,7 @@ description: Guía de proceso para decidir Work Order vs Incidente, mapear colum
 # Guía de proceso — creación y cierre de tickets BMC
 
 Esta guía cubre el **procedimiento común** a todas las skills de dominio
-(`categorias-<dominio>`, hoy `categorias-eventos` y `categorias-usuario`): cómo decidir
+(`categorias-<dominio>`, hoy solo `categorias-mail-drive`): cómo decidir
 el tipo de ticket, cómo mapear cualquiera de esas tablas a parámetros de
 `bmc_create_incident`/`bmc_create_work_order`, y los guards de negocio. **Las skills de
 dominio solo aportan la tabla de datos** — no repiten este procedimiento, así que si vas
@@ -29,19 +29,21 @@ fila que aplique al caso — su columna `Tipo Servicio` decide el tipo.
   `priority` como parámetro libre, tomado de la fila).
 - **Si NO aplica ningún dominio conocido**: el caso se crea **siempre como Work
   Order**, nunca como Incidente — sin importar si "suena" a algo roto o caído. Llama
-  `bmc_create_work_order` pasando **exactamente** estos valores (catch-all confirmado
-  por la mesa de servicio el 2026-09-14, para que lo triage manualmente — no los
-  cambies ni los completes con otra cosa):
+  `bmc_create_work_order` pasando **exactamente** estos valores (categoría por
+  defecto confirmada por la mesa de servicio el 2026-11-25, para que lo triage
+  manualmente — no los cambies ni los completes con otra cosa):
 
   | Parámetro | Valor |
   |---|---|
   | `categorization_tier_1` | `Gestion de tickets` |
-  | `categorization_tier_2` | `Acompañamiento` |
+  | `categorization_tier_2` | `MailDrive` |
   | `product_cat_tier_1` | `Gestion de casos` |
   | `product_cat_tier_2` | `Control` |
   | `product_cat_tier_3` | `Casos` |
+| `priority` | `Low` |
 
-  No existe un catch-all de Incidente — no se crean incidentes fuera de un dominio
+  La categoría operacional 3 del catálogo de la mesa (`   - - `) no tiene parámetro en la
+  tool: ignórala. No existe un catch-all de Incidente — no se crean incidentes fuera de un dominio
   conocido. Si la mesa de servicio cambia esta combinación, solo hace falta editar
   esta tabla — no requiere ningún cambio de código ni redeploy del agente.
 
@@ -68,9 +70,9 @@ categoría operacional de una fila con la de producto de otra.
 | Prioridad (fuente) | Valor para `priority` |
 |---------------------|----------------------|
 | CRITICA / CRITICO | `Critical` |
-| ALTA | `High` |
-| MEDIA | `Medium` |
-| BAJA | `Low` |
+| ALTA / ALTO | `High` |
+| MEDIA / MEDIO | `Medium` |
+| BAJA / BAJO | `Low` |
 
 ### Columnas informativas de catálogos de dominio
 
@@ -99,8 +101,8 @@ precisión:
 No pidas estos datos al usuario ni intentes pasarlos como parámetro — están fijados
 por configuración del agente, no por el catálogo de categorías:
 
-- Company, y nombre/apellido del **cliente** (`Customer First/Last Name`, solo Work
-  Order — es una identidad fija distinta del solicitante).
+- Company y `Customer Company` (solo Work Order). El nombre y apellido del **cliente**
+  (`Customer First/Last Name`) ya no son fijos: son los del solicitante.
 - Impact y Urgency (solo Incidente, siempre fijos).
 
 La categorización (operacional 1/2, producto 2-3 niveles, `priority`/`assigned_group`
@@ -115,8 +117,8 @@ determinó Tipo Servicio = Incidente.
 **`reporter_email` es obligatorio y NO sale del catálogo de categorías ni está
 fijado**: es el correo de quien reporta el incidente o solicita el Work Order (pídelo
 al usuario en modo interactivo, o tómalo del mensaje entrante en modo A2A). El nombre
-y apellido del **solicitante** (`First Name`/`Last Name`, distinto del cliente) ya no
-es un valor fijo — la tool lo resuelve buscando ese correo en `CTM:People`, y la
+y apellido del **solicitante** (`First Name`/`Last Name`, y en Work Order también el
+cliente) no son valores fijos — la tool los resuelve buscando ese correo en `CTM:People`, y la
 creación falla sin crear ningún ticket si no encuentra a esa persona registrada en
 BMC. Ver `docs/CHANGELOG.md` para el detalle de esta resolución de identidad.
 
@@ -174,7 +176,7 @@ silencies ni reportes el ticket como cerrado si no lo está.
    — nunca crees un Incidente sin dominio conocido.
 2. Si aplicó dominio: ¿leíste esa skill y elegiste una única fila completa, mapeada
    según la sección 2, sin inventar? Si NO aplicó dominio: ¿pasaste
-   `categorization_tier_1/2`/`product_cat_tier_1/2/3` con los valores catch-all
+   `categorization_tier_1/2`/`product_cat_tier_1/2/3`/`priority` con los valores catch-all
    exactos de la sección 1, sin inventar otra combinación?
 3. ¿Los campos obligatorios (descripción, y categorización/priority/assigned_group
    cuando aplicó dominio) están completos con valores reales, no inventados?
@@ -184,7 +186,7 @@ silencies ni reportes el ticket como cerrado si no lo está.
    necesita más detalle, va en `detailed_decription`, no ahí (sección 5).
 6. ¿Tienes el correo real de quien reporta/solicita (`reporter_email`), sin inventarlo
    ni usar el tuyo propio?
-7. ¿Evitaste pasar campos fijados por el entorno (company, identidad del cliente,
+7. ¿Evitaste pasar campos fijados por el entorno (company, nombre del cliente,
    impact/urgency)?
 8. Si aplicó dominio pero ninguna fila describía el caso exacto (sección 3), ¿dejaste
    eso explícito en vez de simular certeza, en lugar de inventar una fila?

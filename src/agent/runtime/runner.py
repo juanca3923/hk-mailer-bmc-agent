@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from functools import lru_cache
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
@@ -23,7 +23,7 @@ from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
 
 from agent.interceptors.agent_run_callback import AgentRunCallbackHandler
 from agent.observability.interceptor_helpers import InterceptorHelpers
-from agent.observability.langfuse_tracing import ensure_langfuse_tracing_client
+from agent.observability.langfuse_tracing import ensure_langfuse_tracing_client, trace_attributes
 from agent.runtime.last_ai_reply import ReplyExtractor
 from commons.text.utils import TextUtils
 from config import get_logger
@@ -220,6 +220,8 @@ class AgentRunner:
         chat_id: UUID | None = None,
         callbacks: list[AsyncCallbackHandler] | None = None,
         events_service: AgentEventsService | None = None,
+        origin: str = "chat",
+        caller: Mapping[str, str] | None = None,
     ) -> AgentTurnResult:
         """Ejecuta un turno completo de conversación con el agente (modo no-streaming).
 
@@ -235,6 +237,8 @@ class AgentRunner:
             callbacks: Callbacks de LangChain adicionales (opcional).
             events_service: Si se informa, registra eventos (llm_end, tokens, etc.)
                 asociados al run_id del turno.
+            origin: ``chat`` o ``a2a``; da nombre y tag al trace de Langfuse.
+            caller: Datos del agente que llamó por A2A (``caller_*``); su chat pasa a ser la sesión.
         """
         ctx = await self.prepare_turn(user_message=user_message, chat_id=chat_id)
         settings = Settings.load()
@@ -244,7 +248,12 @@ class AgentRunner:
         result: AgentTurnResult | None = None
 
         try:
-            graph_output = await graph.ainvoke({"messages": ctx.messages}, config=config)  # type: ignore[attr-defined]
+            with trace_attributes(
+                settings=settings, chat_id=ctx.chat_id, run_id=ctx.run_id, mode=origin, caller=caller
+            ):
+                graph_output = await graph.ainvoke(  # type: ignore[attr-defined]
+                    {"messages": ctx.messages}, config=config
+                )
             reply = ReplyExtractor().from_messages(graph_output.get("messages", []))
             return await self.finish_turn_success(ctx=ctx, reply=reply)
 
@@ -273,6 +282,8 @@ class AgentRunner:
         chat_id: UUID | None = None,
         callbacks: list[AsyncCallbackHandler] | None = None,
         events_service: AgentEventsService | None = None,
+        origin: str = "chat",
+        caller: Mapping[str, str] | None = None,
     ) -> AsyncIterator[ChatStreamServerEvent]:
         """Ejecuta un turno en modo streaming (misma persistencia que ``run_agent_turn``).
 
@@ -288,9 +299,12 @@ class AgentRunner:
         terminal: ChatStreamDoneEvent | ChatStreamErrorEvent | None = None
         streamed_parts: list[str] = []
         try:
-            async for chunk_event in self.iter_agent_message_chunks(graph, ctx.messages, config):
-                streamed_parts.append(chunk_event["text"])
-                yield chunk_event
+            with trace_attributes(
+                settings=settings, chat_id=ctx.chat_id, run_id=ctx.run_id, mode=origin, caller=caller
+            ):
+                async for chunk_event in self.iter_agent_message_chunks(graph, ctx.messages, config):
+                    streamed_parts.append(chunk_event["text"])
+                    yield chunk_event
 
             reply = "".join(streamed_parts).strip() or "(Sin respuesta del agente)"
             result = await self.finish_turn_success(ctx=ctx, reply=reply)

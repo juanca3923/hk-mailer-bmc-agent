@@ -9,6 +9,12 @@ AR REST API directly (no MCP server required).
 
 ---
 
+## Code review
+
+Code is reviewed file by file with the `review-file` skill (`.claude/skills/review-file/SKILL.md`, mirrored in `.cursor/skills/`): numbered findings with evidence, nothing changes without approval, TDD and small commits. Its criteria (≤3 returns, ≤5 parameters, constants on top, one variable per line, no single-letter names, enums instead of `Literal`/`str`, no silenced alerts, read pylint's exit code, refactors never change logic) live in the "Revisión de código" section of `.claude/rules/estandar-python.md`.
+
+---
+
 ## Table of Contents
 
 1. [Purpose](#purpose)
@@ -105,15 +111,15 @@ If `BMC_BASE_URL` is **not** set, BMC tools return an empty list and the agent s
 
 | Layer | Library | Version |
 |-------|---------|---------|
-| Agent framework | LangChain + LangGraph | 1.2.15 / 1.1.6 |
+| Agent framework | LangChain + LangGraph | 1.4.9 / 1.2.20 |
 | LLM providers | langchain-anthropic / openai / ollama | latest |
 | HTTP client (BMC) | httpx | 0.28.1 |
 | Output encoding | toon-formatter | 1.0.1 |
-| Validation | Pydantic + pydantic-settings | 2.13.1 |
-| Persistence | PostgreSQL + asyncpg + SQLAlchemy | — |
-| LangGraph checkpointer | langgraph-checkpoint-postgres | 3.0.5 |
-| HTTP server | FastAPI + Uvicorn | 0.136.0 |
-| Observability | Langfuse (optional) | 4.6.1 |
+| Validation | Pydantic + pydantic-settings | 2.14.3 / 2.16.2 |
+| Persistence | PostgreSQL + asyncpg + SQLAlchemy | 0.32.0 / 2.1.9 (`sqlalchemy[asyncio]`) |
+| LangGraph checkpointer | langgraph-checkpoint-postgres | 3.2.0 |
+| HTTP server | FastAPI + Uvicorn | 0.162.0 / 0.54.0 |
+| Observability | Langfuse (optional) | 5.2.0 |
 | Package manager | uv | — |
 
 ---
@@ -168,6 +174,9 @@ Copy `.env.example` to `.env` and fill in the required values.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BMC_ALLOW_WRITE` | `true` | Enable CREATE/UPDATE/CLOSE operations |
+| `AGENT_MAX_MODEL_CALLS_PER_RUN` | `20` | Cap on model calls per run (`ModelCallLimitMiddleware`); beyond it the run fails with a visible error. `0` = no cap |
+| `AGENT_MAX_TOOL_CALLS_PER_RUN` | `15` | Cap on tool calls per run (any tool); extra calls are blocked and the model must answer. `0` = no cap |
+| `BMC_MAX_CREATE_CALLS_PER_RUN` | `3` | Cap on `bmc_create_work_order` and, separately, `bmc_create_incident` calls per run. `0` = no cap |
 | `BMC_JWT_TTL_SECONDS` | `3600` | JWT lifetime in seconds |
 | `BMC_JWT_REFRESH_MARGIN_SECONDS` | `300` | Refresh JWT this many seconds before expiry |
 | `BMC_HTTP_TIMEOUT_SECONDS` | `30.0` | HTTP timeout toward BMC |
@@ -179,21 +188,20 @@ Copy `.env.example` to `.env` and fill in the required values.
 
 Fixed values injected by `src/constants/bmc/defaults.py` into every `bmc_create_work_order`
 and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
-`First Name`/`Last Name` are **not** in this table — they are resolved per-call from
-`reporter_email` (see "Reporter identity resolution" above), not a fixed default.
+`First Name`/`Last Name` and, in a work order, the `Customer First/Last Name` are **not** in this table — they
+are resolved per-call from `reporter_email` (see "Reporter identity resolution" above), not a fixed default.
 
 | Variable | Fallback | Used in |
 |----------|----------|---------|
 | `BMC_DEFAULT_COMPANY` | `ARUS` | WO + incident `Company` |
-| `BMC_DEFAULT_CUSTOMER_FIRST_NAME` | `Mosaico` | WO `Customer First Name` |
-| `BMC_DEFAULT_CUSTOMER_LAST_NAME` | `WebServices` | WO `Customer Last Name` |
 | `BMC_DEFAULT_CUSTOMER_COMPANY` | `ARUS` | WO `Customer Company` |
-| `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_incident` (not a fixed injection — the LLM should override it with the value from a matching `categorias-<dominio>` skill row, e.g. `categorias-eventos`/`categorias-usuario`) |
+| `BMC_DEFAULT_ASSIGNED_GROUP` | `SOPORTE MESA DE SERVICIO` | Default of the `assigned_group` **tool parameter** of `bmc_create_incident` (not a fixed injection — the LLM should override it with the value from a matching `categorias-<dominio>` skill row, e.g. `categorias-eventos`/`categorias-usuario`) |
 | `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` | `ARUS` | Fixed incident `Assigned Support Company`, required alongside `Assigned Support Organization` for BMC to honor the `Assigned Group` sent by the caller (otherwise BMC silently reassigns the incident per its own ITSM configuration) |
 | `BMC_DEFAULT_INCIDENT_SUPPORT_ORGANIZATION` | `MAYA` | Fixed incident `Assigned Support Organization` — see `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` |
-| `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` — the LLM should override it with the value from a matching `categorias-<dominio>` skill row when one applies; otherwise (no known domain) this default is the correct, confirmed value, not a placeholder |
+| `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `SOPORTE MESA DE SERVICIO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` — the LLM should override it with the value from a matching `categorias-<dominio>` skill row when one applies; otherwise (no known domain) this default is the correct, confirmed value, not a placeholder |
 | `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` | `ARUS` | Fixed work order `Support Company`, required alongside `Support Organization` for BMC to honor the `Support Group Name` sent by the caller (otherwise BMC silently reassigns the work order per its own ITSM configuration) |
 | `BMC_DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION` | `MAYA` | Fixed work order `Support Organization` — see `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` |
+| `BMC_DEFAULT_WORK_ORDER_LOCATION_COMPANY` | `ARUS` | Fixed work order `Location Company`, a required field of `WOI:WorkOrderInterface_Create` (BMC answers HTTP 400 "Required field cannot be blank" without it) |
 
 ### Required — LLM
 
@@ -224,12 +232,14 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters. The
 | `AGENT_SLUG` | `agent_bmc` | Unique identifier (pattern `^[a-z][a-z0-9_]*$`) |
 | `AGENT_TIMEZONE` | `America/Bogota` | IANA timezone (`zoneinfo` name) used by the `get_current_date` tool; independent of the container OS's `TZ` |
 
-### System prompt precedence
+### System prompt layers
 
-1. `SYSTEM_PROMPT` (inline env var) — highest priority
-2. `LANGFUSE_PROMPT_NAME` (if all Langfuse vars are set)
-3. `SYSTEM_PROMPT_PATH` (file path)
-4. `system.promt.md` in the repo root — default (BMC-specific)
+The prompt has two layers, **one source each** (never two sources of the same layer):
+
+1. **system** (golden rules, fixed): `SYSTEM_PROMPT` (inline) or file `SYSTEM_PROMPT_PATH` / default `system.promt.md`. Never from Langfuse.
+2. **base** (behaviour: ticket-creation protocol, automated mode): Langfuse (`LANGFUSE_PROMPT_NAME` + `LANGFUSE_PROMPT_LABEL`, optional; this agent does not use it today) and, if missing or failing, local `base.prompt.md`. If Langfuse provides it, the local file is not read.
+
+Final prompt = system + base + `<skills>` catalog.
 
 ---
 

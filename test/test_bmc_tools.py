@@ -7,7 +7,11 @@ import json
 import pydantic
 import pytest
 
-from constants.bmc.defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
+from constants.bmc.defaults import (
+    DEFAULT_WORK_ORDER_LOCATION_COMPANY,
+    DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
+    DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
+)
 from constants.bmc.fields import (
     AR_FIELD_INCIDENT_ASSIGNED_GROUP,
     AR_FIELD_INCIDENT_NUMBER,
@@ -38,6 +42,8 @@ from type_defs.models.bmc.outputs import (
     WorkOrderDetailData,
 )
 
+PERSON_NOT_FOUND_FINAL = 'no reintentes'
+NOT_VERIFIED_MARKER = 'Estado final: No verificado'
 REPORTER_EMAIL = 'ana.reportante@arus.com.co'
 
 
@@ -245,8 +251,11 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     assert body_values['Support Company'] == DEFAULT_WORK_ORDER_SUPPORT_COMPANY
     assert body_values['Support Organization'] == DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
     assert body_values['Support Group Name'] == 'GTI.GROUP'
+    assert body_values['Location Company'] == DEFAULT_WORK_ORDER_LOCATION_COMPANY
     assert body_values['First Name'] == 'Ana'
     assert body_values['Last Name'] == 'Reportante'
+    assert body_values['Customer First Name'] == 'Ana'
+    assert body_values['Customer Last Name'] == 'Reportante'
 
 
 async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -267,6 +276,9 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
     payload = json.loads(raw)
     assert payload['success'] is False
     assert REPORTER_EMAIL in payload['message']
+    assert PERSON_NOT_FOUND_FINAL in payload['message']
+    assert NOT_VERIFIED_MARKER in payload['message']
+    assert 'Error' not in payload['message']
     assert client.create_work_order_calls == []
 
 
@@ -308,6 +320,9 @@ async def test_bmc_create_incident_fails_closed_when_reporter_not_found(monkeypa
     payload = json.loads(raw)
     assert payload['success'] is False
     assert REPORTER_EMAIL in payload['message']
+    assert PERSON_NOT_FOUND_FINAL in payload['message']
+    assert NOT_VERIFIED_MARKER in payload['message']
+    assert 'Error' not in payload['message']
     assert client.create_incident_calls == []
 
 
@@ -491,3 +506,16 @@ def test_ticket_info_tools_never_expose_raw_values_or_request_id() -> None:
 def test_tickets_by_email_limit_is_capped_at_the_schema_level() -> None:
     assert bmc_tool('bmc_list_work_orders_by_email').args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
     assert bmc_tool('bmc_list_incidents_by_email').args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
+
+
+@pytest.mark.parametrize(
+    ('tool_name', 'ticket_kind'),
+    [('bmc_list_incidents_by_email', 'incidents'), ('bmc_list_work_orders_by_email', 'work orders')],
+)
+def test_list_by_email_tools_keep_their_llm_description(tool_name: str, ticket_kind: str) -> None:
+    assert bmc_tool(tool_name).description == (
+        f'List {ticket_kind} for one person, searched by the email they used as '
+        'reporter_email at creation — not their BMC-resolved login id. One row per '
+        'ticket: title, status and assigned group only; capped and flagged if there '
+        'are more matches than returned.'
+    )

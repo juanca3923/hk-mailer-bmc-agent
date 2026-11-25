@@ -5,6 +5,126 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — feat: el cliente del Work Order es el solicitante y se eliminan `BMC_DEFAULT_CUSTOMER_FIRST_NAME/LAST_NAME`
+
+- **Antes**: `Customer First/Last Name` iban fijos (`Mosaico`/`WebServices`; el fallback del código era `IA`, distinto de lo documentado, y BMC rechazaba la creación con «Requested For user is not a registered user»). El ticket mostraba como Cliente a una persona ficticia, y `bmc_list_work_orders_by_email` no lo encontraba.
+- **Ahora**: `bmc_create_work_order` envía como cliente el mismo First/Last Name que ya resuelve de `CTM:People` por `reporter_email` (igual que el contacto). `Customer Company` sigue fijo (`BMC_DEFAULT_CUSTOMER_COMPANY`, `ARUS`). La búsqueda en `CTM:People` no cambia.
+- **Eliminado**: `BMC_DEFAULT_CUSTOMER_FIRST_NAME`, `BMC_DEFAULT_CUSTOMER_LAST_NAME` y los campos sin uso `default_first_name`/`default_last_name` de `BmcSettings`.
+- **Acción operativa**: quitar esas dos variables de `bmc.env` (si quedan, se ignoran) y reiniciar el agente.
+
+---
+
+## 2026-11-25 — feat: catálogo de Requerimientos y categoría por defecto actualizados desde el Excel de MailDrive
+
+- **Catálogo** (`skills/categorias-mail-drive.md`): 11 filas de Requerimientos con `Prioridad` ya informada (`ALTO`/`MEDIO`/`BAJO`); desaparece la fila `Crear / cambiar contraseña → Gestion de casos/Control/Casos` (ahora es la categoría por defecto). Los incidentes no cambian. Siguen aproximados el producto 3 de `Base de datos` (`Plataforma`) y de `Gestiona tu Acceso` (`Aplicacion`), vacíos en el Excel.
+- **Categoría por defecto** (`guia-creacion-tickets` §1): Cat. Op. 2 pasa de `Acompañamiento` a `MailDrive` y ahora lleva `priority = Low`; el Cat. Op. 3 del Excel (`   - - `) se ignora. §2 traduce también `ALTO/MEDIO/BAJO`. `base.prompt.md` incluye `priority` en el catch-all.
+- **Validación**: las 11 filas y la categoría por defecto se crearon sin error en QA (Work Orders de prueba). El cierre en QA sigue pendiente por la toma de propiedad.
+- **Acción operativa**: reiniciar el agente (`base.prompt.md` se lee al arrancar; las skills se leen al vuelo).
+
+---
+
+## 2026-11-25 — refactor: la descripción de las tools de listado por correo vive en un solo lugar
+
+- **Qué era el `duplicate-code`**: `pylint` (R0801) marcaba 7 líneas casi idénticas entre `bmc_incident_tools.py` y `bmc_work_order_tools.py`: el texto que ve el LLM de `bmc_list_incidents_by_email` y `bmc_list_work_orders_by_email`, igual salvo «incidents»/«work orders». Se reportaba sobre `constants/bmc/messages.py` solo por ser el primer módulo analizado. Dejaba `pylint` con salida distinta de 0 aunque el puntaje fuera 10/10.
+- **Cambio**: plantilla `LIST_BY_EMAIL_DESCRIPTION` en `constants/bmc/tool_descriptions.py`, usada por ambas tools con `.format(ticket_kind=...)`. El texto que recibe el LLM no cambia (lo fija una prueba nueva). Además, el nombre del grupo por defecto pasa a una constante privada en `defaults.py` para no superar los 120 caracteres.
+- **Sin acción operativa**.
+
+---
+
+## 2026-11-25 — fix: el grupo asignado por defecto pasa de `MESA MARCO` a `SOPORTE MESA DE SERVICIO`
+
+- **Síntoma**: los Work Orders creados por el agente quedaban en `MESA MARCO` y `bmc_close_work_order` fallaba en la toma de propiedad (`You do not have the authority to modify work order`): el usuario de servicio ya no pertenece a ese grupo.
+- **Cambio**: los fallbacks de `BMC_DEFAULT_ASSIGNED_GROUP` (incidente) y `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` (Work Order) ahora son `SOPORTE MESA DE SERVICIO` (organización `MAYA`, la que ya se envía). El commit anterior puso `MESA ARUS`, que no existe en QA y BMC reasignaba solo.
+- **Pendiente**: en QA la toma de propiedad (`ASCHG`) de ese grupo aún devuelve `The Request Assignee Group fields are invalid`; lo revisa quien administra BMC.
+- **Acción operativa**: reiniciar el agente; si `bmc.env` define alguna de esas variables, actualizarla.
+
+---
+
+## 2026-11-25 — fix: el Work Order envía `Location Company` (campo obligatorio de BMC)
+
+- **Síntoma**: en QA las 12 creaciones de Work Order de una prueba real fallaron con HTTP 400 `Required field cannot be blank. WOI:WorkOrder : Location Company` (messageNumber 326): el payload nunca enviaba ese campo.
+- **Cambio**: `CreateWorkOrderValues` incluye `Location Company`, inyectado como valor fijo desde `BMC_DEFAULT_WORK_ORDER_LOCATION_COMPANY` (por defecto `ARUS`, confirmado por la mesa de servicio). No es parámetro de la tool: el LLM no lo ve. Solo Work Order; el incidente no lo usa.
+- **Acción operativa**: reconstruir el agente. Sin la variable, se usa `ARUS`.
+
+---
+
+## 2026-11-25 — chore: refresca dependencias sobre Python 3.14 y corrige la tabla Tech Stack
+
+- **Python**: sin cambios, ya estaba en 3.14 desde el 2026-11-12 (`.venv` 3.14.8, `uv lock --check` consistente).
+- **Dependencias directas**: `sqlalchemy[asyncio]` 2.1.8 → 2.1.9, `psycopg[binary]` 3.3.8 → 3.3.9 y `pylint` 4.1.3 → 4.1.4; el `uv.lock` sube además las transitivas publicadas hasta el 2026-11-18 (misma política de 7 días). Quedan fuera por ser más recientes: `fastapi` 0.165, `langchain` 1.5, `langgraph` 1.2.24, `pydantic` 2.14.4, `ruff` 0.17.6 y `certifi` 2026.11.20. `mcp` sigue en 1.x: la 2.x es incompatible con `langchain-mcp-adapters` (`mcp<2`).
+- **`CLAUDE.md`**: la tabla "Tech Stack" mostraba versiones antiguas; ahora coincide con `pyproject.toml`.
+- **Acción operativa**: ejecutar `uv sync --group dev` y reconstruir las imágenes Docker. Sin cambios en variables de entorno ni en la API.
+
+---
+
+## 2026-11-13 — feat: el mailer puede pedir el cierre de un ticket (`Acción: cerrar`) y la Agent Card lo declara
+
+- Modo automático: el mensaje del orquestador empieza con `Acción: crear` (por defecto) o `Acción: cerrar` + `Ticket:`. Solo con `cerrar` el agente cierra, y únicamente ese ticket (`bmc_close_work_order`/`bmc_close_incident`, que ya exigen que el ticket sea del usuario de servicio) y responde `Estado final: Cerrado` o `Error — …`. Al crear, el solicitante es siempre quien envió el correo; si el cuerpo habla de otra persona va en la descripción. `Clasificación: duda` solo añade esa nota.
+- Agent Card: nombre por defecto `Agente BMC Helix` y descripción nueva (crea a nombre del remitente, deja abiertos, cierra solo con `Acción: cerrar`). Se puede seguir sobreescribiendo con `AGENT_DISPLAY_NAME`/`AGENT_CARD_DESCRIPTION`.
+- **Acción operativa**: reconstruir el agente BMC; si `bmc.env` define `AGENT_CARD_DESCRIPTION`, actualizarla.
+
+---
+
+## 2026-11-16 — feat: `Acción: nota` para documentar un ticket que el mailer no pudo cerrar
+
+- Modo automático: además de `crear` y `cerrar`, el mensaje del orquestador puede ser `Acción: nota` con `Ticket:` y `Texto:`. El agente solo agrega esa nota al ticket indicado (`bmc_add_work_order_note`/`bmc_add_incident_note`) y responde `Estado final: Nota agregada` o `Error — …`. El mailer lo usa cuando respondió una duda pero el cierre falló, para no dejar un caso sin documentar.
+- Agent Card actualizada. **Acción operativa**: reconstruir el agente BMC.
+
+---
+
+## 2026-11-13 — fix: el prompt se carga en dos capas con una sola fuente cada una
+
+- `system.promt.md` pasa a ser las reglas de oro fijas (guardrails, estilo de comunicación, memoria, uso de skills) y nunca viene de Langfuse. `base.prompt.md` pasa a ser el comportamiento (protocolo de creación de tickets, modo automático, tools): viene de Langfuse si `LANGFUSE_PROMPT_NAME` está definido y responde; si no, del archivo local. Nunca se suman ambos. El orden final es `system` + `base` + `<skills>` (antes iba `base` primero).
+- Se elimina `system.promt.default.md` (plantilla heredada de Linux) y su `COPY` en los Dockerfiles.
+- Sin cambios de comportamiento: los textos se reubicaron (se fusionó la regla duplicada de memoria con la de IDs de ticket).
+
+---
+
+## 2026-11-13 — feat: "la persona no existe" es `Estado final: No verificado` y detiene el run
+
+- Que el solicitante no exista en `CTM:People` es un resultado de negocio, no una falla: el mensaje de la tool y el resumen del modo automático dicen `Estado final: No verificado — …` (sin "Error"); `Estado final: Error` queda para fallos reales.
+- Nuevo middleware `agent/middleware/not_verified_stop.py`: si el último resultado de tool trae ese marcador, el run termina con el resumen estructurado sin volver a llamar al modelo (en la prueba el modelo ignoraba la instrucción de parar y gastaba 20 vueltas). Los topes por run siguen como red de seguridad.
+- Sin cambios en `POST /people/verify` (decide por entradas vacías, no por el texto).
+
+---
+
+## 2026-11-13 — feat: topes por run para el modelo y las tools
+
+- Ningún tope limitaba al agente (el default de LangGraph son ~10.000 pasos): ante un fallo persistente el modelo repitió `bmc_create_work_order` 28 veces seguidas (~21k tokens de entrada por vuelta) y siguió corriendo aunque el llamador (el mailer) ya había abandonado por tiempo.
+- Nuevo `agent/middleware/run_limits.py` (`ToolCallLimitMiddleware` y `ModelCallLimitMiddleware` de LangChain), configurable: `AGENT_MAX_MODEL_CALLS_PER_RUN` (20; al superarlo el run termina con error, que el llamador A2A ve como fallo), `AGENT_MAX_TOOL_CALLS_PER_RUN` (15; las sobrantes se bloquean y el modelo responde) y `BMC_MAX_CREATE_CALLS_PER_RUN` (3 para cada `bmc_create_*`). `0` desactiva cada tope.
+
+---
+
+## 2026-11-13 — fix: tickets abiertos en modo automático y Agent Card con los datos requeridos
+
+- En modo automático (A2A) el agente ya no cierra el ticket: solo lo crea (y agrega la nota) y lo deja abierto; `Estado final: Abierto`. El cierre sigue disponible en modo interactivo.
+- La descripción por defecto de la Agent Card (antes "Agente operativo Linux…") dice qué necesita el agente: el correo real del solicitante y la descripción del caso para crear, y el número del ticket o el correo para consultar; y que los casos quedan abiertos. `AGENT_CARD_DESCRIPTION` sigue pudiendo sobrescribirla.
+
+---
+
+## 2026-11-13 — fix: `tool_end` y `tool_error` registran el nombre y la duración de la tool
+
+- Los logs mostraban `tool=None duration=0.000s`: el callback buscaba el nombre por `tool_call_id`, que LangChain solo entrega al iniciar la tool. Ahora se usa el `run_id`, igual en los tres callbacks.
+
+---
+
+## 2026-11-13 — feat: catálogo único de categorización `categorias-mail-drive`
+
+- Las skills `categorias-eventos` y `categorias-usuario` se reemplazan por `categorias-mail-drive`, con la tabla de Requerimientos (con palabras clave para elegir la fila) y la de Incidentes de la mesa de servicio. Sin cambios de código.
+- Los niveles de producto 2 y 3 que la tabla original dejaba vacíos se completaron con combinaciones existentes del catálogo anterior (aproximadas); `Prioridad` y `Escalamiento 1` quedan vacíos y se usan los defaults de la tool. **Pendiente**: confirmar ambos con la mesa de servicio.
+- **Acción operativa**: si el prompt vive en Langfuse, reemplazar allí las referencias a `categorias-eventos`/`categorias-usuario`.
+## 2026-11-13 — fix: "la persona no existe" es un fallo definitivo
+
+- El mensaje de persona no encontrada en `CTM:People` ahora termina con "Es definitivo: no reintentes ni busques otra forma de crearlo; informa este error." (el JSON `success:false` no cambia). Antes el modelo repetía `bmc_create_work_order` decenas de veces cambiando tildes y consultando `memory_*`.
+- `system.promt.md`: un `success:false` de una tool de escritura es definitivo para esa solicitud; en modo automático se responde de inmediato con `Estado final: Error — <mensaje>`.
+## 2026-11-13 — feat: trazas de Langfuse con nombre, sesión y tags; sesión compartida con el mailer
+
+- Los traces salían todos como `LangGraph`, sin sesión ni tags. Ahora cada turno se ejecuta dentro de `propagate_attributes` (nuevo `trace_attributes` en `agent/observability/langfuse_tracing.py`): nombre `<slug>:<origen>` (`chat` o `a2a`), sesión, tags y metadata (`agent_run_id`, `own_chat_id`). El `CallbackHandler` sigue dando los spans internos y `AgentRunCallbackHandler` no cambia.
+- A2A entrante: se lee `message.metadata` (`caller_agent`, `caller_chat_id`, `caller_run_id`; solo esas claves, ≤64 caracteres, lo inválido se ignora sin fallar). Si llega `caller_chat_id`, es la sesión del trace: el chat del mailer agrupa los traces de ambos agentes.
+- Nuevo `docs/LANGFUSE_TRAZAS.md`.
+
+---
+
 ## 2026-11-13 — refactor: tools del LLM en clases y errores siempre visibles
 
 - Cada archivo de `agent/internal_tools/` expone una clase (`BmcTools`, `WorkOrderTools`, `IncidentTools`, `StagedFilesTools`, `DatetimeTools`, `MemoryTools`, `SkillTools`, `A2APeerTools`) con un `get_tools()` estático; `_ALL_BMC_TOOLS` y las funciones `get_*_tools` desaparecen.

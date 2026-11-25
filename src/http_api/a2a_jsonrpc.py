@@ -11,6 +11,8 @@ from uuid import UUID
 
 from config import Settings
 from constants.a2a import (
+    CALLER_METADATA_KEYS,
+    CALLER_METADATA_MAX_CHARS,
     JSONRPC_INTERNAL_ERROR,
     JSONRPC_INVALID_PARAMS,
     JSONRPC_INVALID_REQUEST,
@@ -67,7 +69,38 @@ class A2AInboundMessageSendProcessor:
         failure, req_id, user_text, chat_id = self._validate_message_send_body(body_or_fail)
         if failure is not None:
             return failure
-        return A2AInboundMessageSendRequest(req_id=req_id, user_text=user_text, chat_id=chat_id)
+        return A2AInboundMessageSendRequest(
+            req_id=req_id, user_text=user_text, chat_id=chat_id, caller=self.parse_caller_metadata(body_or_fail)
+        )
+
+    @staticmethod
+    def parse_caller_metadata(body: JsonDict) -> dict[str, str]:
+        """Read ``params.message.metadata`` of a validated ``message/send`` body.
+
+        Only the keys of the calling agent (``caller_agent``, ``caller_chat_id``, ``caller_run_id``) are kept, as
+        strings of at most 64 characters; anything else, or a malformed value, is ignored (it never fails the
+        message).
+
+        Parameters
+        ----------
+        body : JsonDict
+            Decoded JSON-RPC body.
+
+        Returns
+        -------
+        dict[str, str]
+            The caller data found, possibly empty.
+        """
+        params = body.get("params")
+        message = params.get("message") if isinstance(params, dict) else None
+        metadata = message.get("metadata") if isinstance(message, dict) else None
+        if not isinstance(metadata, dict):
+            return {}
+        return {
+            key: value[:CALLER_METADATA_MAX_CHARS]
+            for key in CALLER_METADATA_KEYS
+            if isinstance(value := metadata.get(key), str) and value
+        }
 
     def _validate_message_send_body(
         self,

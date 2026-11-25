@@ -1,4 +1,4 @@
-"""Carga el system prompt desde archivos, Langfuse o variables de entorno."""
+"""Carga el prompt del agente en dos capas: system (reglas de oro) y base (comportamiento)."""
 
 from __future__ import annotations
 
@@ -19,57 +19,67 @@ logger = get_logger()
 
 
 def load_system_prompt_for_settings(settings: "Settings") -> str:
-    """Resuelve el system prompt según prioridad: inline > Langfuse > archivo.
+    """Arma el prompt del agente en dos capas, cada una con una sola fuente.
 
-    Orden:
-      1. ``SYSTEM_PROMPT`` (texto inline no vacío).
-      2. Si ``LANGFUSE_PROMPT_NAME`` está definido (y credenciales Langfuse), intento
-         remoto; si hay texto válido, se usa como principal.
-      3. Archivo ``SYSTEM_PROMPT_PATH`` o ``system.promt.md`` en la raíz del repo.
-      4. Si no hay texto usable en ninguna fuente, ``AgentConfigError`` con detalle.
+    1. **system** (reglas de oro, fijas): ``SYSTEM_PROMPT`` (inline) o el archivo
+       ``SYSTEM_PROMPT_PATH`` / ``system.promt.md``. Nunca viene de Langfuse.
+    2. **base** (comportamiento y guía): el prompt de Langfuse ``LANGFUSE_PROMPT_NAME`` si existe y se
+       puede cargar; si no, ``base.prompt.md`` local. Nunca se usan los dos a la vez.
+
+    El resultado es ``system`` + ``base`` + catálogo ``<skills>``. Si falta una capa en todas sus fuentes
+    se lanza ``AgentConfigError`` con el detalle.
     """
+    system_text = resolve_system_text(settings)
+    base_text = resolve_base_text(settings)
+    combined = f"{system_text.strip()}\n\n{base_text.strip()}"
+    logger.info("system prompt: system=%d chars + base=%d chars", len(system_text.strip()), len(base_text.strip()))
+    return finalize_system_prompt(combined)
+
+
+def resolve_system_text(settings: "Settings") -> str:
+    """Reglas de oro: ``SYSTEM_PROMPT`` (inline) o archivo local; nunca Langfuse."""
     inline = (settings.system_prompt_env or "").strip()
     if inline:
-        logger.info("system prompt: origen=inline (SYSTEM_PROMPT) chars=%d", len(inline))
-        return finalize_system_prompt(append_base_fragment(inline, settings.repo_root()))
-
-    lf_name = (settings.langfuse_prompt_name or "").strip()
-    if lf_name:
-        fetched = fetch_prompt_from_langfuse(settings, lf_name)
-        if fetched.strip():
-            logger.info(
-                "system prompt: origen=Langfuse name=%s label=%s chars=%d",
-                lf_name,
-                settings.langfuse_prompt_label,
-                len(fetched.strip()),
-            )
-            return finalize_system_prompt(append_base_fragment(fetched.strip(), settings.repo_root()))
+        logger.info("system: origen=inline (%d chars)", len(inline))
+        logger.debug("Texto del system prompt inline: %s", inline)
+        return inline
 
     path = settings.resolved_system_prompt_file()
-    if path.exists():
-        try:
-            main_text = read_required(path)
-            logger.info("system prompt: origen=archivo name=%s chars=%d", path.name, len(main_text))
-            return finalize_system_prompt(append_base_fragment(main_text, path.parent))
-        except AgentConfigError as err:
-            detail_file = str(err)
-            if lf_name:
-                raise AgentConfigError(
-                    "No se pudo obtener un system prompt válido: Langfuse no devolvió "
-                    "texto usable o falló la petición, y el archivo local está vacío o no "
-                    f"es válido. Detalle archivo: {detail_file}"
-                ) from err
-            raise
-
-    if lf_name:
+    if not path.exists():
         raise AgentConfigError(
-            "No se pudo obtener un system prompt válido: Langfuse no devolvió texto "
-            f"usable o falló la petición, y no existe el archivo {path}."
+            f"No se encontró el archivo de system prompt ({path}). "
+            "Define SYSTEM_PROMPT o crea el archivo con las reglas de oro del agente."
         )
-    raise AgentConfigError(
-        f"No se encontró el archivo de system prompt ({path}). "
-        "Configura SYSTEM_PROMPT, LANGFUSE_PROMPT_NAME con Langfuse, o crea el archivo."
-    )
+    text = read_required(path)
+    logger.info("system: origen=archivo %s (%d chars)", path.name, len(text.strip()))
+    logger.debug("Texto del system prompt: %s", text.strip())
+    return text
+
+
+def resolve_base_text(settings: "Settings") -> str:
+    """Comportamiento y guía: Langfuse si está disponible; si no, ``base.prompt.md`` local (nunca ambos)."""
+    lf_name = (settings.langfuse_prompt_name or "").strip()
+    if lf_name:
+        fetched = fetch_prompt_from_langfuse(settings, lf_name).strip()
+        if fetched:
+            label = settings.langfuse_prompt_label
+            logger.info("base: origen=langfuse name=%s label=%s (%d chars)", lf_name, label, len(fetched))
+            logger.debug("Texto del base prompt de Langfuse: %s", fetched)
+            return fetched
+        logger.warning(
+            "base: Langfuse no devolvió texto usable (name=%s); se usa el base local en su lugar", lf_name
+        )
+
+    base_path = settings.resolved_system_prompt_file().parent / BASE_PROMPT_FILENAME
+    local = read_optional(base_path).strip()
+    if not local:
+        origin = f"Langfuse ({lf_name}) ni " if lf_name else ""
+        raise AgentConfigError(
+            f"No se pudo obtener el base prompt: ni {origin}el archivo local {base_path} tienen texto usable."
+        )
+    logger.info("base: origen=local %s (%d chars)", base_path.name, len(local))
+    logger.debug("Texto del base prompt local: %s", local)
+    return local
 
 
 def fetch_prompt_from_langfuse(settings: "Settings", prompt_name: str) -> str:
@@ -118,24 +128,6 @@ def finalize_system_prompt(combined: str) -> str:
         return combined
     logger.debug("system prompt: catálogo skills inyectado (%d chars)", len(skills_block))
     return f"{combined.rstrip()}\n\n{skills_block}"
-
-
-def append_base_fragment(main_text: str, base_search_dir: Path) -> str:
-    """Concatena ``base.prompt.md`` junto a ``base_search_dir`` si existe."""
-    base_path = base_search_dir / BASE_PROMPT_FILENAME
-    base_text = read_optional(base_path)
-
-    if base_text:
-        combined = f"{base_text}\n\n{main_text}"
-        logger.debug(
-            "system prompt combinado: main=%d chars + base=%d chars",
-            len(main_text),
-            len(base_text),
-        )
-        return combined
-
-    logger.debug("system prompt solo principal: %d chars", len(main_text))
-    return main_text
 
 
 def read_required(path: Path) -> str:

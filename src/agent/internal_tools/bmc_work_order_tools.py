@@ -45,9 +45,8 @@ from commons.text.masking import mask_email
 from constants.bmc.defaults import (
     DEFAULT_COMPANY,
     DEFAULT_CUSTOMER_COMPANY,
-    DEFAULT_CUSTOMER_FIRST_NAME,
-    DEFAULT_CUSTOMER_LAST_NAME,
     DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
+    DEFAULT_WORK_ORDER_LOCATION_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
 )
@@ -64,6 +63,7 @@ from constants.bmc.tickets import (
     MAX_TICKETS_BY_EMAIL_RESULTS,
     WORK_ORDER_STATUSES,
 )
+from constants.bmc.tool_descriptions import LIST_BY_EMAIL_DESCRIPTION
 from exception.mcp import MCPClientError
 from services.bmc import tool_handler
 from services.bmc.person_lookup import resolve_reporter_identity
@@ -278,8 +278,8 @@ class WorkOrderTools(ToolSet):
             summary=data.summary,
             detailed_description=data.detailed_description,
             status=data.status,
-            customer_first_name=DEFAULT_CUSTOMER_FIRST_NAME,
-            customer_last_name=DEFAULT_CUSTOMER_LAST_NAME,
+            customer_first_name=identity.first_name,
+            customer_last_name=identity.last_name,
             customer_company=DEFAULT_CUSTOMER_COMPANY,
             categorization_tier_1=data.categorization_tier_1,
             categorization_tier_2=data.categorization_tier_2,
@@ -290,6 +290,7 @@ class WorkOrderTools(ToolSet):
             support_company=DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
             support_organization=DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
             assigned_group=data.assigned_group,
+            location_company=DEFAULT_WORK_ORDER_LOCATION_COMPANY,
         )
         output = await _create_work_order_entry(handler, values)
         return output.model_dump_json()
@@ -554,12 +555,7 @@ class WorkOrderTools(ToolSet):
             tools.build(
                 tools.list_work_orders_by_email,
                 name='bmc_list_work_orders_by_email',
-                description=(
-                    'List work orders for one person, searched by the email they used as '
-                    'reporter_email at creation — not their BMC-resolved login id. One row per '
-                    'ticket: title, status and assigned group only; capped and flagged if there '
-                    'are more matches than returned.'
-                ),
+                description=LIST_BY_EMAIL_DESCRIPTION.format(ticket_kind='work orders'),
             ),
             tools.build(
                 tools.add_note,

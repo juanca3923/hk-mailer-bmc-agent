@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
 from type_defs.models.a2a.a2a_protocol import JsonRpcErrorEnvelope, JsonRpcId
@@ -23,3 +23,4 @@ class A2AInboundMessageSendRequest:
     req_id: JsonRpcId
     user_text: str
     chat_id: UUID | None
+    caller: dict[str, str] = field(default_factory=dict)

@@ -30,6 +30,7 @@ from constants.bmc.tickets import (
     INCIDENT_STATUSES,
     MAX_TICKETS_BY_EMAIL_RESULTS,
 )
+from constants.bmc.tool_descriptions import LIST_BY_EMAIL_DESCRIPTION
 from exception.mcp import MCPClientError
 from services.bmc import tool_handler
 from services.bmc.incident_operations import IncidentOperations
@@ -431,12 +432,7 @@ class IncidentTools(ToolSet):
             tools.build(
                 tools.list_incidents_by_email,
                 name='bmc_list_incidents_by_email',
-                description=(
-                    'List incidents for one person, searched by the email they used as '
-                    'reporter_email at creation — not their BMC-resolved login id. One row per '
-                    'ticket: title, status and assigned group only; capped and flagged if there '
-                    'are more matches than returned.'
-                ),
+                description=LIST_BY_EMAIL_DESCRIPTION.format(ticket_kind='incidents'),
             ),
             tools.build(
                 tools.add_note,

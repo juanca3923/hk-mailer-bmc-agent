@@ -11,7 +11,7 @@ AgentForge integra **guías Markdown locales** bajo la carpeta `skills/` del rep
 | Detalle de una guía | Tool interna `skill_get_guide` | Lectura progresiva vía herramientas de fichero del arnés |
 | Formatos en disco | `skills/<stem>.md` y/o `skills/<dir>/SKILL.md` | `skills/<dir>/SKILL.md` (Agent Skills) |
 
-Política operativa del modelo (cuándo usar skills, límites): [`base.prompt.md`](../base.prompt.md).
+Reglas de uso de skills (catálogo cerrado, límites): [`system.promt.md`](../system.promt.md).
 
 ---
 
@@ -169,10 +169,10 @@ Operación MCP (recarga, límites): [`docs/MCP.md`](MCP.md).
 
 ### System prompt (archivo, inline o Langfuse)
 
-La cadena de carga del **system prompt** está en [`src/agent/prompts.py`](../src/agent/prompts.py): precedencia `SYSTEM_PROMPT` → Langfuse (`LANGFUSE_PROMPT_NAME` + `LANGFUSE_PROMPT_LABEL`) → archivo local; siempre puede añadirse `base.prompt.md`. En **`agent-base`**, además, el bloque `<skills>` si hay guías. Igual que MCP y el grafo, un cambio de prompt remoto o de archivo **solo aplica** tras **reconstruir el agente** (`build_agent` / `POST /stop` + `POST /start` en HTTP). Resumen de variables: [`README.md`](../README.md).
+La carga del **prompt** está en [`src/agent/prompts.py`](../src/agent/prompts.py) y tiene dos capas con una sola fuente cada una: `system` (reglas de oro: `SYSTEM_PROMPT` o `system.promt.md`, nunca Langfuse) y `base` (comportamiento: Langfuse con `LANGFUSE_PROMPT_NAME` + `LANGFUSE_PROMPT_LABEL`, o `base.prompt.md` si no hay nombre o falla; nunca ambos). En **`agent-base`**, además, el bloque `<skills>` si hay guías. Igual que MCP y el grafo, un cambio de prompt remoto o de archivo **solo aplica** tras **reconstruir el agente** (`build_agent` / `POST /stop` + `POST /start` en HTTP). Resumen de variables: [`README.md`](../README.md).
 
 ## Referencias cruzadas
 
 - Memoria (checkpointer, BD, `memory_*`, store): [`MEMORIA.md`](MEMORIA.md)
 - Arquitectura general: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- Política operativa del modelo: [`base.prompt.md`](../base.prompt.md)
+- Reglas de oro: [`system.promt.md`](../system.promt.md); comportamiento: [`base.prompt.md`](../base.prompt.md)
