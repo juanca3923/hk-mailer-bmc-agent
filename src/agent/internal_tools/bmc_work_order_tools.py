@@ -48,6 +48,7 @@ from constants.bmc.defaults import (
     DEFAULT_CUSTOMER_FIRST_NAME,
     DEFAULT_CUSTOMER_LAST_NAME,
     DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
+    DEFAULT_WORK_ORDER_LOCATION_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
 )
@@ -290,6 +291,7 @@ class WorkOrderTools(ToolSet):
             support_company=DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
             support_organization=DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
             assigned_group=data.assigned_group,
+            location_company=DEFAULT_WORK_ORDER_LOCATION_COMPANY,
         )
         output = await _create_work_order_entry(handler, values)
         return output.model_dump_json()

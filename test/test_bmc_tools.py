@@ -7,7 +7,11 @@ import json
 import pydantic
 import pytest
 
-from constants.bmc.defaults import DEFAULT_WORK_ORDER_SUPPORT_COMPANY, DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
+from constants.bmc.defaults import (
+    DEFAULT_WORK_ORDER_LOCATION_COMPANY,
+    DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
+    DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
+)
 from constants.bmc.fields import (
     AR_FIELD_INCIDENT_ASSIGNED_GROUP,
     AR_FIELD_INCIDENT_NUMBER,
@@ -247,6 +251,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     assert body_values['Support Company'] == DEFAULT_WORK_ORDER_SUPPORT_COMPANY
     assert body_values['Support Organization'] == DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
     assert body_values['Support Group Name'] == 'GTI.GROUP'
+    assert body_values['Location Company'] == DEFAULT_WORK_ORDER_LOCATION_COMPANY
     assert body_values['First Name'] == 'Ana'
     assert body_values['Last Name'] == 'Reportante'
 

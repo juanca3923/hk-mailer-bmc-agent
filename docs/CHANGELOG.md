@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — fix: el Work Order envía `Location Company` (campo obligatorio de BMC)
+
+- **Síntoma**: en QA las 12 creaciones de Work Order de una prueba real fallaron con HTTP 400 `Required field cannot be blank. WOI:WorkOrder : Location Company` (messageNumber 326): el payload nunca enviaba ese campo.
+- **Cambio**: `CreateWorkOrderValues` incluye `Location Company`, inyectado como valor fijo desde `BMC_DEFAULT_WORK_ORDER_LOCATION_COMPANY` (por defecto `ARUS`, confirmado por la mesa de servicio). No es parámetro de la tool: el LLM no lo ve. Solo Work Order; el incidente no lo usa.
+- **Acción operativa**: reconstruir el agente. Sin la variable, se usa `ARUS`.
+
+---
+
 ## 2026-11-25 — chore: refresca dependencias sobre Python 3.14 y corrige la tabla Tech Stack
 
 - **Python**: sin cambios, ya estaba en 3.14 desde el 2026-11-12 (`.venv` 3.14.8, `uv lock --check` consistente).

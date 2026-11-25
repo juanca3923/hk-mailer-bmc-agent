@@ -203,6 +203,7 @@ and `bmc_create_incident` call. The LLM never sees these as tool parameters. The
 | `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `MESA MARCO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` — the LLM should override it with the value from a matching `categorias-<dominio>` skill row when one applies; otherwise (no known domain) this default is the correct, confirmed value, not a placeholder |
 | `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` | `ARUS` | Fixed work order `Support Company`, required alongside `Support Organization` for BMC to honor the `Support Group Name` sent by the caller (otherwise BMC silently reassigns the work order per its own ITSM configuration) |
 | `BMC_DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION` | `MAYA` | Fixed work order `Support Organization` — see `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` |
+| `BMC_DEFAULT_WORK_ORDER_LOCATION_COMPANY` | `ARUS` | Fixed work order `Location Company`, a required field of `WOI:WorkOrderInterface_Create` (BMC answers HTTP 400 "Required field cannot be blank" without it) |
 
 ### Required — LLM
 

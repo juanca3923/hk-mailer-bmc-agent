@@ -62,6 +62,7 @@ class CreateWorkOrderValues(BaseModel):
     support_company: str = Field(alias="Support Company")
     support_organization: str = Field(alias="Support Organization")
     assigned_group: str = Field(alias="Support Group Name")
+    location_company: str = Field(alias="Location Company")
 
 
 class CreateIncidentValues(BaseModel):
