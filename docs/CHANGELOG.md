@@ -14,10 +14,11 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
-## 2026-11-25 — fix: el grupo asignado por defecto pasa de `MESA MARCO` a `MESA ARUS`
+## 2026-11-25 — fix: el grupo asignado por defecto pasa de `MESA MARCO` a `SOPORTE MESA DE SERVICIO`
 
 - **Síntoma**: los Work Orders creados por el agente quedaban en `MESA MARCO` y `bmc_close_work_order` fallaba en la toma de propiedad (`You do not have the authority to modify work order`): el usuario de servicio ya no pertenece a ese grupo.
-- **Cambio**: los fallbacks de `BMC_DEFAULT_ASSIGNED_GROUP` (incidente) y `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` (Work Order) ahora son `MESA ARUS`. Sin cambios de lógica; el cierre de 3 pasos ya era correcto.
+- **Cambio**: los fallbacks de `BMC_DEFAULT_ASSIGNED_GROUP` (incidente) y `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` (Work Order) ahora son `SOPORTE MESA DE SERVICIO` (organización `MAYA`, la que ya se envía). El commit anterior puso `MESA ARUS`, que no existe en QA y BMC reasignaba solo.
+- **Pendiente**: en QA la toma de propiedad (`ASCHG`) de ese grupo aún devuelve `The Request Assignee Group fields are invalid`; lo revisa quien administra BMC.
 - **Acción operativa**: reiniciar el agente; si `bmc.env` define alguna de esas variables, actualizarla.
 
 ---
