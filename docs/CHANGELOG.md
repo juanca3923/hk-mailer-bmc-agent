@@ -14,6 +14,16 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — fix: la categorización de Work Orders es restrictiva (solo si el correo nombra el sistema de la fila)
+
+- **Caso real**: el correo «creación de usuario mosaico — Requiero la creación de los usuarios X y Y en la aplicación mosaico» terminó en `Asignar Permisos` / `Directorio Activo` porque el modelo dedujo por su cuenta que Mosaico usa el DA (ninguna palabra clave estaba en el texto). Debía ir a la categoría por defecto `MailDrive`. El modelo de Hugging Face no permite bajar la temperatura, así que se refuerza con reglas.
+- **Catálogo** (`skills/categorias-mail-drive.md`): las cinco filas de `Asignar Permisos` suman palabras de acción de creación de usuario (`crear usuario`, `creación de usuario`, `nuevo usuario`, `alta de usuario`…): pedir permisos y crear un usuario se interpretan igual.
+- **Regla**: una fila aplica solo si el correo nombra su sistema o producto (palabras clave de producto o Categoría de Producto 2); una palabra de acción sola no basta; prohibido deducir que una aplicación usa otro sistema; si el sistema no está en la tabla → `MailDrive`. Con tres ejemplos en el catálogo. `guia-creacion-tickets` §3 ya no manda usar una fila «general/aproximada»; `base.prompt.md` (pasos de elección y modo automático) lo refleja.
+- **Pendiente (decisión del usuario)**: reforzar en código, haciendo que la tool reciba la palabra clave que justificó la fila y la compruebe contra el asunto/descripción.
+- **Acción operativa**: reiniciar el agente (`base.prompt.md`); las skills se leen al vuelo.
+
+---
+
 ## 2026-11-25 — feat: la fuente del mensaje (`Fuente: mailer`) es obligatoria para crear y cerrar Work Orders
 
 - **Contrato**: el mailer agrega `Fuente: mailer` (segunda línea) a `Acción: crear` y `Acción: cerrar`; la nota no la lleva. El agente BMC la copia al parámetro `source` de `bmc_create_work_order` y `bmc_close_work_order`, **requerido** en ambas: sin ella la tool falla y no crea ni cierra nada.

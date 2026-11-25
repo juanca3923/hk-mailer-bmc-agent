@@ -30,18 +30,37 @@ no pases `assigned_group` y se usa el valor por defecto de la tool.
 
 ## Requerimientos (Work Order)
 
-La columna **Palabras clave** orienta la elección de la fila: compárala con el asunto
-y el cuerpo del correo. Si la fila no trae palabras clave, decide por el sentido del
-caso; si dos filas encajan por igual, elige la más específica y deja explícito que fue
-una elección aproximada.
+**Regla restrictiva (2026-11-25): una fila aplica SOLO si el correo nombra explícitamente el sistema o
+producto de esa fila** — alguna de sus palabras clave de producto o su Categoría de Producto 2 (DA/Directorio
+Activo, Sharepoint/Teams/unidad de red, VPN/Firewall/servidor…, SAP, Base de datos, Prisma, telefonía, MFA,
+correo/licencia). Las **palabras de acción** (`crear usuario`, `creación de usuario`, `nuevo usuario`, `alta de
+usuario`, `permisos`, `contraseña`, `clave`) describen *qué* se pide, no *dónde*: solas **no bastan** para elegir una
+fila. En «Asignar Permisos», pedir permisos y crear un usuario se interpretan igual (por eso esas palabras están en
+todas sus filas), pero siempre junto a un sistema nombrado.
+
+- **Prohibido deducir por conocimiento propio** que una aplicación usa otro sistema (p. ej. «Mosaico inicia sesión con el
+  Directorio Activo»): solo cuenta lo que el correo dice textualmente.
+- Si el sistema nombrado **no está** en esta tabla, o el correo no nombra ninguno → **Work Order por defecto
+  `MailDrive`** (`guia-creacion-tickets`, sección 1). No hay fila «aproximada».
+- Si dos filas encajan por igual porque el correo nombra ambos sistemas, elige la más específica y deja explícito que
+  fue una elección aproximada.
+
+Ejemplos:
+
+| Correo | Resultado |
+|---|---|
+| «Crear el usuario X en el Directorio Activo» | fila `Asignar Permisos` / `Directorio Activo` |
+| «Crear los usuarios X e Y en la aplicación Mosaico» | por defecto `MailDrive` (Mosaico no está en el catálogo) |
+| «Dar acceso a la carpeta compartida / unidad de red» | fila `Asignar Permisos` / `Servidor microsoft` |
+| «Necesito una contraseña nueva» (sin decir de qué sistema) | por defecto `MailDrive` |
 
 | Tipo Servicio | Categoria Operacional 1 | Categoria Operacional 2 | Categoria Operacional 3 | Categoria de Producto 1 | Categoria de Producto 2 | Categoria de Producto 3 | Prioridad | Escalamiento 1 | Palabras clave |
 |---|---|---|---|---|---|---|---|---|---|
-| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Directorio Activo | Plataforma | MEDIO |  | DA, Directorio Activo |
-| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Servidor microsoft | Plataforma | MEDIO |  | Sharepoint, teams, unidad de red |
-| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Seguridad perimetral | Infraestructura | MEDIO |  | SSL, IP, TCP, UDP, SFTP, Conectividad, API, alcance, servidor, servidores, acceso, accesos, puerto, puertos, ssh, VPN, AP, clearpass, salida a internet, FAC, Fase, Client to site, SW, ROUTER, FIREWALL, FW, Enlace |
-| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Plataforma | SAP | MEDIO |  | Orden transporte, Mandante, OT, Acceso a transacción, SAP, ARDK |
-| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Base de datos | Plataforma | MEDIO |  |  |
+| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Directorio Activo | Plataforma | MEDIO |  | DA, Directorio Activo, crear usuario, crear usuarios, creación de usuario, creación de usuarios, creacion de usuario, nuevo usuario, alta de usuario |
+| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Servidor microsoft | Plataforma | MEDIO |  | Sharepoint, teams, unidad de red, crear usuario, crear usuarios, creación de usuario, creación de usuarios, creacion de usuario, nuevo usuario, alta de usuario |
+| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Seguridad perimetral | Infraestructura | MEDIO |  | SSL, IP, TCP, UDP, SFTP, Conectividad, API, alcance, servidor, servidores, acceso, accesos, puerto, puertos, ssh, VPN, AP, clearpass, salida a internet, FAC, Fase, Client to site, SW, ROUTER, FIREWALL, FW, Enlace, crear usuario, crear usuarios, creación de usuario, creación de usuarios, creacion de usuario, nuevo usuario, alta de usuario |
+| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Plataforma | SAP | MEDIO |  | Orden transporte, Mandante, OT, Acceso a transacción, SAP, ARDK, crear usuario, crear usuarios, creación de usuario, creación de usuarios, creacion de usuario, nuevo usuario, alta de usuario |
+| Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Base de datos | Plataforma | MEDIO |  | crear usuario, crear usuarios, creación de usuario, creación de usuarios, creacion de usuario, nuevo usuario, alta de usuario |
 | Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Sofware | Telefonia especializada | Aplicacion | ALTO |  | haxahud, queuemetrics, telefonia |
 | Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Sofware | Prisma | Aplicacion | ALTO |  | Prisma |
 | Requerimiento | Aplicacion | Crear / cambiar contraseña |  | GTI | Base de datos | Plataforma | ALTO |  | BD, Base de Datos, Base datos |
