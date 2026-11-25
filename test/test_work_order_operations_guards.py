@@ -1,8 +1,8 @@
 """Unit tests for Work Order business-rule guards (in-progress-to-close, reopen, ownership)."""
 
-from constants.bmc.defaults import DEFAULT_WORK_ORDER_RESOLUTION_METHOD
 from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
 from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.enums.ticket_source import TicketSource
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import AddWorkOrderNoteInput, CloseWorkOrderInput, UpdateWorkOrderStatusInput
 
@@ -80,7 +80,7 @@ async def test_close_rejected_when_not_owner() -> None:
     client = FakeClient(status='In Progress', submitter='otro_usuario')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is False
     assert 'otro_usuario' in result.message
@@ -92,7 +92,7 @@ async def test_close_succeeds_when_in_progress_and_owner() -> None:
     client = FakeClient(status='In Progress', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is True
     expected_put_calls = 3  # In Progress PUT, intermediate Completed PUT, final Closed PUT
@@ -108,7 +108,7 @@ async def test_close_succeeds_when_in_progress_and_owner() -> None:
     expected_note_calls = 2  # note per Completed/Closed PUT; the In Progress PUT gets none
     assert len(client.post_work_info_calls) == expected_note_calls
     assert client.put_json_calls == [
-        ('WOI:WorkOrder/FULLREQ', {'values': {'AA_ResolutionMethod_WO': DEFAULT_WORK_ORDER_RESOLUTION_METHOD}}),
+        ('WOI:WorkOrder/FULLREQ', {'values': {'AA_ResolutionMethod_WO': 'Correo'}}),
     ]
 
 
@@ -116,7 +116,7 @@ async def test_close_succeeds_from_assigned_without_taking_ownership() -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is True
     expected_put_calls = 3
@@ -132,7 +132,7 @@ async def test_close_rejected_when_already_closed() -> None:
     client = FakeClient(status='Closed', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is False
     assert client.update_calls == []

@@ -201,8 +201,6 @@ are resolved per-call from `reporter_email` (see "Reporter identity resolution" 
 | `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` | `SOPORTE MESA DE SERVICIO` | Default of the `assigned_group` **tool parameter** of `bmc_create_work_order` — the LLM should override it with the value from a matching `categorias-<dominio>` skill row when one applies; otherwise (no known domain) this default is the correct, confirmed value, not a placeholder |
 | `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` | `ARUS` | Fixed work order `Support Company`, required alongside `Support Organization` for BMC to honor the `Support Group Name` sent by the caller (otherwise BMC silently reassigns the work order per its own ITSM configuration) |
 | `BMC_DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION` | `MAYA` | Fixed work order `Support Organization` — see `BMC_DEFAULT_WORK_ORDER_SUPPORT_COMPANY` |
-| `BMC_DEFAULT_WORK_ORDER_REPORTED_SOURCE` | `Email` | Fixed work order `ReportedSource` (UI "Fuente reportada", required by BMC to close from the UI) |
-| `BMC_DEFAULT_WORK_ORDER_RESOLUTION_METHOD` | `Correo` | Resolution method (`AA_ResolutionMethod_WO`, UI "Método de resolución") set on `WOI:WorkOrder` while closing a work order |
 | `BMC_DEFAULT_WORK_ORDER_LOCATION_COMPANY` | `ARUS` | Fixed work order `Location Company`, a required field of `WOI:WorkOrderInterface_Create` (BMC answers HTTP 400 "Required field cannot be blank" without it) |
 
 ### Required — LLM
@@ -258,13 +256,13 @@ between the aggregator (`bmc_tools.py`) and the modules it registers.
 | Tool | Operation | AR Form |
 |------|-----------|---------|
 | `bmc_health_check` | Verify JWT session | GET ping |
-| `bmc_create_work_order` | Create WO; `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
+| `bmc_create_work_order` | Create WO; `reporter_email` and `source` (the message's `Fuente:`, → `ReportedSource`) required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
 | `bmc_get_work_order` | Search WO by ID; returns only title/status/assigned group — never the detailed description, notes or other raw BMC fields (privacy) | `WOI:WorkOrderInterface` |
 | `bmc_list_work_orders_by_email` | List WOs by requester email (`Customer Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_work_order`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `WOI:WorkOrderInterface` |
 | `bmc_add_work_order_note` | Add note without attachment (rejects if `Closed`) | `WOI:WorkInfo` |
 | `bmc_add_work_order_attachment` | Add note with file attachment (rejects if `Closed`) | `WOI:WorkInfo` multipart |
 | `bmc_update_work_order_status` | PUT intermediate status (rejects if `Closed`) | `WOI:WorkOrderInterface` |
-| `bmc_close_work_order` | In Progress PUT → resolution method PUT on `WOI:WorkOrder` → Completed PUT+note → Closed PUT+note, no ownership change/`ASCHG` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
+| `bmc_close_work_order` | `source` required (→ resolution method). In Progress PUT → resolution method PUT on `WOI:WorkOrder` → Completed PUT+note → Closed PUT+note, no ownership change/`ASCHG` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
 | `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter); `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no incident created if not found) | `HPD:IncidentInterface_Create` |
 | `bmc_get_incident` | Search incident by number; returns only title/status/assigned group — never the detailed description, notes or other raw BMC fields (privacy) | `HPD:IncidentInterface` |
 | `bmc_list_incidents_by_email` | List incidents by requester email (`Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_incident`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `HPD:IncidentInterface` |

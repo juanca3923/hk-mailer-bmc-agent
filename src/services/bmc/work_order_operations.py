@@ -9,7 +9,6 @@ from commons.bmc.guarded_write import run_guarded_write, work_log_fields
 from commons.bmc.multipart_builder import MultipartBuilder
 from commons.bmc.ticket_guards import require_submitter, resolve_ticket_state_from_search
 from constants.bmc.api import WORK_LOG_ATTACHMENT_MARKER
-from constants.bmc.defaults import DEFAULT_WORK_ORDER_RESOLUTION_METHOD
 from constants.bmc.fields import (
     AR_FIELD_REQUEST_ID,
     AR_FIELD_WORK_ORDER_ID,
@@ -19,6 +18,7 @@ from constants.bmc.messages import (
     USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND,
     USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
 )
+from constants.bmc.ticket_source import RESOLUTION_METHOD_BY_SOURCE
 from constants.bmc.tickets import (
     DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
     DEFAULT_WORK_ORDER_CLOSE_IN_PROGRESS_DESCRIPTION,
@@ -27,6 +27,7 @@ from constants.bmc.tickets import (
 )
 from exception.mcp import MCPClientError
 from services.bmc.handler_context import TicketHandlerContext
+from type_defs.enums.ticket_source import TicketSource
 from type_defs.models.bmc.ar_api import parse_entry_list
 from type_defs.models.bmc.ar_values import (
     CloseWorkOrderValues,
@@ -174,7 +175,7 @@ class WorkOrderOperations:
         work_info_body = MultipartBuilder.build(values)
         await self._handler.client.post_work_info(work_info_body)
 
-    async def _set_resolution_method(self, work_order_id: str) -> None:
+    async def _set_resolution_method(self, work_order_id: str, source: TicketSource) -> None:
         """Set the resolution method, a field that only the ``WOI:WorkOrder`` form exposes.
 
         The Interface form used for every other write does not have it, so this looks the
@@ -184,6 +185,8 @@ class WorkOrderOperations:
         ----------
         work_order_id : str
             Work Order ID whose resolution method is set.
+        source : TicketSource
+            Source of the close request; its resolution method is the one written.
 
         Raises
         ------
@@ -197,7 +200,7 @@ class WorkOrderOperations:
         if not found.entries:
             raise MCPClientError(USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING)
         request_id = found.entries[0].values.get_str(AR_FIELD_REQUEST_ID)
-        method = DEFAULT_WORK_ORDER_RESOLUTION_METHOD
+        method = RESOLUTION_METHOD_BY_SOURCE[source]
         body: dict[str, JsonValue] = {'values': {AR_FIELD_WORK_ORDER_RESOLUTION_METHOD: method}}
         await client.put_json(client.entry_path(form, request_id), json_body=body)
 
@@ -229,7 +232,7 @@ class WorkOrderOperations:
                 status=DEFAULT_WORK_ORDER_UPDATE_STATUS,
             )
             await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(in_progress))
-            await self._set_resolution_method(data.work_order_id)
+            await self._set_resolution_method(data.work_order_id, data.source)
             intermediate = UpdateWorkOrderStatusValues(
                 description=data.intermediate_description,
                 status=DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,

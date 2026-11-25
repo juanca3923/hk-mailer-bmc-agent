@@ -108,6 +108,11 @@ protocol without deviation:
 **Read the `Acción:` line first.** The message from the orchestrating agent starts with `Acción: crear`,
 `Acción: cerrar` or `Acción: nota`; with no `Acción:` line, treat it as `crear`.
 
+**`Fuente:` line** (in `Acción: crear` and `Acción: cerrar`, right after `Acción:`): the system that sends the request
+(today `mailer`). Copy it as-is to the `source` parameter of `bmc_create_work_order` / `bmc_close_work_order`; the tool
+turns it into BMC's reported source and resolution method. It is required: if the line is missing, do not guess it and
+do not create or close the Work Order — reply with `Estado final: Error — falta la línea Fuente:`.
+
 - **`Acción: crear`** — the flow above. The requester is **always the sender** (`Correo:` is the sender's email, never
   one mentioned in the body). If the *Descripción detallada* says the case is for **another person** (e.g. "el usuario X
   solicita ayuda para Y"), keep that in the ticket's detailed description, but the ticket stays under the sender.

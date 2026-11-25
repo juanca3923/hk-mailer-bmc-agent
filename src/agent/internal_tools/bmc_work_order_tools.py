@@ -47,7 +47,6 @@ from constants.bmc.defaults import (
     DEFAULT_CUSTOMER_COMPANY,
     DEFAULT_WORK_ORDER_ASSIGNED_GROUP,
     DEFAULT_WORK_ORDER_LOCATION_COMPANY,
-    DEFAULT_WORK_ORDER_REPORTED_SOURCE,
     DEFAULT_WORK_ORDER_SUPPORT_COMPANY,
     DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
 )
@@ -57,6 +56,7 @@ from constants.bmc.fields import (
     AR_FIELD_WORK_ORDER_ID,
     AR_FIELD_WORK_ORDER_ID_RESPONSE,
 )
+from constants.bmc.ticket_source import REPORTED_SOURCE_BY_SOURCE
 from constants.bmc.tickets import (
     DEFAULT_WORK_LOG_TYPE,
     DEFAULT_WORK_ORDER_STATUS,
@@ -70,6 +70,7 @@ from services.bmc import tool_handler
 from services.bmc.person_lookup import resolve_reporter_identity
 from services.bmc.tool_handler import BaseToolHandler
 from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.enums.ticket_source import TicketSource
 from type_defs.models.bmc.ar_api import ArScalarValue
 from type_defs.models.bmc.ar_values import CreateWorkOrderValues
 from type_defs.models.bmc.inputs import (
@@ -207,6 +208,10 @@ class WorkOrderTools(ToolSet):
             str,
             Field(min_length=1, description='Product categorization tier 3, same row/catch-all as tier 1.'),
         ],
+        source: Annotated[
+            TicketSource,
+            Field(description="Value of the message's 'Fuente:' line (e.g. mailer); required, never guessed."),
+        ],
         status: Annotated[
             Literal[WORK_ORDER_STATUSES],  # type: ignore[valid-type]  # tuple constant expands to Literal values at runtime
             Field(description='Work order status at creation; keep the default unless told otherwise.'),
@@ -260,6 +265,7 @@ class WorkOrderTools(ToolSet):
             summary=summary,
             detailed_description=detailed_description,
             reporter_email=reporter_email,
+            source=source,
             categorization_tier_1=categorization_tier_1,
             categorization_tier_2=categorization_tier_2,
             product_cat_tier_1=product_cat_tier_1,
@@ -292,7 +298,7 @@ class WorkOrderTools(ToolSet):
             support_organization=DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION,
             assigned_group=data.assigned_group,
             location_company=DEFAULT_WORK_ORDER_LOCATION_COMPANY,
-            reported_source=DEFAULT_WORK_ORDER_REPORTED_SOURCE,
+            reported_source=REPORTED_SOURCE_BY_SOURCE[data.source],
         )
         output = await _create_work_order_entry(handler, values)
         return output.model_dump_json()
@@ -496,6 +502,10 @@ class WorkOrderTools(ToolSet):
     async def close(
         self,
         work_order_id: Annotated[str, Field(min_length=1, description='Work Order ID to close.')],
+        source: Annotated[
+            TicketSource,
+            Field(description="Value of the message's 'Fuente:' line (e.g. mailer); required, never guessed."),
+        ],
         intermediate_description: Annotated[
             str,
             Field(
@@ -522,6 +532,7 @@ class WorkOrderTools(ToolSet):
         handler = tool_handler.get_shared_handler()
         data = CloseWorkOrderInput(
             work_order_id=work_order_id,
+            source=source,
             intermediate_description=intermediate_description,
             final_description=final_description,
         )

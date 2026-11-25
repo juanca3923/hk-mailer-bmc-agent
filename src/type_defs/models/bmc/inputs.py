@@ -20,6 +20,7 @@ from type_defs.enums.bmc_status import (
     validate_optional_work_order_status,
     validate_work_order_status,
 )
+from type_defs.enums.ticket_source import TicketSource
 
 WorkOrderStatusField = Annotated[str, BeforeValidator(validate_work_order_status)]
 IncidentStatusField = Annotated[str, BeforeValidator(validate_incident_status)]
@@ -94,6 +95,13 @@ class CreateWorkOrderInput(BaseModel):
             "Full request detail: who needs it, exactly what must be done, and any "
             "data required to execute it (access, equipment, location, dates) - "
             "enough for the service desk to act without asking the user again."
+        ),
+    )
+    source: TicketSource = Field(
+        ...,
+        description=(
+            "System that asks for this ticket, from the message's 'Fuente:' line; "
+            "BMC's reported source is derived from it."
         ),
     )
     categorization_tier_1: str = Field(
@@ -277,6 +285,13 @@ class CloseWorkOrderInput(WorkOrderIdInput):
     always ``'Closed'``; neither is a caller-supplied parameter, matching bmc-mcp.
     """
 
+    source: TicketSource = Field(
+        ...,
+        description=(
+            "System that asks to close the ticket, from the message's 'Fuente:' line; "
+            "the resolution method is derived from it."
+        ),
+    )
     intermediate_description: str = Field(
         default="Rest API: Resolve WO using RestAPI",
         min_length=1,

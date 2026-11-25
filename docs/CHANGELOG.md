@@ -14,6 +14,16 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — feat: la fuente del mensaje (`Fuente: mailer`) es obligatoria para crear y cerrar Work Orders
+
+- **Contrato**: el mailer agrega `Fuente: mailer` (segunda línea) a `Acción: crear` y `Acción: cerrar`; la nota no la lleva. El agente BMC la copia al parámetro `source` de `bmc_create_work_order` y `bmc_close_work_order`, **requerido** en ambas: sin ella la tool falla y no crea ni cierra nada.
+- **Traducción en BMC**: `TicketSource.MAILER` → `ReportedSource` = `Email` al crear y `AA_ResolutionMethod_WO` = `Correo` al cerrar (`constants/bmc/ticket_source.py`). El valor sale solo de ese mapeo.
+- **Eliminado**: `BMC_DEFAULT_WORK_ORDER_REPORTED_SOURCE` y `BMC_DEFAULT_WORK_ORDER_RESOLUTION_METHOD` (introducidas hace unas horas, sin uso en producción).
+- **Incidentes**: sin cambios.
+- **Acción operativa**: desplegar este agente junto con el mailer que envía `Fuente:`; un mailer viejo no podría crear ni cerrar Work Orders. Quitar las dos variables de `bmc.env` si se habían definido.
+
+---
+
 ## 2026-11-25 — feat: Fuente reportada y Método de resolución en el Work Order; ortografía de BMC en Software
 
 - **Fuente reportada**: `bmc_create_work_order` envía `ReportedSource` = `Email` (`BMC_DEFAULT_WORK_ORDER_REPORTED_SOURCE`). Se comprobó en QA que BMC lo guarda; antes quedaba vacío y la UI lo marca obligatorio.
