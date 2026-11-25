@@ -1,5 +1,6 @@
 """Unit tests for Work Order business-rule guards (in-progress-to-close, reopen, ownership)."""
 
+from constants.bmc.defaults import DEFAULT_WORK_ORDER_RESOLUTION_METHOD
 from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
 from services.bmc.work_order_operations import WorkOrderOperations
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
@@ -12,6 +13,7 @@ class FakeSettings:
     def __init__(self, username: str, assignee_display_name: str) -> None:
         self.username = username
         self.assignee_display_name = assignee_display_name
+        self.form_wo_full = 'WOI:WorkOrder'
 
 
 class FakeClient:
@@ -23,6 +25,7 @@ class FakeClient:
         self._request_id = request_id
         self.update_calls: list[tuple[str, dict]] = []
         self.post_work_info_calls: list[object] = []
+        self.put_json_calls: list[tuple[str, dict]] = []
 
     async def search_work_order(self, work_order_id: str) -> BmcEntryListResponse:  # noqa: ARG002
         values = BmcEntryValues(
@@ -36,6 +39,17 @@ class FakeClient:
 
     async def update_work_order(self, request_id: str, json_body: dict) -> dict:
         self.update_calls.append((request_id, json_body))
+        return {}
+
+    @staticmethod
+    def entry_path(form_name: str, request_id: str | None = None) -> str:
+        return form_name if request_id is None else f'{form_name}/{request_id}'
+
+    async def get_json(self, path: str, params: dict[str, str] | None = None) -> dict:  # noqa: ARG002
+        return {'entries': [{'values': {AR_FIELD_REQUEST_ID: 'FULLREQ'}}]}
+
+    async def put_json(self, path: str, json_body: dict) -> dict:
+        self.put_json_calls.append((path, json_body))
         return {}
 
     async def post_work_info(self, body: object) -> dict:
@@ -93,6 +107,9 @@ async def test_close_succeeds_when_in_progress_and_owner() -> None:
     assert final_body['values']['Status'] == 'Closed'
     expected_note_calls = 2  # note per Completed/Closed PUT; the In Progress PUT gets none
     assert len(client.post_work_info_calls) == expected_note_calls
+    assert client.put_json_calls == [
+        ('WOI:WorkOrder/FULLREQ', {'values': {'AA_ResolutionMethod_WO': DEFAULT_WORK_ORDER_RESOLUTION_METHOD}}),
+    ]
 
 
 async def test_close_succeeds_from_assigned_without_taking_ownership() -> None:

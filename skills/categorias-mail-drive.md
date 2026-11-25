@@ -20,6 +20,13 @@ no pases `assigned_group` y se usa el valor por defecto de la tool.
 > combinaciones que ya existen en BMC (`Base de datos` → `Plataforma`; `Gestiona tu Acceso` →
 > `Aplicacion`; incidentes → la combinación de producto más cercana). Son aproximadas:
 > confirmar con la mesa. `Escalamiento 1` va vacío (se usa el grupo por defecto de la tool).
+>
+> **Ortografía de BMC (2026-11-25).** En el catálogo de BMC la Categoría de Producto 1 se llama
+> `Sofware` (sin «t») y los niveles 2 son `Sap`, `Gestiona tu acceso` y `Correo electronico`.
+> Con la escritura del Excel (`Software`, `SAP`, …) el ticket se crea, pero BMC no deja cerrarlo
+> («Debe completar las categorías Operativa y de Producto»). Las filas de Requerimientos usan la
+> escritura de BMC; cuando BMC corrija `Sofware` → `Software`, revertir. La tabla de Incidentes
+> no se ha validado contra el cierre.
 
 ## Requerimientos (Work Order)
 
@@ -35,12 +42,12 @@ una elección aproximada.
 | Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Seguridad perimetral | Infraestructura | MEDIO |  | SSL, IP, TCP, UDP, SFTP, Conectividad, API, alcance, servidor, servidores, acceso, accesos, puerto, puertos, ssh, VPN, AP, clearpass, salida a internet, FAC, Fase, Client to site, SW, ROUTER, FIREWALL, FW, Enlace |
 | Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Plataforma | SAP | MEDIO |  | Orden transporte, Mandante, OT, Acceso a transacción, SAP, ARDK |
 | Requerimiento | Aplicacion | Asignar Permisos |  | GTI | Base de datos | Plataforma | MEDIO |  |  |
-| Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Software | Telefonia especializada | Aplicacion | ALTO |  | haxahud, queuemetrics, telefonia |
-| Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Software | Prisma | Aplicacion | ALTO |  | Prisma |
+| Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Sofware | Telefonia especializada | Aplicacion | ALTO |  | haxahud, queuemetrics, telefonia |
+| Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Sofware | Prisma | Aplicacion | ALTO |  | Prisma |
 | Requerimiento | Aplicacion | Crear / cambiar contraseña |  | GTI | Base de datos | Plataforma | ALTO |  | BD, Base de Datos, Base datos |
-| Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Software | SAP | Aplicacion | MEDIO |  | Orden transporte, Mandante, OT, Acceso a transacción, SAP, ARDK, Contraseña, clave |
-| Requerimiento | Aplicacion | Instalar agente MFA |  | Software | Gestiona tu Acceso | Aplicacion | MEDIO |  | MFA, Doble Factor, authenticator, multifactor |
-| Requerimiento | Aplicacion | Asignar / modificar licencia |  | Software | correo electronico | Aplicacion | MEDIO |  | licencia, correo, E1, E5, licenciamiento |
+| Requerimiento | Aplicacion | Crear / cambiar contraseña |  | Sofware | Sap | Aplicacion | MEDIO |  | Orden transporte, Mandante, OT, Acceso a transacción, SAP, ARDK, Contraseña, clave |
+| Requerimiento | Aplicacion | Instalar agente MFA |  | Sofware | Gestiona tu acceso | Aplicacion | MEDIO |  | MFA, Doble Factor, authenticator, multifactor |
+| Requerimiento | Aplicacion | Asignar / modificar licencia |  | Sofware | Correo electronico | Aplicacion | MEDIO |  | licencia, correo, E1, E5, licenciamiento |
 
 ## Incidentes
 

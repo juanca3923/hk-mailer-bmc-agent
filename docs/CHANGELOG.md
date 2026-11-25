@@ -14,6 +14,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — feat: Fuente reportada y Método de resolución en el Work Order; ortografía de BMC en Software
+
+- **Fuente reportada**: `bmc_create_work_order` envía `ReportedSource` = `Email` (`BMC_DEFAULT_WORK_ORDER_REPORTED_SOURCE`). Se comprobó en QA que BMC lo guarda; antes quedaba vacío y la UI lo marca obligatorio.
+- **Método de resolución**: el formulario `WOI:WorkOrderInterface` no tiene ese campo (BMC responde «Field ID specified is not found»); vive en `WOI:WorkOrder` como `AA_ResolutionMethod_WO`. El cierre lo fija con un PUT extra a `WOI:WorkOrder` (`BMC_DEFAULT_WORK_ORDER_RESOLUTION_METHOD`, `Correo`, nuevo `form_wo_full`, por defecto `WOI:WorkOrder`) tras pasar a `In Progress` y antes de `Completed`.
+- **Cierre de los 5 tickets «Software»**: fallaban con «Debe completar las categorías Operativa y de Producto» porque el catálogo de BMC escribe `Sofware` (sin «t»), `Sap`, `Gestiona tu acceso` y `Correo electronico`. `categorias-mail-drive` usa ahora esa escritura en Requerimientos; se revierte cuando BMC corrija `Sofware`. Incidentes sin tocar ni validar.
+- **Acción operativa**: reiniciar el agente; variables opcionales nuevas en `.env.example`.
+
+---
+
 ## 2026-11-25 — fix: el cierre del Work Order ya no toma propiedad (sin `ASCHG`)
 
 - **Antes**: `bmc_close_work_order` hacía `In Progress` + `ASCHG` → `Completed` + `ASCHG` → `Closed`. En QA la toma de propiedad fallaba (`The Request Assignee Group fields are invalid`) porque el usuario de IA no es el asignado del grupo.
