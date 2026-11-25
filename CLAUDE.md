@@ -111,15 +111,15 @@ If `BMC_BASE_URL` is **not** set, BMC tools return an empty list and the agent s
 
 | Layer | Library | Version |
 |-------|---------|---------|
-| Agent framework | LangChain + LangGraph | 1.2.15 / 1.1.6 |
+| Agent framework | LangChain + LangGraph | 1.4.9 / 1.2.20 |
 | LLM providers | langchain-anthropic / openai / ollama | latest |
 | HTTP client (BMC) | httpx | 0.28.1 |
 | Output encoding | toon-formatter | 1.0.1 |
-| Validation | Pydantic + pydantic-settings | 2.13.1 |
-| Persistence | PostgreSQL + asyncpg + SQLAlchemy | — |
-| LangGraph checkpointer | langgraph-checkpoint-postgres | 3.0.5 |
-| HTTP server | FastAPI + Uvicorn | 0.136.0 |
-| Observability | Langfuse (optional) | 4.6.1 |
+| Validation | Pydantic + pydantic-settings | 2.14.3 / 2.16.2 |
+| Persistence | PostgreSQL + asyncpg + SQLAlchemy | 0.32.0 / 2.1.9 (`sqlalchemy[asyncio]`) |
+| LangGraph checkpointer | langgraph-checkpoint-postgres | 3.2.0 |
+| HTTP server | FastAPI + Uvicorn | 0.162.0 / 0.54.0 |
+| Observability | Langfuse (optional) | 5.2.0 |
 | Package manager | uv | — |
 
 ---

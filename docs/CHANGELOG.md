@@ -5,6 +5,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — chore: refresca dependencias sobre Python 3.14 y corrige la tabla Tech Stack
+
+- **Python**: sin cambios, ya estaba en 3.14 desde el 2026-11-12 (`.venv` 3.14.8, `uv lock --check` consistente).
+- **Dependencias directas**: `sqlalchemy[asyncio]` 2.1.8 → 2.1.9, `psycopg[binary]` 3.3.8 → 3.3.9 y `pylint` 4.1.3 → 4.1.4; el `uv.lock` sube además las transitivas publicadas hasta el 2026-11-18 (misma política de 7 días). Quedan fuera por ser más recientes: `fastapi` 0.165, `langchain` 1.5, `langgraph` 1.2.24, `pydantic` 2.14.4, `ruff` 0.17.6 y `certifi` 2026.11.20. `mcp` sigue en 1.x: la 2.x es incompatible con `langchain-mcp-adapters` (`mcp<2`).
+- **`CLAUDE.md`**: la tabla "Tech Stack" mostraba versiones antiguas; ahora coincide con `pyproject.toml`.
+- **Acción operativa**: ejecutar `uv sync --group dev` y reconstruir las imágenes Docker. Sin cambios en variables de entorno ni en la API.
+
+---
+
 ## 2026-11-13 — feat: el mailer puede pedir el cierre de un ticket (`Acción: cerrar`) y la Agent Card lo declara
 
 - Modo automático: el mensaje del orquestador empieza con `Acción: crear` (por defecto) o `Acción: cerrar` + `Ticket:`. Solo con `cerrar` el agente cierra, y únicamente ese ticket (`bmc_close_work_order`/`bmc_close_incident`, que ya exigen que el ticket sea del usuario de servicio) y responde `Estado final: Cerrado` o `Error — …`. Al crear, el solicitante es siempre quien envió el correo; si el cuerpo habla de otra persona va en la descripción. `Clasificación: duda` solo añade esa nota.
