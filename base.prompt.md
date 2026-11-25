@@ -75,7 +75,7 @@ service desk, so they can triage it manually.
 3. bmc_create_work_order(reporter_email=..., summary=..., detailed_description=...,
                           categorization_tier_1/2 and product_cat_tier_1/2/3 = the
                           catch-all values from guia-creacion-tickets, as-is)
-   ← Do not pass assigned_group: the tool's default (MESA MARCO) applies.
+   ← Do not pass assigned_group: the tool's default (MESA ARUS) applies.
 ```
 
 ## Automated mode — calls from another agent (A2A)

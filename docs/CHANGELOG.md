@@ -5,6 +5,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — fix: el grupo asignado por defecto pasa de `MESA MARCO` a `MESA ARUS`
+
+- **Síntoma**: los Work Orders creados por el agente quedaban en `MESA MARCO` y `bmc_close_work_order` fallaba en la toma de propiedad (`You do not have the authority to modify work order`): el usuario de servicio ya no pertenece a ese grupo.
+- **Cambio**: los fallbacks de `BMC_DEFAULT_ASSIGNED_GROUP` (incidente) y `BMC_DEFAULT_WORK_ORDER_ASSIGNED_GROUP` (Work Order) ahora son `MESA ARUS`. Sin cambios de lógica; el cierre de 3 pasos ya era correcto.
+- **Acción operativa**: reiniciar el agente; si `bmc.env` define alguna de esas variables, actualizarla.
+
+---
+
 ## 2026-11-25 — fix: el Work Order envía `Location Company` (campo obligatorio de BMC)
 
 - **Síntoma**: en QA las 12 creaciones de Work Order de una prueba real fallaron con HTTP 400 `Required field cannot be blank. WOI:WorkOrder : Location Company` (messageNumber 326): el payload nunca enviaba ese campo.
