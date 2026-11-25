@@ -29,19 +29,21 @@ fila que aplique al caso — su columna `Tipo Servicio` decide el tipo.
   `priority` como parámetro libre, tomado de la fila).
 - **Si NO aplica ningún dominio conocido**: el caso se crea **siempre como Work
   Order**, nunca como Incidente — sin importar si "suena" a algo roto o caído. Llama
-  `bmc_create_work_order` pasando **exactamente** estos valores (catch-all confirmado
-  por la mesa de servicio el 2026-09-14, para que lo triage manualmente — no los
-  cambies ni los completes con otra cosa):
+  `bmc_create_work_order` pasando **exactamente** estos valores (categoría por
+  defecto confirmada por la mesa de servicio el 2026-11-25, para que lo triage
+  manualmente — no los cambies ni los completes con otra cosa):
 
   | Parámetro | Valor |
   |---|---|
   | `categorization_tier_1` | `Gestion de tickets` |
-  | `categorization_tier_2` | `Acompañamiento` |
+  | `categorization_tier_2` | `MailDrive` |
   | `product_cat_tier_1` | `Gestion de casos` |
   | `product_cat_tier_2` | `Control` |
   | `product_cat_tier_3` | `Casos` |
+| `priority` | `Low` |
 
-  No existe un catch-all de Incidente — no se crean incidentes fuera de un dominio
+  La categoría operacional 3 del catálogo de la mesa (`   - - `) no tiene parámetro en la
+  tool: ignórala. No existe un catch-all de Incidente — no se crean incidentes fuera de un dominio
   conocido. Si la mesa de servicio cambia esta combinación, solo hace falta editar
   esta tabla — no requiere ningún cambio de código ni redeploy del agente.
 
@@ -68,9 +70,9 @@ categoría operacional de una fila con la de producto de otra.
 | Prioridad (fuente) | Valor para `priority` |
 |---------------------|----------------------|
 | CRITICA / CRITICO | `Critical` |
-| ALTA | `High` |
-| MEDIA | `Medium` |
-| BAJA | `Low` |
+| ALTA / ALTO | `High` |
+| MEDIA / MEDIO | `Medium` |
+| BAJA / BAJO | `Low` |
 
 ### Columnas informativas de catálogos de dominio
 
@@ -174,7 +176,7 @@ silencies ni reportes el ticket como cerrado si no lo está.
    — nunca crees un Incidente sin dominio conocido.
 2. Si aplicó dominio: ¿leíste esa skill y elegiste una única fila completa, mapeada
    según la sección 2, sin inventar? Si NO aplicó dominio: ¿pasaste
-   `categorization_tier_1/2`/`product_cat_tier_1/2/3` con los valores catch-all
+   `categorization_tier_1/2`/`product_cat_tier_1/2/3`/`priority` con los valores catch-all
    exactos de la sección 1, sin inventar otra combinación?
 3. ¿Los campos obligatorios (descripción, y categorización/priority/assigned_group
    cuando aplicó dominio) están completos con valores reales, no inventados?

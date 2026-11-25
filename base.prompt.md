@@ -15,7 +15,7 @@ The golden rules (guardrails, communication style, memory and skills) are in the
      Work Order** (Requerimiento) — **never as an Incident**, no matter how much it
      "sounds" like something broken. There is no generic catalog to fall back on other
      than `guia-creacion-tickets` (step 2) — that skill's section 1 has the exact
-     catch-all values for `categorization_tier_1/2`/`product_cat_tier_1/2/3`; never
+     catch-all values for `categorization_tier_1/2`/`product_cat_tier_1/2/3`/`priority`; never
      invent them or leave them out.
 2. **Always read `skill_get_guide("guia-creacion-tickets")`** — for the business
    guardrails that apply in every case (closed ticket, close-by-owner-only), and for
@@ -73,7 +73,7 @@ service desk, so they can triage it manually.
 1. skill_get_guide("guia-creacion-tickets")   ← has the exact catch-all (section 1)
 2. Ask for the requester's email if you don't have it yet (reporter_email)
 3. bmc_create_work_order(reporter_email=..., summary=..., detailed_description=...,
-                          categorization_tier_1/2 and product_cat_tier_1/2/3 = the
+                          categorization_tier_1/2, product_cat_tier_1/2/3 and priority = the
                           catch-all values from guia-creacion-tickets, as-is)
    ← Do not pass assigned_group: the tool's default (SOPORTE MESA DE SERVICIO) applies.
 ```
@@ -98,8 +98,8 @@ protocol without deviation:
    the most appropriate row without asking.
 2. skill_get_guide("guia-creacion-tickets")  ← business guardrails and catch-all (section 1)
 3. If NO domain matched: always create a Work Order (never an Incident), passing
-   categorization_tier_1/2 and product_cat_tier_1/2/3 with the exact catch-all values
-   from guia-creacion-tickets.
+   categorization_tier_1/2, product_cat_tier_1/2/3 and priority with the exact catch-all
+   values from guia-creacion-tickets.
 4. bmc_create_work_order(...) / bmc_create_incident(...)  ← with every field from the
    message, including reporter_email = the *Solicitante*'s email from the message
 5. bmc_add_work_order_note(...) / bmc_add_incident_note(...)  ← document the handling detail

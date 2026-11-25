@@ -14,6 +14,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — feat: catálogo de Requerimientos y categoría por defecto actualizados desde el Excel de MailDrive
+
+- **Catálogo** (`skills/categorias-mail-drive.md`): 11 filas de Requerimientos con `Prioridad` ya informada (`ALTO`/`MEDIO`/`BAJO`); desaparece la fila `Crear / cambiar contraseña → Gestion de casos/Control/Casos` (ahora es la categoría por defecto). Los incidentes no cambian. Siguen aproximados el producto 3 de `Base de datos` (`Plataforma`) y de `Gestiona tu Acceso` (`Aplicacion`), vacíos en el Excel.
+- **Categoría por defecto** (`guia-creacion-tickets` §1): Cat. Op. 2 pasa de `Acompañamiento` a `MailDrive` y ahora lleva `priority = Low`; el Cat. Op. 3 del Excel (`   - - `) se ignora. §2 traduce también `ALTO/MEDIO/BAJO`. `base.prompt.md` incluye `priority` en el catch-all.
+- **Validación**: las 11 filas y la categoría por defecto se crearon sin error en QA (Work Orders de prueba). El cierre en QA sigue pendiente por la toma de propiedad.
+- **Acción operativa**: reiniciar el agente (`base.prompt.md` se lee al arrancar; las skills se leen al vuelo).
+
+---
+
 ## 2026-11-25 — refactor: la descripción de las tools de listado por correo vive en un solo lugar
 
 - **Qué era el `duplicate-code`**: `pylint` (R0801) marcaba 7 líneas casi idénticas entre `bmc_incident_tools.py` y `bmc_work_order_tools.py`: el texto que ve el LLM de `bmc_list_incidents_by_email` y `bmc_list_work_orders_by_email`, igual salvo «incidents»/«work orders». Se reportaba sobre `constants/bmc/messages.py` solo por ser el primer módulo analizado. Dejaba `pylint` con salida distinta de 0 aunque el puntaje fuera 10/10.
