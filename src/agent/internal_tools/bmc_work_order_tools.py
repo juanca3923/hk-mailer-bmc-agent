@@ -506,7 +506,7 @@ class WorkOrderTools(ToolSet):
             Field(min_length=1, description='Documentation of the final solution, recorded when moving to Closed.'),
         ] = 'Rest API: Resolve Work order via Mosaico',
     ) -> str:
-        """Close a Work Order, taking ownership of it and moving it through Completed to Closed.
+        """Close a Work Order, moving it through In Progress and Completed to Closed.
 
         Works from any open status, but only on a Work Order created by this agent's own
         BMC user. Once closed it accepts no further notes, attachments or status changes,
@@ -587,7 +587,7 @@ class WorkOrderTools(ToolSet):
                 tools.close,
                 name='bmc_close_work_order',
                 description=(
-                    'Close a Work Order, taking ownership and moving it through Completed to '
+                    'Close a Work Order, moving it through In Progress and Completed to '
                     "Closed. Only works on a Work Order created by this agent's own BMC user, "
                     'from any open status. Irreversible — once closed it accepts no further '
                     'notes, attachments or status changes, and there is no tool to reopen it.'

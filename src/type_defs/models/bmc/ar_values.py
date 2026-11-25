@@ -97,7 +97,6 @@ class UpdateWorkOrderStatusValues(BaseModel):
 
     description: str = Field(alias="Description")
     status: WorkOrderStatusField = Field(alias="Status")
-    aschg: str | None = Field(default=None, alias="ASCHG")
 
 
 class UpdateIncidentStatusValues(BaseModel):

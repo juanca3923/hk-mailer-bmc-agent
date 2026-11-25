@@ -14,8 +14,8 @@ from constants.bmc.messages import (
 )
 from constants.bmc.tickets import (
     DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
+    DEFAULT_WORK_ORDER_CLOSE_IN_PROGRESS_DESCRIPTION,
     DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
-    DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
 )
 from services.bmc.handler_context import TicketHandlerContext
@@ -165,16 +165,15 @@ class WorkOrderOperations:
         await self._handler.client.post_work_info(work_info_body)
 
     async def close(self, data: CloseWorkOrderInput) -> BaseOutput:
-        """Close a work order: PUT ownership+In Progress, then 2x (PUT status + work log note).
+        """Close a work order: PUT In Progress, then 2x (PUT status + work log note).
 
-        Steps: ownership+In Progress, Completed+ASCHG, Closed. Does not require the ticket
-        to already be ``In Progress``: the first PUT takes ownership (``ASCHG``) and moves
-        it there. Only rejects tickets already ``Closed`` and tickets not opened by this
-        agent's own BMC user (``Submitter``), before issuing any write. The Completed and
-        Closed PUTs are each followed by a work log note with the same text, since
-        ``Description`` doubles as the ticket's title and gets overwritten by the next
-        PUT; the ownership PUT does not get a note because BMC already logs the ``ASCHG``
-        change as its own ``Asignado a`` activity entry.
+        Steps: In Progress, Completed, Closed. The agent no longer takes ownership of the
+        ticket (no ``ASCHG``): only the status changes. Does not require the ticket to
+        already be ``In Progress``. Only rejects tickets already ``Closed`` and tickets not
+        opened by this agent's own BMC user (``Submitter``), before issuing any write. The
+        Completed and Closed PUTs are each followed by a work log note with the same text,
+        since ``Description`` doubles as the ticket's title and gets overwritten by the next
+        PUT; the In Progress PUT does not get a note.
 
         Parameters
         ----------
@@ -187,18 +186,15 @@ class WorkOrderOperations:
             Success or error output for the tool.
         """
         async def close_flow(state: TicketState) -> BaseOutput:
-            assignee = self._handler.settings.assignee_display_name
             client = self._handler.client
-            ownership = UpdateWorkOrderStatusValues(
-                description=DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
+            in_progress = UpdateWorkOrderStatusValues(
+                description=DEFAULT_WORK_ORDER_CLOSE_IN_PROGRESS_DESCRIPTION,
                 status=DEFAULT_WORK_ORDER_UPDATE_STATUS,
-                aschg=assignee,
             )
-            await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(ownership))
+            await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(in_progress))
             intermediate = UpdateWorkOrderStatusValues(
                 description=data.intermediate_description,
                 status=DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
-                aschg=assignee,
             )
             await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(intermediate))
             await self._post_close_note(data.work_order_id, data.intermediate_description)

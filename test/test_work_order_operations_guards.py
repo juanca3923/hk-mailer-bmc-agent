@@ -81,21 +81,21 @@ async def test_close_succeeds_when_in_progress_and_owner() -> None:
         CloseWorkOrderInput(work_order_id='WO1'),
     )
     assert result.success is True
-    expected_put_calls = 3  # ownership+In Progress PUT, intermediate Completed+ASCHG PUT, final Closed PUT
+    expected_put_calls = 3  # In Progress PUT, intermediate Completed PUT, final Closed PUT
     assert len(client.update_calls) == expected_put_calls
-    _, ownership_body = client.update_calls[0]
-    assert ownership_body['values']['Status'] == 'In Progress'
-    assert ownership_body['values']['ASCHG'] == 'Mosaico WebServices'
+    _, in_progress_body = client.update_calls[0]
+    assert in_progress_body['values']['Status'] == 'In Progress'
+    assert 'ASCHG' not in in_progress_body['values']
     _, intermediate_body = client.update_calls[1]
     assert intermediate_body['values']['Status'] == 'Completed'
-    assert intermediate_body['values']['ASCHG'] == 'Mosaico WebServices'
+    assert 'ASCHG' not in intermediate_body['values']
     _, final_body = client.update_calls[2]
     assert final_body['values']['Status'] == 'Closed'
-    expected_note_calls = 2  # note per Completed/Closed PUT; ownership PUT is already logged as "Asignado a"
+    expected_note_calls = 2  # note per Completed/Closed PUT; the In Progress PUT gets none
     assert len(client.post_work_info_calls) == expected_note_calls
 
 
-async def test_close_succeeds_from_assigned_takes_ownership_and_progresses() -> None:
+async def test_close_succeeds_from_assigned_without_taking_ownership() -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
@@ -104,9 +104,9 @@ async def test_close_succeeds_from_assigned_takes_ownership_and_progresses() -> 
     assert result.success is True
     expected_put_calls = 3
     assert len(client.update_calls) == expected_put_calls
-    _, ownership_body = client.update_calls[0]
-    assert ownership_body['values']['Status'] == 'In Progress'
-    assert ownership_body['values']['ASCHG'] == 'Mosaico WebServices'
+    _, in_progress_body = client.update_calls[0]
+    assert in_progress_body['values']['Status'] == 'In Progress'
+    assert 'ASCHG' not in in_progress_body['values']
     expected_note_calls = 2
     assert len(client.post_work_info_calls) == expected_note_calls
 

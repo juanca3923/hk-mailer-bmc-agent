@@ -14,6 +14,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — fix: el cierre del Work Order ya no toma propiedad (sin `ASCHG`)
+
+- **Antes**: `bmc_close_work_order` hacía `In Progress` + `ASCHG` → `Completed` + `ASCHG` → `Closed`. En QA la toma de propiedad fallaba (`The Request Assignee Group fields are invalid`) porque el usuario de IA no es el asignado del grupo.
+- **Ahora**: la mesa confirmó que el agente ya no necesita tomar propiedad. El cierre solo cambia estados: `In Progress` → `Completed` (+ nota) → `Closed` (+ nota); ninguna petición envía `ASCHG`. Se mantienen los guards (no `Closed`, `Submitter` = `BMC_USERNAME`).
+- **Sin cambios** en el cierre de incidentes: sigue usando `Assignee` con `BMC_ASSIGNEE_DISPLAY_NAME`; esa variable sigue siendo obligatoria.
+- **Acción operativa**: reiniciar el agente.
+
+---
+
 ## 2026-11-25 — feat: catálogo de Requerimientos y categoría por defecto actualizados desde el Excel de MailDrive
 
 - **Catálogo** (`skills/categorias-mail-drive.md`): 11 filas de Requerimientos con `Prioridad` ya informada (`ALTO`/`MEDIO`/`BAJO`); desaparece la fila `Crear / cambiar contraseña → Gestion de casos/Control/Casos` (ahora es la categoría por defecto). Los incidentes no cambian. Siguen aproximados el producto 3 de `Base de datos` (`Plataforma`) y de `Gestiona tu Acceso` (`Aplicacion`), vacíos en el Excel.
