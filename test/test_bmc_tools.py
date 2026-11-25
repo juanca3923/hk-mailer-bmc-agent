@@ -506,3 +506,16 @@ def test_ticket_info_tools_never_expose_raw_values_or_request_id() -> None:
 def test_tickets_by_email_limit_is_capped_at_the_schema_level() -> None:
     assert bmc_tool('bmc_list_work_orders_by_email').args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
     assert bmc_tool('bmc_list_incidents_by_email').args['limit']['maximum'] == MAX_TICKETS_BY_EMAIL_RESULTS
+
+
+@pytest.mark.parametrize(
+    ('tool_name', 'ticket_kind'),
+    [('bmc_list_incidents_by_email', 'incidents'), ('bmc_list_work_orders_by_email', 'work orders')],
+)
+def test_list_by_email_tools_keep_their_llm_description(tool_name: str, ticket_kind: str) -> None:
+    assert bmc_tool(tool_name).description == (
+        f'List {ticket_kind} for one person, searched by the email they used as '
+        'reporter_email at creation — not their BMC-resolved login id. One row per '
+        'ticket: title, status and assigned group only; capped and flagged if there '
+        'are more matches than returned.'
+    )

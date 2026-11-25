@@ -14,6 +14,14 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — refactor: la descripción de las tools de listado por correo vive en un solo lugar
+
+- **Qué era el `duplicate-code`**: `pylint` (R0801) marcaba 7 líneas casi idénticas entre `bmc_incident_tools.py` y `bmc_work_order_tools.py`: el texto que ve el LLM de `bmc_list_incidents_by_email` y `bmc_list_work_orders_by_email`, igual salvo «incidents»/«work orders». Se reportaba sobre `constants/bmc/messages.py` solo por ser el primer módulo analizado. Dejaba `pylint` con salida distinta de 0 aunque el puntaje fuera 10/10.
+- **Cambio**: plantilla `LIST_BY_EMAIL_DESCRIPTION` en `constants/bmc/tool_descriptions.py`, usada por ambas tools con `.format(ticket_kind=...)`. El texto que recibe el LLM no cambia (lo fija una prueba nueva). Además, el nombre del grupo por defecto pasa a una constante privada en `defaults.py` para no superar los 120 caracteres.
+- **Sin acción operativa**.
+
+---
+
 ## 2026-11-25 — fix: el grupo asignado por defecto pasa de `MESA MARCO` a `SOPORTE MESA DE SERVICIO`
 
 - **Síntoma**: los Work Orders creados por el agente quedaban en `MESA MARCO` y `bmc_close_work_order` fallaba en la toma de propiedad (`You do not have the authority to modify work order`): el usuario de servicio ya no pertenece a ese grupo.
