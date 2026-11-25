@@ -68,8 +68,6 @@ class FakeClient:
 class FakeSettings:
     """Stand-in for the subset of BmcSettings used by IncidentOperations.create()."""
 
-    default_first_name = 'Mosaico'
-    default_last_name = 'WebServices'
 
 
 class FakeHandler:

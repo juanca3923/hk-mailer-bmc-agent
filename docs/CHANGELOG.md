@@ -5,6 +5,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — feat: el cliente del Work Order es el solicitante y se eliminan `BMC_DEFAULT_CUSTOMER_FIRST_NAME/LAST_NAME`
+
+- **Antes**: `Customer First/Last Name` iban fijos (`Mosaico`/`WebServices`; el fallback del código era `IA`, distinto de lo documentado, y BMC rechazaba la creación con «Requested For user is not a registered user»). El ticket mostraba como Cliente a una persona ficticia, y `bmc_list_work_orders_by_email` no lo encontraba.
+- **Ahora**: `bmc_create_work_order` envía como cliente el mismo First/Last Name que ya resuelve de `CTM:People` por `reporter_email` (igual que el contacto). `Customer Company` sigue fijo (`BMC_DEFAULT_CUSTOMER_COMPANY`, `ARUS`). La búsqueda en `CTM:People` no cambia.
+- **Eliminado**: `BMC_DEFAULT_CUSTOMER_FIRST_NAME`, `BMC_DEFAULT_CUSTOMER_LAST_NAME` y los campos sin uso `default_first_name`/`default_last_name` de `BmcSettings`.
+- **Acción operativa**: quitar esas dos variables de `bmc.env` (si quedan, se ignoran) y reiniciar el agente.
+
+---
+
 ## 2026-11-25 — fix: el grupo asignado por defecto pasa de `MESA MARCO` a `MESA ARUS`
 
 - **Síntoma**: los Work Orders creados por el agente quedaban en `MESA MARCO` y `bmc_close_work_order` fallaba en la toma de propiedad (`You do not have the authority to modify work order`): el usuario de servicio ya no pertenece a ese grupo.

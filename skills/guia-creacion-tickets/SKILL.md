@@ -99,8 +99,8 @@ precisión:
 No pidas estos datos al usuario ni intentes pasarlos como parámetro — están fijados
 por configuración del agente, no por el catálogo de categorías:
 
-- Company, y nombre/apellido del **cliente** (`Customer First/Last Name`, solo Work
-  Order — es una identidad fija distinta del solicitante).
+- Company y `Customer Company` (solo Work Order). El nombre y apellido del **cliente**
+  (`Customer First/Last Name`) ya no son fijos: son los del solicitante.
 - Impact y Urgency (solo Incidente, siempre fijos).
 
 La categorización (operacional 1/2, producto 2-3 niveles, `priority`/`assigned_group`
@@ -115,8 +115,8 @@ determinó Tipo Servicio = Incidente.
 **`reporter_email` es obligatorio y NO sale del catálogo de categorías ni está
 fijado**: es el correo de quien reporta el incidente o solicita el Work Order (pídelo
 al usuario en modo interactivo, o tómalo del mensaje entrante en modo A2A). El nombre
-y apellido del **solicitante** (`First Name`/`Last Name`, distinto del cliente) ya no
-es un valor fijo — la tool lo resuelve buscando ese correo en `CTM:People`, y la
+y apellido del **solicitante** (`First Name`/`Last Name`, y en Work Order también el
+cliente) no son valores fijos — la tool los resuelve buscando ese correo en `CTM:People`, y la
 creación falla sin crear ningún ticket si no encuentra a esa persona registrada en
 BMC. Ver `docs/CHANGELOG.md` para el detalle de esta resolución de identidad.
 
@@ -184,7 +184,7 @@ silencies ni reportes el ticket como cerrado si no lo está.
    necesita más detalle, va en `detailed_decription`, no ahí (sección 5).
 6. ¿Tienes el correo real de quien reporta/solicita (`reporter_email`), sin inventarlo
    ni usar el tuyo propio?
-7. ¿Evitaste pasar campos fijados por el entorno (company, identidad del cliente,
+7. ¿Evitaste pasar campos fijados por el entorno (company, nombre del cliente,
    impact/urgency)?
 8. Si aplicó dominio pero ninguna fila describía el caso exacto (sección 3), ¿dejaste
    eso explícito en vez de simular certeza, en lugar de inventar una fila?

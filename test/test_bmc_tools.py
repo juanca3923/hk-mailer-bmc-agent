@@ -254,6 +254,8 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     assert body_values['Location Company'] == DEFAULT_WORK_ORDER_LOCATION_COMPANY
     assert body_values['First Name'] == 'Ana'
     assert body_values['Last Name'] == 'Reportante'
+    assert body_values['Customer First Name'] == 'Ana'
+    assert body_values['Customer Last Name'] == 'Reportante'
 
 
 async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkeypatch: pytest.MonkeyPatch) -> None:

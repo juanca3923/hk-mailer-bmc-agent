@@ -188,14 +188,12 @@ Copy `.env.example` to `.env` and fill in the required values.
 
 Fixed values injected by `src/constants/bmc/defaults.py` into every `bmc_create_work_order`
 and `bmc_create_incident` call. The LLM never sees these as tool parameters. The submitter's
-`First Name`/`Last Name` are **not** in this table — they are resolved per-call from
-`reporter_email` (see "Reporter identity resolution" above), not a fixed default.
+`First Name`/`Last Name` and, in a work order, the `Customer First/Last Name` are **not** in this table — they
+are resolved per-call from `reporter_email` (see "Reporter identity resolution" above), not a fixed default.
 
 | Variable | Fallback | Used in |
 |----------|----------|---------|
 | `BMC_DEFAULT_COMPANY` | `ARUS` | WO + incident `Company` |
-| `BMC_DEFAULT_CUSTOMER_FIRST_NAME` | `Mosaico` | WO `Customer First Name` |
-| `BMC_DEFAULT_CUSTOMER_LAST_NAME` | `WebServices` | WO `Customer Last Name` |
 | `BMC_DEFAULT_CUSTOMER_COMPANY` | `ARUS` | WO `Customer Company` |
 | `BMC_DEFAULT_ASSIGNED_GROUP` | `MESA ARUS` | Default of the `assigned_group` **tool parameter** of `bmc_create_incident` (not a fixed injection — the LLM should override it with the value from a matching `categorias-<dominio>` skill row, e.g. `categorias-eventos`/`categorias-usuario`) |
 | `BMC_DEFAULT_INCIDENT_SUPPORT_COMPANY` | `ARUS` | Fixed incident `Assigned Support Company`, required alongside `Assigned Support Organization` for BMC to honor the `Assigned Group` sent by the caller (otherwise BMC silently reassigns the incident per its own ITSM configuration) |
