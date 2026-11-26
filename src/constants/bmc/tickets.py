@@ -42,7 +42,7 @@ DEFAULT_WORK_ORDER_STATUS: Final[str] = "Assigned"
 DEFAULT_WORK_ORDER_UPDATE_STATUS: Final[str] = IN_PROGRESS_STATUS
 
 
-DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION: Final[str] = "Rest API: Toma de propiedad previa al cierre"
+DEFAULT_WORK_ORDER_CLOSE_IN_PROGRESS_DESCRIPTION: Final[str] = "Rest API: Cambio de estado previo al cierre"
 
 
 DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS: Final[str] = "Completed"

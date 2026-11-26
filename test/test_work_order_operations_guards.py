@@ -2,6 +2,7 @@
 
 from constants.bmc.fields import AR_FIELD_REQUEST_ID, AR_FIELD_STATUS, AR_FIELD_SUBMITTER
 from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.enums.ticket_source import TicketSource
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import AddWorkOrderNoteInput, CloseWorkOrderInput, UpdateWorkOrderStatusInput
 
@@ -12,6 +13,7 @@ class FakeSettings:
     def __init__(self, username: str, assignee_display_name: str) -> None:
         self.username = username
         self.assignee_display_name = assignee_display_name
+        self.form_wo_full = 'WOI:WorkOrder'
 
 
 class FakeClient:
@@ -23,6 +25,7 @@ class FakeClient:
         self._request_id = request_id
         self.update_calls: list[tuple[str, dict]] = []
         self.post_work_info_calls: list[object] = []
+        self.put_json_calls: list[tuple[str, dict]] = []
 
     async def search_work_order(self, work_order_id: str) -> BmcEntryListResponse:  # noqa: ARG002
         values = BmcEntryValues(
@@ -36,6 +39,17 @@ class FakeClient:
 
     async def update_work_order(self, request_id: str, json_body: dict) -> dict:
         self.update_calls.append((request_id, json_body))
+        return {}
+
+    @staticmethod
+    def entry_path(form_name: str, request_id: str | None = None) -> str:
+        return form_name if request_id is None else f'{form_name}/{request_id}'
+
+    async def get_json(self, path: str, params: dict[str, str] | None = None) -> dict:  # noqa: ARG002
+        return {'entries': [{'values': {AR_FIELD_REQUEST_ID: 'FULLREQ'}}]}
+
+    async def put_json(self, path: str, json_body: dict) -> dict:
+        self.put_json_calls.append((path, json_body))
         return {}
 
     async def post_work_info(self, body: object) -> dict:
@@ -66,7 +80,7 @@ async def test_close_rejected_when_not_owner() -> None:
     client = FakeClient(status='In Progress', submitter='otro_usuario')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is False
     assert 'otro_usuario' in result.message
@@ -78,35 +92,38 @@ async def test_close_succeeds_when_in_progress_and_owner() -> None:
     client = FakeClient(status='In Progress', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is True
-    expected_put_calls = 3  # ownership+In Progress PUT, intermediate Completed+ASCHG PUT, final Closed PUT
+    expected_put_calls = 3  # In Progress PUT, intermediate Completed PUT, final Closed PUT
     assert len(client.update_calls) == expected_put_calls
-    _, ownership_body = client.update_calls[0]
-    assert ownership_body['values']['Status'] == 'In Progress'
-    assert ownership_body['values']['ASCHG'] == 'Mosaico WebServices'
+    _, in_progress_body = client.update_calls[0]
+    assert in_progress_body['values']['Status'] == 'In Progress'
+    assert 'ASCHG' not in in_progress_body['values']
     _, intermediate_body = client.update_calls[1]
     assert intermediate_body['values']['Status'] == 'Completed'
-    assert intermediate_body['values']['ASCHG'] == 'Mosaico WebServices'
+    assert 'ASCHG' not in intermediate_body['values']
     _, final_body = client.update_calls[2]
     assert final_body['values']['Status'] == 'Closed'
-    expected_note_calls = 2  # note per Completed/Closed PUT; ownership PUT is already logged as "Asignado a"
+    expected_note_calls = 2  # note per Completed/Closed PUT; the In Progress PUT gets none
     assert len(client.post_work_info_calls) == expected_note_calls
+    assert client.put_json_calls == [
+        ('WOI:WorkOrder/FULLREQ', {'values': {'AA_ResolutionMethod_WO': 'Correo'}}),
+    ]
 
 
-async def test_close_succeeds_from_assigned_takes_ownership_and_progresses() -> None:
+async def test_close_succeeds_from_assigned_without_taking_ownership() -> None:
     client = FakeClient(status='Assigned', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is True
     expected_put_calls = 3
     assert len(client.update_calls) == expected_put_calls
-    _, ownership_body = client.update_calls[0]
-    assert ownership_body['values']['Status'] == 'In Progress'
-    assert ownership_body['values']['ASCHG'] == 'Mosaico WebServices'
+    _, in_progress_body = client.update_calls[0]
+    assert in_progress_body['values']['Status'] == 'In Progress'
+    assert 'ASCHG' not in in_progress_body['values']
     expected_note_calls = 2
     assert len(client.post_work_info_calls) == expected_note_calls
 
@@ -115,7 +132,7 @@ async def test_close_rejected_when_already_closed() -> None:
     client = FakeClient(status='Closed', submitter='svc_mosaico')
     handler = FakeHandler(client, username='svc_mosaico')
     result = await WorkOrderOperations(handler).close(
-        CloseWorkOrderInput(work_order_id='WO1'),
+        CloseWorkOrderInput(work_order_id='WO1', source=TicketSource.MAILER),
     )
     assert result.success is False
     assert client.update_calls == []

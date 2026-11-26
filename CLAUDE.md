@@ -167,7 +167,7 @@ Copy `.env.example` to `.env` and fill in the required values.
 | `BMC_BASE_URL` | BMC REST API base URL (e.g. `https://arus-dev-restapi.onbmc.com`) |
 | `BMC_USERNAME` | Service account email; also compared against a ticket's `Submitter` by the `require_submitter` close guard |
 | `BMC_PASSWORD` | Service account password / API key |
-| `BMC_ASSIGNEE_DISPLAY_NAME` | Display name used for `ASCHG` (WO) / `Assignee` (incident) when taking ownership before closing; distinct from `BMC_USERNAME` |
+| `BMC_ASSIGNEE_DISPLAY_NAME` | Display name used for `Assignee` when an incident is taken before resolving it (work orders no longer take ownership); distinct from `BMC_USERNAME` |
 
 ### Optional — BMC
 
@@ -256,13 +256,13 @@ between the aggregator (`bmc_tools.py`) and the modules it registers.
 | Tool | Operation | AR Form |
 |------|-----------|---------|
 | `bmc_health_check` | Verify JWT session | GET ping |
-| `bmc_create_work_order` | Create WO; `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
+| `bmc_create_work_order` | Create WO; `reporter_email` and `source` (the message's `Fuente:`, → `ReportedSource`) required, resolves submitter First/Last Name via `CTM:People` (rejects with no WO created if not found) | `WOI:WorkOrderInterface_Create` |
 | `bmc_get_work_order` | Search WO by ID; returns only title/status/assigned group — never the detailed description, notes or other raw BMC fields (privacy) | `WOI:WorkOrderInterface` |
 | `bmc_list_work_orders_by_email` | List WOs by requester email (`Customer Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_work_order`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `WOI:WorkOrderInterface` |
 | `bmc_add_work_order_note` | Add note without attachment (rejects if `Closed`) | `WOI:WorkInfo` |
 | `bmc_add_work_order_attachment` | Add note with file attachment (rejects if `Closed`) | `WOI:WorkInfo` multipart |
 | `bmc_update_work_order_status` | PUT intermediate status (rejects if `Closed`) | `WOI:WorkOrderInterface` |
-| `bmc_close_work_order` | Ownership PUT (`ASCHG`) → Completed PUT+note → Closed PUT+note (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
+| `bmc_close_work_order` | `source` required (→ resolution method). In Progress PUT → resolution method PUT on `WOI:WorkOrder` → Completed PUT+note → Closed PUT+note, no ownership change/`ASCHG` (rejects if `Closed` or not opened by `BMC_USERNAME`) | `WOI:WorkOrderInterface` + `WOI:WorkInfo` |
 | `bmc_create_incident` | Create incident (Impact/Urgency fixed; `assigned_group` is a tool parameter); `reporter_email` required, resolves submitter First/Last Name via `CTM:People` (rejects with no incident created if not found) | `HPD:IncidentInterface_Create` |
 | `bmc_get_incident` | Search incident by number; returns only title/status/assigned group — never the detailed description, notes or other raw BMC fields (privacy) | `HPD:IncidentInterface` |
 | `bmc_list_incidents_by_email` | List incidents by requester email (`Internet E-mail`, the raw `reporter_email` used at creation — not the `CTM:People`-resolved login id); same lean fields as `bmc_get_incident`, capped at `MAX_TICKETS_BY_EMAIL_RESULTS` | `HPD:IncidentInterface` |

@@ -167,7 +167,7 @@ async def test_bmc_close_work_order_reflects_guard_failure(monkeypatch: pytest.M
     client = FakeClient(status='Closed', submitter='svc_mosaico')
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tool('bmc_close_work_order').ainvoke({'work_order_id': 'WO1'})
+    raw = await bmc_tool('bmc_close_work_order').ainvoke({'work_order_id': 'WO1', 'source': 'mailer'})
 
     payload = json.loads(raw)
     assert payload['success'] is False
@@ -240,6 +240,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
         'product_cat_tier_1': 'P1',
         'product_cat_tier_2': 'P2',
         'product_cat_tier_3': 'P3',
+        'source': 'mailer',
         'assigned_group': 'GTI.GROUP',
     })
 
@@ -252,6 +253,7 @@ async def test_bmc_create_work_order_sends_support_company_and_organization(monk
     assert body_values['Support Organization'] == DEFAULT_WORK_ORDER_SUPPORT_ORGANIZATION
     assert body_values['Support Group Name'] == 'GTI.GROUP'
     assert body_values['Location Company'] == DEFAULT_WORK_ORDER_LOCATION_COMPANY
+    assert body_values['ReportedSource'] == 'Email'
     assert body_values['First Name'] == 'Ana'
     assert body_values['Last Name'] == 'Reportante'
     assert body_values['Customer First Name'] == 'Ana'
@@ -271,6 +273,7 @@ async def test_bmc_create_work_order_fails_closed_when_reporter_not_found(monkey
         'product_cat_tier_1': 'P1',
         'product_cat_tier_2': 'P2',
         'product_cat_tier_3': 'P3',
+        'source': 'mailer',
     })
 
     payload = json.loads(raw)
@@ -468,7 +471,7 @@ async def test_bmc_get_work_order_summary_comes_from_description_field(
     client = FakeClient()
     monkeypatch.setattr(tool_handler, 'get_shared_handler', lambda: FakeHandler(client))
 
-    raw = await bmc_tool('bmc_get_work_order').ainvoke({'work_order_id': 'WO1'})
+    raw = await bmc_tool('bmc_get_work_order').ainvoke({'work_order_id': 'WO1', 'source': 'mailer'})
 
     payload = json.loads(raw)
     assert payload['success'] is True
@@ -519,3 +522,11 @@ def test_list_by_email_tools_keep_their_llm_description(tool_name: str, ticket_k
         'ticket: title, status and assigned group only; capped and flagged if there '
         'are more matches than returned.'
     )
+
+
+@pytest.mark.parametrize('tool_name', ['bmc_create_work_order', 'bmc_close_work_order'])
+def test_work_order_write_tools_require_the_source(tool_name: str) -> None:
+    schema = bmc_tool(tool_name).args_schema
+    assert schema.model_fields['source'].is_required()
+    with pytest.raises(pydantic.ValidationError):
+        schema.model_validate({'work_order_id': 'WO1', 'source': 'otra'})

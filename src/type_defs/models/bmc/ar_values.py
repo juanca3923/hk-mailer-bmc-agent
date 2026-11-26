@@ -63,6 +63,7 @@ class CreateWorkOrderValues(BaseModel):
     support_organization: str = Field(alias="Support Organization")
     assigned_group: str = Field(alias="Support Group Name")
     location_company: str = Field(alias="Location Company")
+    reported_source: str = Field(alias="ReportedSource")
 
 
 class CreateIncidentValues(BaseModel):
@@ -97,7 +98,6 @@ class UpdateWorkOrderStatusValues(BaseModel):
 
     description: str = Field(alias="Description")
     status: WorkOrderStatusField = Field(alias="Status")
-    aschg: str | None = Field(default=None, alias="ASCHG")
 
 
 class UpdateIncidentStatusValues(BaseModel):

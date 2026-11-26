@@ -3,22 +3,32 @@
 import logging
 from collections.abc import Awaitable, Callable
 
+from commons.bmc.ar_query_builder import ArQueryBuilder
 from commons.bmc.entry_values_mapper import EntryValuesMapper
 from commons.bmc.guarded_write import run_guarded_write, work_log_fields
 from commons.bmc.multipart_builder import MultipartBuilder
 from commons.bmc.ticket_guards import require_submitter, resolve_ticket_state_from_search
 from constants.bmc.api import WORK_LOG_ATTACHMENT_MARKER
+from constants.bmc.fields import (
+    AR_FIELD_REQUEST_ID,
+    AR_FIELD_WORK_ORDER_ID,
+    AR_FIELD_WORK_ORDER_RESOLUTION_METHOD,
+)
 from constants.bmc.messages import (
     USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND,
     USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
 )
+from constants.bmc.ticket_source import RESOLUTION_METHOD_BY_SOURCE
 from constants.bmc.tickets import (
     DEFAULT_WORK_ORDER_CLOSE_FINAL_STATUS,
+    DEFAULT_WORK_ORDER_CLOSE_IN_PROGRESS_DESCRIPTION,
     DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
-    DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
     DEFAULT_WORK_ORDER_UPDATE_STATUS,
 )
+from exception.mcp import MCPClientError
 from services.bmc.handler_context import TicketHandlerContext
+from type_defs.enums.ticket_source import TicketSource
+from type_defs.models.bmc.ar_api import parse_entry_list
 from type_defs.models.bmc.ar_values import (
     CloseWorkOrderValues,
     UpdateWorkOrderStatusValues,
@@ -30,6 +40,7 @@ from type_defs.models.bmc.inputs import (
     CloseWorkOrderInput,
     UpdateWorkOrderStatusInput,
 )
+from type_defs.models.bmc.json_types import JsonValue
 from type_defs.models.bmc.outputs import BaseOutput
 from type_defs.models.bmc.ticket_state import TicketState
 
@@ -164,17 +175,45 @@ class WorkOrderOperations:
         work_info_body = MultipartBuilder.build(values)
         await self._handler.client.post_work_info(work_info_body)
 
-    async def close(self, data: CloseWorkOrderInput) -> BaseOutput:
-        """Close a work order: PUT ownership+In Progress, then 2x (PUT status + work log note).
+    async def _set_resolution_method(self, work_order_id: str, source: TicketSource) -> None:
+        """Set the resolution method, a field that only the ``WOI:WorkOrder`` form exposes.
 
-        Steps: ownership+In Progress, Completed+ASCHG, Closed. Does not require the ticket
-        to already be ``In Progress``: the first PUT takes ownership (``ASCHG``) and moves
-        it there. Only rejects tickets already ``Closed`` and tickets not opened by this
-        agent's own BMC user (``Submitter``), before issuing any write. The Completed and
-        Closed PUTs are each followed by a work log note with the same text, since
-        ``Description`` doubles as the ticket's title and gets overwritten by the next
-        PUT; the ownership PUT does not get a note because BMC already logs the ``ASCHG``
-        change as its own ``Asignado a`` activity entry.
+        The Interface form used for every other write does not have it, so this looks the
+        entry up on ``WOI:WorkOrder`` by Work Order ID and updates it there.
+
+        Parameters
+        ----------
+        work_order_id : str
+            Work Order ID whose resolution method is set.
+        source : TicketSource
+            Source of the close request; its resolution method is the one written.
+
+        Raises
+        ------
+        MCPClientError
+            When the entry is not found or BMC rejects the request.
+        """
+        client = self._handler.client
+        form = self._handler.settings.form_wo_full
+        qualification = ArQueryBuilder.equals(AR_FIELD_WORK_ORDER_ID, work_order_id)
+        found = parse_entry_list(await client.get_json(client.entry_path(form), params={'q': qualification}))
+        if not found.entries:
+            raise MCPClientError(USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING)
+        request_id = found.entries[0].values.get_str(AR_FIELD_REQUEST_ID)
+        method = RESOLUTION_METHOD_BY_SOURCE[source]
+        body: dict[str, JsonValue] = {'values': {AR_FIELD_WORK_ORDER_RESOLUTION_METHOD: method}}
+        await client.put_json(client.entry_path(form, request_id), json_body=body)
+
+    async def close(self, data: CloseWorkOrderInput) -> BaseOutput:
+        """Close a work order: PUT In Progress, then 2x (PUT status + work log note).
+
+        Steps: In Progress, resolution method (a separate PUT on ``WOI:WorkOrder``), Completed,
+        Closed. The agent no longer takes ownership of the ticket (no ``ASCHG``). Does not require the ticket to
+        already be ``In Progress``. Only rejects tickets already ``Closed`` and tickets not
+        opened by this agent's own BMC user (``Submitter``), before issuing any write. The
+        Completed and Closed PUTs are each followed by a work log note with the same text,
+        since ``Description`` doubles as the ticket's title and gets overwritten by the next
+        PUT; the In Progress PUT does not get a note.
 
         Parameters
         ----------
@@ -187,18 +226,16 @@ class WorkOrderOperations:
             Success or error output for the tool.
         """
         async def close_flow(state: TicketState) -> BaseOutput:
-            assignee = self._handler.settings.assignee_display_name
             client = self._handler.client
-            ownership = UpdateWorkOrderStatusValues(
-                description=DEFAULT_WORK_ORDER_CLOSE_OWNERSHIP_DESCRIPTION,
+            in_progress = UpdateWorkOrderStatusValues(
+                description=DEFAULT_WORK_ORDER_CLOSE_IN_PROGRESS_DESCRIPTION,
                 status=DEFAULT_WORK_ORDER_UPDATE_STATUS,
-                aschg=assignee,
             )
-            await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(ownership))
+            await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(in_progress))
+            await self._set_resolution_method(data.work_order_id, data.source)
             intermediate = UpdateWorkOrderStatusValues(
                 description=data.intermediate_description,
                 status=DEFAULT_WORK_ORDER_CLOSE_INTERMEDIATE_STATUS,
-                aschg=assignee,
             )
             await client.update_work_order(state.request_id, EntryValuesMapper.wrap_entry_body(intermediate))
             await self._post_close_note(data.work_order_id, data.intermediate_description)

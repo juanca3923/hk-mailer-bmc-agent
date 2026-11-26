@@ -91,8 +91,11 @@ dominio (p. ej. es un tema de usuario/red) pero ninguna fila lo describe con
 precisión:
 
 1. No inventes una combinación de categorías que no hayas visto en esa tabla.
-2. Usa la fila más general y razonable de esa misma tabla, dejando claro que fue una
-   elección aproximada.
+2. **No uses una fila «general» ni «aproximada»**: una fila aplica solo si el correo nombra
+   explícitamente su sistema o producto (regla restrictiva de `categorias-mail-drive`).
+   Si ninguna fila lo nombra, o el sistema nombrado no está en la tabla, usa la categoría
+   por defecto `MailDrive` de la sección 1. Nunca deduzcas por conocimiento propio que una
+   aplicación usa otro sistema.
 3. Si el caso es ambiguo o crítico, prefiere preguntar antes de crear el ticket en vez
    de adivinar.
 

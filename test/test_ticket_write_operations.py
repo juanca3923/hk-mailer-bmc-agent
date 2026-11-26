@@ -26,6 +26,7 @@ from constants.bmc.messages import (
 from exception.mcp import MCPClientError
 from services.bmc.incident_operations import IncidentOperations
 from services.bmc.work_order_operations import WorkOrderOperations
+from type_defs.enums.ticket_source import TicketSource
 from type_defs.models.bmc.ar_api import BmcEntry, BmcEntryListResponse, BmcEntryValues
 from type_defs.models.bmc.inputs import (
     AddIncidentAttachmentInput,
@@ -148,7 +149,7 @@ WORK_ORDER = Kind(
     operations=WorkOrderOperations,
     note_input=lambda: AddWorkOrderNoteInput(work_order_id=TICKET_ID, note_text='nota'),
     attachment_input=lambda: AddWorkOrderAttachmentInput(work_order_id=TICKET_ID, note_text='nota', file_path='f.png'),
-    close_input=lambda: CloseWorkOrderInput(work_order_id=TICKET_ID),
+    close_input=lambda: CloseWorkOrderInput(work_order_id=TICKET_ID, source=TicketSource.MAILER),
     not_found_message=USER_ERROR_MESSAGE_WORK_ORDER_NOT_FOUND.format(work_order_id=TICKET_ID),
     request_id_missing_message=USER_ERROR_MESSAGE_WORK_ORDER_REQUEST_ID_MISSING,
 )

@@ -14,6 +14,44 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — fix: la categorización de Work Orders es restrictiva (solo si el correo nombra el sistema de la fila)
+
+- **Caso real**: el correo «creación de usuario mosaico — Requiero la creación de los usuarios X y Y en la aplicación mosaico» terminó en `Asignar Permisos` / `Directorio Activo` porque el modelo dedujo por su cuenta que Mosaico usa el DA (ninguna palabra clave estaba en el texto). Debía ir a la categoría por defecto `MailDrive`. El modelo de Hugging Face no permite bajar la temperatura, así que se refuerza con reglas.
+- **Catálogo** (`skills/categorias-mail-drive.md`): las cinco filas de `Asignar Permisos` suman palabras de acción de creación de usuario (`crear usuario`, `creación de usuario`, `nuevo usuario`, `alta de usuario`…): pedir permisos y crear un usuario se interpretan igual.
+- **Regla**: una fila aplica solo si el correo nombra su sistema o producto (palabras clave de producto o Categoría de Producto 2); una palabra de acción sola no basta; prohibido deducir que una aplicación usa otro sistema; si el sistema no está en la tabla → `MailDrive`. Con tres ejemplos en el catálogo. `guia-creacion-tickets` §3 ya no manda usar una fila «general/aproximada»; `base.prompt.md` (pasos de elección y modo automático) lo refleja.
+- **Pendiente (decisión del usuario)**: reforzar en código, haciendo que la tool reciba la palabra clave que justificó la fila y la compruebe contra el asunto/descripción.
+- **Acción operativa**: reiniciar el agente (`base.prompt.md`); las skills se leen al vuelo.
+
+---
+
+## 2026-11-25 — feat: la fuente del mensaje (`Fuente: mailer`) es obligatoria para crear y cerrar Work Orders
+
+- **Contrato**: el mailer agrega `Fuente: mailer` (segunda línea) a `Acción: crear` y `Acción: cerrar`; la nota no la lleva. El agente BMC la copia al parámetro `source` de `bmc_create_work_order` y `bmc_close_work_order`, **requerido** en ambas: sin ella la tool falla y no crea ni cierra nada.
+- **Traducción en BMC**: `TicketSource.MAILER` → `ReportedSource` = `Email` al crear y `AA_ResolutionMethod_WO` = `Correo` al cerrar (`constants/bmc/ticket_source.py`). El valor sale solo de ese mapeo.
+- **Eliminado**: `BMC_DEFAULT_WORK_ORDER_REPORTED_SOURCE` y `BMC_DEFAULT_WORK_ORDER_RESOLUTION_METHOD` (introducidas hace unas horas, sin uso en producción).
+- **Incidentes**: sin cambios.
+- **Acción operativa**: desplegar este agente junto con el mailer que envía `Fuente:`; un mailer viejo no podría crear ni cerrar Work Orders. Quitar las dos variables de `bmc.env` si se habían definido.
+
+---
+
+## 2026-11-25 — feat: Fuente reportada y Método de resolución en el Work Order; ortografía de BMC en Software
+
+- **Fuente reportada**: `bmc_create_work_order` envía `ReportedSource` = `Email` (`BMC_DEFAULT_WORK_ORDER_REPORTED_SOURCE`). Se comprobó en QA que BMC lo guarda; antes quedaba vacío y la UI lo marca obligatorio.
+- **Método de resolución**: el formulario `WOI:WorkOrderInterface` no tiene ese campo (BMC responde «Field ID specified is not found»); vive en `WOI:WorkOrder` como `AA_ResolutionMethod_WO`. El cierre lo fija con un PUT extra a `WOI:WorkOrder` (`BMC_DEFAULT_WORK_ORDER_RESOLUTION_METHOD`, `Correo`, nuevo `form_wo_full`, por defecto `WOI:WorkOrder`) tras pasar a `In Progress` y antes de `Completed`.
+- **Cierre de los 5 tickets «Software»**: fallaban con «Debe completar las categorías Operativa y de Producto» porque el catálogo de BMC escribe `Sofware` (sin «t»), `Sap`, `Gestiona tu acceso` y `Correo electronico`. `categorias-mail-drive` usa ahora esa escritura en Requerimientos; se revierte cuando BMC corrija `Sofware`. Incidentes sin tocar ni validar.
+- **Acción operativa**: reiniciar el agente; variables opcionales nuevas en `.env.example`.
+
+---
+
+## 2026-11-25 — fix: el cierre del Work Order ya no toma propiedad (sin `ASCHG`)
+
+- **Antes**: `bmc_close_work_order` hacía `In Progress` + `ASCHG` → `Completed` + `ASCHG` → `Closed`. En QA la toma de propiedad fallaba (`The Request Assignee Group fields are invalid`) porque el usuario de IA no es el asignado del grupo.
+- **Ahora**: la mesa confirmó que el agente ya no necesita tomar propiedad. El cierre solo cambia estados: `In Progress` → `Completed` (+ nota) → `Closed` (+ nota); ninguna petición envía `ASCHG`. Se mantienen los guards (no `Closed`, `Submitter` = `BMC_USERNAME`).
+- **Sin cambios** en el cierre de incidentes: sigue usando `Assignee` con `BMC_ASSIGNEE_DISPLAY_NAME`; esa variable sigue siendo obligatoria.
+- **Acción operativa**: reiniciar el agente.
+
+---
+
 ## 2026-11-25 — feat: catálogo de Requerimientos y categoría por defecto actualizados desde el Excel de MailDrive
 
 - **Catálogo** (`skills/categorias-mail-drive.md`): 11 filas de Requerimientos con `Prioridad` ya informada (`ALTO`/`MEDIO`/`BAJO`); desaparece la fila `Crear / cambiar contraseña → Gestion de casos/Control/Casos` (ahora es la categoría por defecto). Los incidentes no cambian. Siguen aproximados el producto 3 de `Base de datos` (`Plataforma`) y de `Gestiona tu Acceso` (`Aplicacion`), vacíos en el Excel.

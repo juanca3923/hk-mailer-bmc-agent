@@ -149,6 +149,7 @@ class BmcSettings(BaseSettings):
     form_wo_create: str = Field(default='WOI:WorkOrderInterface_Create')
     form_wo_query: str = Field(default='WOI:WorkOrderInterface')
     form_wo_update: str = Field(default='WOI:WorkOrderInterface')
+    form_wo_full: str = Field(default='WOI:WorkOrder')
     form_work_info: str = Field(default='WOI:WorkInfo')
     form_incident_work_log: str = Field(default='HPD:WorkLog')
     form_people_query: str = Field(default='CTM:People')

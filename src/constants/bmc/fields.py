@@ -15,6 +15,9 @@ CATEGORIZATION_TIER_2_FIELD: Final[str] = "Categorization Tier 2"
 
 AR_FIELD_WORK_ORDER_ID: Final[str] = "Work Order ID"
 
+# Resolution method lives only on ``WOI:WorkOrder`` (the Interface form does not expose it).
+AR_FIELD_WORK_ORDER_RESOLUTION_METHOD: Final[str] = "AA_ResolutionMethod_WO"
+
 
 AR_FIELD_ASSIGNEE: Final[str] = "Assignee"
 

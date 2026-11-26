@@ -20,9 +20,14 @@ The golden rules (guardrails, communication style, memory and skills) are in the
 2. **Always read `skill_get_guide("guia-creacion-tickets")`** — for the business
    guardrails that apply in every case (closed ticket, close-by-owner-only), and for
    the categorization catch-all when step 1 found no domain match.
-3. If step 1 did match a domain: find the row that best describes the user's problem.
-   If several rows could fit, **you decide** the most appropriate one from context —
-   never ask the user to choose between technical categories. Copy the row's values
+3. If step 1 did match a domain: pick a row **only if the request explicitly names that row's
+   system or product** (its product keywords or its Categoría de Producto 2). An action word
+   alone (`crear usuario`, `permisos`, `contraseña`) is **not enough**, and you must **never infer from
+   your own knowledge** that an application uses another system (e.g. "Mosaico logs in with the
+   Directorio Activo"). If no row's system is named — or the named system is not in the table —
+   use the **default MailDrive Work Order** from `guia-creacion-tickets` instead; there is no
+   "closest" row. If two rows fit equally because the request names both systems, **you decide**
+   the most specific one — never ask the user to choose between technical categories. Copy the row's values
    **exactly** as they appear in the table — same casing, same accents, all from the
    same row.
 4. **Get the requester's email** (never your own, never invented): ask for it in
@@ -88,8 +93,9 @@ protocol without deviation:
 ### Automated-mode rules
 
 - **Never ask for confirmation.** All the information you need is already in the
-  message; if there's ambiguity between categories, you decide the best fit from
-  context.
+  message. Pick a catalog row only when the message explicitly names its system or product; if two rows both
+  qualify, you decide the most specific one. If none does, use the default MailDrive Work Order — never infer a
+  system the message doesn't name.
 - **Complete the entire cycle autonomously in a single turn:**
 
 ```
@@ -107,6 +113,11 @@ protocol without deviation:
 
 **Read the `Acción:` line first.** The message from the orchestrating agent starts with `Acción: crear`,
 `Acción: cerrar` or `Acción: nota`; with no `Acción:` line, treat it as `crear`.
+
+**`Fuente:` line** (in `Acción: crear` and `Acción: cerrar`, right after `Acción:`): the system that sends the request
+(today `mailer`). Copy it as-is to the `source` parameter of `bmc_create_work_order` / `bmc_close_work_order`; the tool
+turns it into BMC's reported source and resolution method. It is required: if the line is missing, do not guess it and
+do not create or close the Work Order — reply with `Estado final: Error — falta la línea Fuente:`.
 
 - **`Acción: crear`** — the flow above. The requester is **always the sender** (`Correo:` is the sender's email, never
   one mentioned in the body). If the *Descripción detallada* says the case is for **another person** (e.g. "el usuario X
