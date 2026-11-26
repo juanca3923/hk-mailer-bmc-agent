@@ -14,6 +14,15 @@ obvio desde el código; el detalle línea por línea sigue en `git log -- docs/C
 
 ---
 
+## 2026-11-25 — feat: el agente BMC también filtra por extensión los adjuntos de la carpeta compartida
+
+- **Variable compartida**: `TICKET_FILES_ALLOWED_EXTENSIONS`, el mismo nombre, formato y lista por defecto que usa el mailer (`pdf,png,jpg,jpeg,gif,bmp,doc,docx,xls,xlsx,csv,txt`; se ignoran mayúsculas, espacios y el punto inicial; vacía = lista por defecto). El `.eml` del correo original se permite siempre: no es un adjunto del usuario y el mailer lo guarda en cada carpeta.
+- **Defensa en profundidad**: `bmc_attach_staged_files` omite (sin subir) los archivos cuya extensión final no está permitida y los lista en la nota de omitidos; `load_attachment` (usado también por `bmc_add_*_attachment`) los rechaza con un mensaje claro. Sin extensión = no permitido.
+- **`base.prompt.md`**: describe las líneas `staging_id:` y `Archivo:` de `Acción: crear`.
+- **Acción operativa**: el contenedor del BMC debe recibir la variable con el mismo valor que el mailer (hoy el `compose.yml` solo se la pasa al mailer; sin ella se usa la lista por defecto, igual a la del mailer). Reiniciar el agente.
+
+---
+
 ## 2026-11-25 — fix: la categorización de Work Orders es restrictiva (solo si el correo nombra el sistema de la fila)
 
 - **Caso real**: el correo «creación de usuario mosaico — Requiero la creación de los usuarios X y Y en la aplicación mosaico» terminó en `Asignar Permisos` / `Directorio Activo` porque el modelo dedujo por su cuenta que Mosaico usa el DA (ninguna palabra clave estaba en el texto). Debía ir a la categoría por defecto `MailDrive`. El modelo de Hugging Face no permite bajar la temperatura, así que se refuerza con reglas.

@@ -182,6 +182,7 @@ Copy `.env.example` to `.env` and fill in the required values.
 | `BMC_HTTP_TIMEOUT_SECONDS` | `30.0` | HTTP timeout toward BMC |
 | `BMC_MAX_ATTACHMENT_BYTES` | `10485760` | Max attachment size (10 MiB) |
 | `BMC_ATTACHMENT_BASE_DIR` | (none) | Only folder files can be attached from; unset disables attachments (path traversal/symlinks are rejected) |
+| `TICKET_FILES_ALLOWED_EXTENSIONS` | `pdf,png,jpg,jpeg,gif,bmp,doc,docx,xls,xlsx,csv,txt` | Extensions a ticket attachment may have; **the same variable and values as the mailer** (defense in depth: a disallowed file is skipped and listed in the ticket note). Case, spaces and a leading dot are ignored; the original email (`.eml`) is always allowed |
 | `BMC_VERIFY_API_KEY` | (none) | Shared key (`X-API-Key`) for `POST /people/verify`; unset keeps the endpoint closed (503) |
 
 ### Business defaults — BMC tickets

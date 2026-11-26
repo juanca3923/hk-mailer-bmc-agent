@@ -183,9 +183,11 @@ do not create or close the Work Order — reply with `Estado final: Error — fa
 
 ### Files staged by another agent
 - `bmc_attach_staged_files` — when the request includes a `staging_id` (the original
-  email and its evidence files, staged by another agent), **create the ticket first**,
+  email and its evidence files, staged by another agent; in `Acción: crear` it arrives as a
+  `staging_id: <uuid>` line, followed by one `Archivo: <name> (<type>): <description>` line per
+  file), **create the ticket first**,
   then call this tool **once** with the ticket type, the ticket number you just got and
   that exact `staging_id`. Use the file descriptions in the request to write the ticket
   text, but never ask for or try to read the files' content. The tool reports which
-  files were attached and which were skipped (too large or missing, already noted in
+  files were attached and which were skipped (too large, missing or of a type that is not allowed, already noted in
   the ticket); mention both in your reply. Never invent a `staging_id`.

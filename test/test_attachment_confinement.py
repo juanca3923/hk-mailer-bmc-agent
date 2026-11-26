@@ -13,6 +13,7 @@ from constants.bmc.messages import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
+    USER_ERROR_MESSAGE_ATTACHMENT_TYPE_NOT_ALLOWED,
 )
 from exception.mcp import MCPClientError
 from services.bmc.tool_handler import BaseToolHandler
@@ -26,6 +27,7 @@ class FakeSettings:
     def __init__(self, attachment_base_dir: Path | None, max_attachment_bytes: int = MAX_BYTES) -> None:
         self.attachment_base_dir = attachment_base_dir
         self.max_attachment_bytes = max_attachment_bytes
+        self.attachment_extensions: frozenset[str] | None = None
 
 
 def make_handler(base: Path | None, max_bytes: int = MAX_BYTES) -> BaseToolHandler:
@@ -102,3 +104,12 @@ def test_file_over_limit_is_too_large(base: Path) -> None:
     with pytest.raises(MCPClientError) as exc:
         make_handler(base).load_attachment(str(base / 'big.bin'))
     assert exc.value.message == USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE
+
+
+def test_disallowed_extension_is_rejected_by_load_attachment(base: Path) -> None:
+    (base / 'virus.exe').write_bytes(b'x')
+    handler = make_handler(base)
+    handler._settings.attachment_extensions = frozenset({'png'})  # type: ignore[attr-defined]
+    with pytest.raises(MCPClientError) as exc:
+        handler.load_attachment(str(base / 'virus.exe'))
+    assert exc.value.message == USER_ERROR_MESSAGE_ATTACHMENT_TYPE_NOT_ALLOWED

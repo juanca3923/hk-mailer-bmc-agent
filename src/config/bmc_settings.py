@@ -9,6 +9,8 @@ from typing import Literal
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from commons.bmc.attachment_extensions import parse_extensions
+
 
 class McpServerSettings(BaseSettings):
     """MCP server settings for streamable HTTP transport.
@@ -136,6 +138,15 @@ class BmcSettings(BaseSettings):
         ),
     )
 
+    attachment_allowed_extensions: str = Field(
+        default='',
+        validation_alias='TICKET_FILES_ALLOWED_EXTENSIONS',
+        description=(
+            'Comma-separated extensions a ticket attachment may have; the same variable the mailer reads. '
+            'Empty uses its default list. The original email (.eml) is always allowed.'
+        ),
+    )
+
     verify_api_key: str = Field(
         default='',
         description=(
@@ -155,6 +166,11 @@ class BmcSettings(BaseSettings):
     form_people_query: str = Field(default='CTM:People')
 
     default_wo_company: str = Field(default='ARUS')
+
+    @property
+    def attachment_extensions(self) -> frozenset[str]:
+        """Normalised set of extensions that may be attached (default list when the variable is empty)."""
+        return parse_extensions(self.attachment_allowed_extensions)
 
     @field_validator('attachment_base_dir', mode='before')
     @classmethod

@@ -10,3 +10,4 @@ class StagedSkipReason(StrEnum):
     MISSING = 'missing'
     INVALID_NAME = 'invalid_name'
     NOT_ALLOWED = 'not_allowed'
+    INVALID_TYPE = 'invalid_type'

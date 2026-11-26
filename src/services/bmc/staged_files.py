@@ -11,6 +11,7 @@ import json
 import logging
 from pathlib import Path
 
+from commons.bmc.attachment_extensions import is_extension_allowed
 from constants.bmc.messages import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
@@ -28,7 +29,7 @@ from type_defs.ports.bmc import TicketWriter
 logger = logging.getLogger(__name__)
 
 # Reasons worth telling the ticket reader about; the rest are internal inconsistencies.
-_NOTE_REASONS = (StagedSkipReason.TOO_LARGE, StagedSkipReason.MISSING)
+_NOTE_REASONS = (StagedSkipReason.TOO_LARGE, StagedSkipReason.MISSING, StagedSkipReason.INVALID_TYPE)
 
 
 def format_size(size: int) -> str:
@@ -77,12 +78,21 @@ class StagedFilesAttacher:
         Shared folder root (``BMC_ATTACHMENT_BASE_DIR``); ``None`` disables the feature.
     _max_bytes : int
         Largest file BMC accepts.
+    _allowed_extensions : frozenset[str] | None
+        Extensions that may be uploaded; ``None`` disables the filter.
     """
 
-    def __init__(self, writer: TicketWriter, base_dir: Path | None, max_bytes: int) -> None:
+    def __init__(
+        self,
+        writer: TicketWriter,
+        base_dir: Path | None,
+        max_bytes: int,
+        allowed_extensions: frozenset[str] | None = None,
+    ) -> None:
         self._writer = writer
         self._base_dir = base_dir
         self._max_bytes = max_bytes
+        self._allowed_extensions = allowed_extensions
 
     async def attach(self, staging_id: str) -> BaseOutput:
         """Attach the files listed in ``<base>/<staging_id>/manifest.json``.
@@ -193,6 +203,8 @@ class StagedFilesAttacher:
         path = folder / name
         if not is_plain_file_name(name):
             reason = StagedSkipReason.INVALID_NAME
+        elif not is_extension_allowed(name, self._allowed_extensions):
+            reason = StagedSkipReason.INVALID_TYPE
         elif path.is_symlink() or (path.exists() and not path.resolve().is_relative_to(folder)):
             reason = StagedSkipReason.NOT_ALLOWED
         elif not path.is_file():
@@ -223,4 +235,6 @@ class StagedFilesAttacher:
         if reason == StagedSkipReason.TOO_LARGE:
             size = format_size(outcome.sizes[name]) if name in outcome.sizes else 'tamaño desconocido'
             return f'supera el tamaño máximo permitido ({size}; máximo {format_size(self._max_bytes)})'
+        if reason == StagedSkipReason.INVALID_TYPE:
+            return 'tipo de archivo no permitido'
         return 'archivo no encontrado en la carpeta compartida'

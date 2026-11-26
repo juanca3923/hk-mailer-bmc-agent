@@ -4,6 +4,7 @@ import functools
 import logging
 from pathlib import Path
 
+from commons.bmc.attachment_extensions import is_extension_allowed
 from commons.bmc.multipart_builder import AttachmentPart
 from commons.bmc.toon_encoder import ToonResponseEncoder
 from config.bmc_settings import BmcSettings
@@ -12,6 +13,7 @@ from constants.bmc.messages import (
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED,
     USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND,
     USER_ERROR_MESSAGE_ATTACHMENT_TOO_LARGE,
+    USER_ERROR_MESSAGE_ATTACHMENT_TYPE_NOT_ALLOWED,
     USER_ERROR_MESSAGE_WRITE_DISABLED,
 )
 from exception.mcp import MCPClientError
@@ -135,7 +137,7 @@ class BaseToolHandler:
         ------
         MCPClientError
             If attachments are not configured, the file is outside ``attachment_base_dir``,
-            it is missing, or it exceeds ``max_attachment_bytes``.
+            its extension is not allowed, it is missing, or it exceeds ``max_attachment_bytes``.
         """
         base_dir = self._settings.attachment_base_dir
         if base_dir is None:
@@ -145,6 +147,9 @@ class BaseToolHandler:
         if not path.is_relative_to(base_dir.resolve()):
             self._logger.warning("Attachment rejected, outside base dir: name=%s", Path(file_path).name)
             raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED, status_code=None)
+        if not is_extension_allowed(path.name, self._settings.attachment_extensions):
+            self._logger.warning("Attachment rejected, extension not allowed: name=%s", path.name)
+            raise MCPClientError(USER_ERROR_MESSAGE_ATTACHMENT_TYPE_NOT_ALLOWED, status_code=None)
         if not path.is_file():
             self._logger.warning("Attachment rejected, file not found: name=%s", path.name)
             msg = USER_ERROR_MESSAGE_ATTACHMENT_NOT_FOUND

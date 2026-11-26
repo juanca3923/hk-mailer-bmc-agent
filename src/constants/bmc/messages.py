@@ -46,6 +46,11 @@ USER_ERROR_MESSAGE_ATTACHMENT_NOT_ALLOWED: Final[str] = (
 )
 
 
+USER_ERROR_MESSAGE_ATTACHMENT_TYPE_NOT_ALLOWED: Final[str] = (
+    "Error: El tipo de archivo no está permitido para adjuntar a un ticket."
+)
+
+
 USER_ERROR_MESSAGE_ATTACHMENT_NOT_CONFIGURED: Final[str] = (
     "Error: Los adjuntos no están habilitados (BMC_ATTACHMENT_BASE_DIR sin configurar)."
 )

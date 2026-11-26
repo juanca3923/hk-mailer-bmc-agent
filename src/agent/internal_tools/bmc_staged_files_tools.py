@@ -117,6 +117,7 @@ class StagedFilesTools(ToolSet):
             writer,
             base_dir=handler.settings.attachment_base_dir,
             max_bytes=handler.settings.max_attachment_bytes,
+            allowed_extensions=handler.settings.attachment_extensions,
         )
         result = await attacher.attach(staging_id)
         logger.info(

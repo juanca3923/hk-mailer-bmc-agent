@@ -27,6 +27,7 @@ class FakeSettings:
         self.assignee_display_name = 'Mosaico WebServices'
         self.attachment_base_dir = base
         self.max_attachment_bytes = MAX_BYTES
+        self.attachment_extensions: frozenset[str] | None = None
         self.allow_write = allow_write
 
 

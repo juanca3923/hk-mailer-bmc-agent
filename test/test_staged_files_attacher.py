@@ -59,8 +59,8 @@ def stage(base: Path, files: dict[str, bytes], manifest: object | None = None) -
     (folder / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
 
 
-def make(base: Path | None, writer: FakeWriter) -> StagedFilesAttacher:
-    return StagedFilesAttacher(writer, base_dir=base, max_bytes=MAX_BYTES)
+def make(base: Path | None, writer: FakeWriter, allowed: frozenset[str] | None = None) -> StagedFilesAttacher:
+    return StagedFilesAttacher(writer, base_dir=base, max_bytes=MAX_BYTES, allowed_extensions=allowed)
 
 
 def report(result: BaseOutput) -> dict[str, list]:
@@ -225,3 +225,15 @@ async def test_empty_manifest_is_success_and_creates_no_note(base: Path) -> None
     assert result.success is True
     assert report(result)['attached'] == []
     assert writer.notes == []
+
+
+async def test_file_with_a_disallowed_extension_is_skipped_and_noted(base: Path) -> None:
+    stage(base, {'correo_original.eml': b'e', 'foto.png': b'p', 'virus.exe': b'x'})
+    writer = FakeWriter()
+
+    result = await make(base, writer, allowed=frozenset({'png'})).attach(STAGING_ID)
+
+    assert [name for name, _ in writer.attached] == ['correo_original.eml', 'foto.png']
+    assert {(item['name'], item['reason']) for item in report(result)['skipped']} == {('virus.exe', 'invalid_type')}
+    assert 'virus.exe' in writer.notes[0]
+    assert result.success is True
